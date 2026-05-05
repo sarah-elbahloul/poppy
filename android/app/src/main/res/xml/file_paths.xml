@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ─────────────────────────────────────────────────────────
+     POPPY — File Provider Paths
+     Location: android/app/src/main/res/xml/file_paths.xml
+
+     Create the folder android/app/src/main/res/xml/
+     if it does not exist, then place this file inside it.
+     Required by share_plus to share the export JSON file.
+──────────────────────────────────────────────────────────── -->
+<paths>
+    <cache-path name="cache" path="."/>
+    <external-cache-path name="external_cache" path="."/>
+    <files-path name="files" path="."/>
+</paths>

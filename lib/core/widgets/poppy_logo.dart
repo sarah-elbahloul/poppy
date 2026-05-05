@@ -55,59 +55,63 @@ class _PoppyPainter extends CustomPainter {
     final cy = size.height / 2;
     final r = size.width / 2;
 
-    // ── Petals ─────────────────────────────────────────────
-    // 6 petals: alternating two shades for depth.
-    const petalCount = 6;
-    final petalRadiusX = r * 0.38;
-    final petalRadiusY = r * 0.52;
-    final petalOffset = r * 0.28; // how far from centre
+    // ── Petal shape (same for all, like SVG) ──
+    final petalRect = Rect.fromCenter(
+      center: Offset(0, -r * 0.35), // shift upward like SVG (cy=20 vs 32)
+      width: r * 0.6,
+      height: r * 0.9,
+    );
 
-    for (int i = 0; i < petalCount; i++) {
-      final angle = (i * math.pi * 2) / petalCount;
-      final isOdd = i.isOdd;
+    // ── Light petals (background layer) ──
+    final lightPaint = Paint()
+      ..color = petalColor.withOpacity(0.35)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.5);
 
-      final paint = Paint()
-        ..color = isOdd
-            ? petalColor.withOpacity(0.85)
-            : petalColor.withOpacity(0.65)
-        ..style = PaintingStyle.fill;
+    final darkPaint = Paint()
+      ..color = petalColor.withOpacity(0.65)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.5);
 
+    // Move to center once
+    canvas.translate(cx, cy);
+
+    // Draw light petals: 0, 60, 120
+    for (int i = 0; i < 3; i++) {
       canvas.save();
-      canvas.translate(
-        cx + petalOffset * math.cos(angle),
-        cy + petalOffset * math.sin(angle),
-      );
-      canvas.rotate(angle);
-
-      final petalRect = Rect.fromCenter(
-        center: Offset.zero,
-        width: petalRadiusX * 2,
-        height: petalRadiusY * 2,
-      );
-      canvas.drawOval(petalRect, paint);
+      canvas.rotate(i * math.pi / 3); // 60°
+      canvas.drawOval(petalRect, lightPaint);
       canvas.restore();
     }
 
-    // ── Centre circle ──────────────────────────────────────
+    // Draw dark petals: 30, 90, 150
+    for (int i = 0; i < 3; i++) {
+      canvas.save();
+      canvas.rotate((i * math.pi / 3) + (math.pi / 6)); // +30°
+      canvas.drawOval(petalRect, darkPaint);
+      canvas.restore();
+    }
+
+    // ── Centre circle ──
     final centrePaint = Paint()
       ..color = centreColor
       ..style = PaintingStyle.fill;
 
-    canvas.drawCircle(Offset(cx, cy), r * 0.26, centrePaint);
+    canvas.drawCircle(Offset.zero, r * 0.25, centrePaint);
 
-    // ── Centre highlight dots ──────────────────────────────
+    // ── Centre highlight dots ──
     final dotPaint = Paint()
       ..color = highlightColor
       ..style = PaintingStyle.fill;
 
-    final dotPositions = [
-      Offset(cx - r * 0.07, cy - r * 0.07),
-      Offset(cx + r * 0.09, cy - r * 0.04),
-      Offset(cx - r * 0.02, cy + r * 0.09),
+    final dots = [
+      Offset(-r * 0.08, -r * 0.08),
+      Offset(r * 0.1, -r * 0.05),
+      Offset(-r * 0.02, r * 0.1),
     ];
 
-    for (final pos in dotPositions) {
-      canvas.drawCircle(pos, r * 0.035, dotPaint);
+    for (final d in dots) {
+      canvas.drawCircle(d, r * 0.035, dotPaint);
     }
   }
 
