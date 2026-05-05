@@ -1,0 +1,371 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); }
+  .section { margin-bottom: 40px; }
+  .section-label { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  
+  /* BRAND */
+  .brand-hero { display: flex; align-items: center; gap: 20px; padding: 24px; background: var(--color-background-secondary); border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); }
+  .poppy-logo { width: 64px; height: 64px; flex-shrink: 0; }
+  .brand-name { font-size: 32px; font-weight: 500; color: #C94040; letter-spacing: -0.5px; }
+  .brand-tagline { font-size: 14px; color: var(--color-text-secondary); margin-top: 4px; font-style: italic; }
+  
+  /* THEMES */
+  .themes-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .theme-chip { border-radius: var(--border-radius-lg); padding: 14px 10px; text-align: center; border: 1.5px solid transparent; cursor: pointer; transition: transform 0.15s; }
+  .theme-chip:hover { transform: translateY(-2px); }
+  .theme-chip.active { border-color: rgba(0,0,0,0.2); }
+  .theme-dot { width: 28px; height: 28px; border-radius: 50%; margin: 0 auto 8px; }
+  .theme-name { font-size: 11px; font-weight: 500; }
+  
+  /* COLOR DOT SYSTEM */
+  .color-dots { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .cdot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  
+  /* SCREENS */
+  .screens { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .phone { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 20px; overflow: hidden; height: 480px; display: flex; flex-direction: column; position: relative; }
+  .phone-status { height: 28px; background: var(--color-background-secondary); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--color-text-tertiary); flex-shrink: 0; border-bottom: 0.5px solid var(--color-border-tertiary); letter-spacing: 0.05em; }
+  .phone-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  
+  /* HOME SCREEN */
+  .home-header { padding: 20px 18px 12px; }
+  .home-greeting { font-size: 11px; color: var(--color-text-tertiary); }
+  .home-date { font-size: 22px; font-weight: 500; color: var(--color-text-primary); line-height: 1.2; }
+  .entry-card { margin: 0 14px 10px; padding: 14px; background: var(--color-background-secondary); border-radius: 12px; border: 0.5px solid var(--color-border-tertiary); position: relative; overflow: hidden; }
+  .entry-accent { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 12px 0 0 12px; }
+  .entry-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); padding-left: 10px; }
+  .entry-meta { font-size: 11px; color: var(--color-text-tertiary); padding-left: 10px; margin-top: 3px; }
+  .entry-preview { font-size: 11px; color: var(--color-text-secondary); padding-left: 10px; margin-top: 6px; line-height: 1.5; }
+  .fab { position: absolute; bottom: 20px; right: 18px; width: 44px; height: 44px; border-radius: 50%; background: #C94040; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(201,64,64,0.35); }
+  .fab-plus { color: white; font-size: 22px; line-height: 1; margin-top: -2px; }
+  
+  /* WRITE SCREEN */
+  .write-header { padding: 16px 18px 10px; display: flex; align-items: center; gap: 10px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .back-btn { font-size: 13px; color: #C94040; }
+  .write-date { font-size: 12px; color: var(--color-text-tertiary); flex: 1; text-align: right; }
+  .write-title-field { padding: 16px 18px 8px; font-size: 18px; font-weight: 500; color: var(--color-text-primary); border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .write-body { padding: 14px 18px; font-size: 13px; color: var(--color-text-secondary); line-height: 1.7; flex: 1; }
+  .photo-strip { padding: 10px 18px; display: flex; gap: 8px; border-top: 0.5px solid var(--color-border-tertiary); }
+  .photo-thumb { width: 52px; height: 52px; border-radius: 8px; background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .photo-add { width: 52px; height: 52px; border-radius: 8px; border: 1px dashed var(--color-border-secondary); display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--color-text-tertiary); flex-shrink: 0; }
+  .color-toolbar { padding: 10px 18px; display: flex; gap: 8px; align-items: center; border-top: 0.5px solid var(--color-border-tertiary); }
+  .ct-label { font-size: 10px; color: var(--color-text-tertiary); margin-right: 2px; }
+  .ct-dot { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 1.5px solid transparent; }
+  .ct-dot.sel { border-color: var(--color-text-primary); }
+  
+  /* SEARCH SCREEN */
+  .search-bar { margin: 14px; background: var(--color-background-secondary); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: var(--color-text-tertiary); border: 0.5px solid var(--color-border-tertiary); display: flex; align-items: center; gap: 8px; }
+  .filter-row { padding: 4px 14px 10px; display: flex; gap: 6px; }
+  .filter-chip { font-size: 10px; padding: 4px 10px; border-radius: 20px; border: 0.5px solid var(--color-border-tertiary); color: var(--color-text-secondary); }
+  .filter-chip.active-f { background: #C94040; color: white; border-color: #C94040; }
+  
+  /* ARCH */
+  .arch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .arch-card { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); border: 0.5px solid var(--color-border-tertiary); padding: 16px; }
+  .arch-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 8px; }
+  .arch-item { font-size: 12px; color: var(--color-text-secondary); line-height: 1.8; }
+  .arch-badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 500; margin-bottom: 6px; }
+  .badge-rec { background: #e8f5e9; color: #2e7d32; }
+  .badge-alt { background: #fff8e1; color: #f57f17; }
+
+  /* STRUCTURE */
+  .struct-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .struct-node { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--color-text-secondary); }
+  .struct-node strong { color: var(--color-text-primary); font-weight: 500; display: block; margin-bottom: 2px; }
+  .struct-connector { font-size: 16px; color: var(--color-text-tertiary); align-self: center; }
+</style>
+
+<div style="padding: 20px 0;">
+
+  <!-- BRAND -->
+  <div class="section">
+    <div class="section-label">Brand identity</div>
+    <div class="brand-hero">
+      <svg class="poppy-logo" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="32" cy="20" rx="10" ry="14" fill="#E8707070" transform="rotate(0 32 32)"/>
+        <ellipse cx="32" cy="20" rx="10" ry="14" fill="#E8707070" transform="rotate(60 32 32)"/>
+        <ellipse cx="32" cy="20" rx="10" ry="14" fill="#E8707070" transform="rotate(120 32 32)"/>
+        <ellipse cx="32" cy="20" rx="10" ry="14" fill="#C9404080" transform="rotate(30 32 32)"/>
+        <ellipse cx="32" cy="20" rx="10" ry="14" fill="#C9404080" transform="rotate(90 32 32)"/>
+        <ellipse cx="32" cy="20" rx="10" ry="14" fill="#C9404080" transform="rotate(150 32 32)"/>
+        <circle cx="32" cy="32" r="8" fill="#2D1B0E"/>
+        <circle cx="29.5" cy="29.5" r="1.5" fill="#6B3F20" opacity="0.7"/>
+        <circle cx="34" cy="30" r="1" fill="#6B3F20" opacity="0.5"/>
+        <circle cx="31" cy="33.5" r="1.2" fill="#6B3F20" opacity="0.6"/>
+      </svg>
+      <div>
+        <div class="brand-name">Poppy</div>
+        <div class="brand-tagline">where every day finds its petal</div>
+        <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <span style="font-size: 11px; background: #FBEAEA; color: #C94040; padding: 3px 10px; border-radius: 20px;">diary</span>
+          <span style="font-size: 11px; background: #FBEAEA; color: #C94040; padding: 3px 10px; border-radius: 20px;">calm</span>
+          <span style="font-size: 11px; background: #FBEAEA; color: #C94040; padding: 3px 10px; border-radius: 20px;">personal</span>
+          <span style="font-size: 11px; background: #FBEAEA; color: #C94040; padding: 3px 10px; border-radius: 20px;">minimal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- THEMES -->
+  <div class="section">
+    <div class="section-label">Flower themes (pastel palette system)</div>
+    <div class="themes-grid">
+      <div class="theme-chip active" style="background:#FDF0F0;">
+        <div class="theme-dot" style="background: linear-gradient(135deg,#E8A0A0,#C94040);"></div>
+        <div class="theme-name" style="color:#C94040;">Poppy</div>
+        <div style="font-size:9px;color:#C9808080;margin-top:2px;">default</div>
+      </div>
+      <div class="theme-chip" style="background:#F0F4FD;">
+        <div class="theme-dot" style="background: linear-gradient(135deg,#A0BAEE,#6B8FD4);"></div>
+        <div class="theme-name" style="color:#5C7FC4;">Iris</div>
+      </div>
+      <div class="theme-chip" style="background:#F0FBF4;">
+        <div class="theme-dot" style="background: linear-gradient(135deg,#90D4A8,#4FAD74);"></div>
+        <div class="theme-name" style="color:#3A9058;">Lily</div>
+      </div>
+      <div class="theme-chip" style="background:#FDF7F0;">
+        <div class="theme-dot" style="background: linear-gradient(135deg,#F0C080,#D8904A);"></div>
+        <div class="theme-name" style="color:#B87030;">Marigold</div>
+      </div>
+      <div class="theme-chip" style="background:#FAF0FB;">
+        <div class="theme-dot" style="background: linear-gradient(135deg,#DCA0E0,#B060C0);"></div>
+        <div class="theme-name" style="color:#9050A8;">Lavender</div>
+      </div>
+    </div>
+    <div style="margin-top:10px; font-size:11px; color:var(--color-text-tertiary); padding: 10px; background: var(--color-background-secondary); border-radius: 8px;">
+      Each theme shifts the accent color, navigation tint, and subtle surface tints — backgrounds remain near-white in all themes.
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+  <div class="section">
+    <div class="section-label">Key screens — Poppy theme</div>
+    <div class="screens">
+
+      <!-- HOME -->
+      <div class="phone">
+        <div class="phone-status">HOME</div>
+        <div class="phone-content">
+          <div class="home-header">
+            <div class="home-greeting">Sunday morning</div>
+            <div class="home-date">May 2026</div>
+          </div>
+          <div style="padding: 0 14px; margin-bottom: 8px;">
+            <div style="font-size: 11px; color: var(--color-text-tertiary); border-bottom: 0.5px solid var(--color-border-tertiary); padding-bottom: 6px;">Recent entries</div>
+          </div>
+          <div class="entry-card">
+            <div class="entry-accent" style="background:#C94040;"></div>
+            <div class="entry-title">A slow Sunday walk</div>
+            <div class="entry-meta">May 4 · 342 words</div>
+            <div class="entry-preview">The park was quieter than usual, just the sound of pigeons and...</div>
+          </div>
+          <div class="entry-card">
+            <div class="entry-accent" style="background:#6B8FD4;"></div>
+            <div class="entry-title">Meeting notes & feelings</div>
+            <div class="entry-meta">May 2 · 180 words</div>
+            <div class="entry-preview">I kept thinking about what she said at the end of the call...</div>
+          </div>
+          <div class="entry-card">
+            <div class="entry-accent" style="background:#4FAD74;"></div>
+            <div class="entry-title">First day of May</div>
+            <div class="entry-meta">May 1 · 520 words</div>
+          </div>
+          <div class="fab"><div class="fab-plus">+</div></div>
+        </div>
+      </div>
+
+      <!-- WRITE -->
+      <div class="phone">
+        <div class="phone-status">WRITE</div>
+        <div class="phone-content">
+          <div class="write-header">
+            <span class="back-btn">← Entries</span>
+            <span class="write-date">May 4, 2026</span>
+          </div>
+          <div class="write-title-field">A slow Sunday walk</div>
+          <div class="write-body">The park was quieter than usual, just the sound of pigeons and distant children. I sat on the bench near the fountain for almost an hour...</div>
+          <div class="photo-strip">
+            <div class="photo-thumb" style="background: #e8d5d5; font-size:14px;">🌸</div>
+            <div class="photo-thumb" style="background: #d5e8d8; font-size:14px;">🌿</div>
+            <div class="photo-add">+</div>
+          </div>
+          <div style="padding: 6px 18px; font-size: 10px; color: var(--color-text-tertiary); border-top: 0.5px solid var(--color-border-tertiary);">Photos are kept separate from your writing</div>
+          <div class="color-toolbar">
+            <span class="ct-label">Tag</span>
+            <div class="ct-dot sel" style="background:#C94040;"></div>
+            <div class="ct-dot" style="background:#6B8FD4;"></div>
+            <div class="ct-dot" style="background:#4FAD74;"></div>
+            <div class="ct-dot" style="background:#D8904A;"></div>
+            <div class="ct-dot" style="background:#B060C0;"></div>
+            <div class="ct-dot" style="background:#888;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEARCH -->
+      <div class="phone">
+        <div class="phone-status">SEARCH</div>
+        <div class="phone-content">
+          <div class="search-bar">
+            <span style="font-size:14px; color: var(--color-text-tertiary);">&#x2315;</span>
+            <span>Search your diary...</span>
+          </div>
+          <div class="filter-row">
+            <div class="filter-chip active-f">All</div>
+            <div class="filter-chip">Title</div>
+            <div class="filter-chip">Content</div>
+            <div class="filter-chip">Date</div>
+          </div>
+          <div style="padding: 0 14px; margin-bottom: 8px;">
+            <div style="font-size: 11px; color: var(--color-text-tertiary);">Browse by color tag</div>
+          </div>
+          <div class="color-dots" style="padding: 4px 14px 12px;">
+            <div class="cdot" style="background:#C94040;width:20px;height:20px;"></div>
+            <div style="font-size:11px;color:var(--color-text-secondary);">Personal · 14 entries</div>
+          </div>
+          <div class="color-dots" style="padding: 0 14px 12px;">
+            <div class="cdot" style="background:#6B8FD4;width:20px;height:20px;"></div>
+            <div style="font-size:11px;color:var(--color-text-secondary);">Work · 8 entries</div>
+          </div>
+          <div class="color-dots" style="padding: 0 14px 12px;">
+            <div class="cdot" style="background:#4FAD74;width:20px;height:20px;"></div>
+            <div style="font-size:11px;color:var(--color-text-secondary);">Nature · 5 entries</div>
+          </div>
+          <div style="border-top: 0.5px solid var(--color-border-tertiary); padding: 12px 14px 0;">
+            <div style="font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 8px;">Browse by month</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <div style="font-size:11px;padding:4px 10px;border-radius:20px;background:var(--color-background-secondary);color:var(--color-text-secondary);">May 2026</div>
+              <div style="font-size:11px;padding:4px 10px;border-radius:20px;background:var(--color-background-secondary);color:var(--color-text-secondary);">Apr 2026</div>
+              <div style="font-size:11px;padding:4px 10px;border-radius:20px;background:var(--color-background-secondary);color:var(--color-text-secondary);">Mar 2026</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- COLOR SYSTEM -->
+  <div class="section">
+    <div class="section-label">Entry color tag system</div>
+    <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 16px; border: 0.5px solid var(--color-border-tertiary);">
+      <div style="font-size:12px; color: var(--color-text-secondary); margin-bottom:12px;">A 3px left accent strip on each entry card — the only visible color. Backgrounds and text stay neutral.</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:3px;height:36px;border-radius:2px;background:#C94040;"></div>
+          <div>
+            <div style="font-size:12px;font-weight:500;">Poppy red</div>
+            <div style="font-size:10px;color:var(--color-text-tertiary);">personal</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:3px;height:36px;border-radius:2px;background:#6B8FD4;"></div>
+          <div>
+            <div style="font-size:12px;font-weight:500;">Iris blue</div>
+            <div style="font-size:10px;color:var(--color-text-tertiary);">work</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:3px;height:36px;border-radius:2px;background:#4FAD74;"></div>
+          <div>
+            <div style="font-size:12px;font-weight:500;">Lily green</div>
+            <div style="font-size:10px;color:var(--color-text-tertiary);">nature</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:3px;height:36px;border-radius:2px;background:#D8904A;"></div>
+          <div>
+            <div style="font-size:12px;font-weight:500;">Marigold</div>
+            <div style="font-size:10px;color:var(--color-text-tertiary);">ideas</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:3px;height:36px;border-radius:2px;background:#B060C0;"></div>
+          <div>
+            <div style="font-size:12px;font-weight:500;">Lavender</div>
+            <div style="font-size:10px;color:var(--color-text-tertiary);">dreams</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:3px;height:36px;border-radius:2px;background:#888888;"></div>
+          <div>
+            <div style="font-size:12px;font-weight:500;">Stone</div>
+            <div style="font-size:10px;color:var(--color-text-tertiary);">untagged</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BACKEND -->
+  <div class="section">
+    <div class="section-label">Suggested tech stack</div>
+    <div class="arch-grid">
+      <div class="arch-card">
+        <div style="margin-bottom:6px;"><span class="arch-badge badge-rec">Recommended</span></div>
+        <div class="arch-title">Backend — Supabase</div>
+        <div class="arch-item">· PostgreSQL database (hosted)<br>· Auth with email/password & magic link<br>· Row-level security per user<br>· Storage bucket for photos<br>· Real-time subscriptions (optional)<br>· Free tier is generous</div>
+      </div>
+      <div class="arch-card">
+        <div style="margin-bottom:6px;"><span class="arch-badge badge-alt">Alternative</span></div>
+        <div class="arch-title">Backend — Firebase</div>
+        <div class="arch-item">· Firestore (NoSQL, easier querying)<br>· Firebase Auth built-in<br>· Cloud Storage for photos<br>· Slightly more complex security rules<br>· Better for very fast prototyping</div>
+      </div>
+      <div class="arch-card">
+        <div class="arch-title">Mobile — React Native + Expo</div>
+        <div class="arch-item">· Single codebase for iOS + Android<br>· Expo Router for navigation<br>· expo-secure-store for PIN lock<br>· expo-image-picker for photos<br>· expo-file-system for import/export<br>· AsyncStorage for offline cache</div>
+      </div>
+      <div class="arch-card">
+        <div class="arch-title">Extras</div>
+        <div class="arch-item">· react-native-mmkv — fast local settings<br>· Zustand — lightweight state<br>· react-native-reanimated — smooth anims<br>· date-fns — date formatting<br>· react-hook-form — forms<br>· expo-crypto — local encryption</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DB STRUCTURE -->
+  <div class="section">
+    <div class="section-label">Database structure (Supabase / PostgreSQL)</div>
+    <div style="background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 16px; border: 0.5px solid var(--color-border-tertiary); font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary); line-height: 2;">
+      <span style="color:#C94040;font-weight:500;">users</span> (managed by Supabase Auth)<br>
+      &nbsp;&nbsp;id · email · created_at<br><br>
+      <span style="color:#C94040;font-weight:500;">profiles</span><br>
+      &nbsp;&nbsp;id · user_id · theme · pin_enabled · pin_hash<br><br>
+      <span style="color:#C94040;font-weight:500;">entries</span><br>
+      &nbsp;&nbsp;id · user_id · title · content · color_tag<br>
+      &nbsp;&nbsp;word_count · created_at · updated_at<br><br>
+      <span style="color:#C94040;font-weight:500;">photos</span><br>
+      &nbsp;&nbsp;id · entry_id · user_id · storage_path · order_index<br><br>
+      <span style="color: var(--color-text-tertiary); font-family: var(--font-sans); font-size:10px;">Row-level security: every table filters by auth.uid() = user_id</span>
+    </div>
+  </div>
+
+  <!-- FEATURES BREAKDOWN -->
+  <div class="section">
+    <div class="section-label">Feature flow — how to build each piece</div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="struct-node" style="display:block;">
+        <strong>PIN / app lock</strong>
+        expo-secure-store saves the hashed PIN locally. On app launch, check store — if PIN exists, show lock screen before navigating. Never store plain PIN.
+      </div>
+      <div class="struct-node" style="display:block;">
+        <strong>Photo handling</strong>
+        expo-image-picker → compress locally → upload to Supabase Storage bucket → store path in photos table. On display, fetch signed URL. Photos render in their own horizontal strip, completely separate from text content area.
+      </div>
+      <div class="struct-node" style="display:block;">
+        <strong>Import / export</strong>
+        Export: fetch all entries → serialize to JSON (or Markdown per file) → expo-sharing. Import: pick file → parse → batch insert. Photos export as a zip with expo-file-system.
+      </div>
+      <div class="struct-node" style="display:block;">
+        <strong>Search</strong>
+        Supabase full-text search on title + content columns (PostgreSQL tsvector). Date filter uses created_at range. Color filter is a simple equality on color_tag. All filters compose.
+      </div>
+      <div class="struct-node" style="display:block;">
+        <strong>Themes</strong>
+        A ThemeContext holds the current theme name. Each theme is a JS object with 4–5 color tokens (accent, surface, light tint, text tint). Stored in profiles table, synced on login.
+      </div>
+    </div>
+  </div>
+
+</div>
