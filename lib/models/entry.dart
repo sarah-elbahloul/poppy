@@ -1,9 +1,5 @@
 import 'package:poppy/core/constants.dart';
-
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Entry Model
-//  Location: lib/models/entry.dart
-// ─────────────────────────────────────────────────────────────
+import 'package:poppy/core/style/style.dart';
 
 class Entry {
   final String id;
@@ -12,11 +8,9 @@ class Entry {
   final String content;
   final EntryColorData colorTag;
   final int wordCount;
-  final DateTime createdAt;
+  final DateTime entryDate;   // ← user-chosen date, used for display & sorting
+  final DateTime createdAt;   // ← when the DB record was created, never changes
   final DateTime updatedAt;
-
-  // Photos are loaded separately and attached after fetch
-  // so they don't block the entry list from rendering.
   final List<String> photoUrls;
 
   const Entry({
@@ -26,12 +20,11 @@ class Entry {
     required this.content,
     required this.colorTag,
     required this.wordCount,
+    required this.entryDate,
     required this.createdAt,
     required this.updatedAt,
     this.photoUrls = const [],
   });
-
-  // ── Supabase → Dart ────────────────────────────────────────
 
   factory Entry.fromMap(Map<String, dynamic> map) {
     return Entry(
@@ -40,17 +33,15 @@ class Entry {
       title:     map[DBColumn.title] as String? ?? '',
       content:   map[DBColumn.content] as String? ?? '',
       colorTag:  EntryColors.fromDbValue(
-        map[DBColumn.colorTag] as String? ?? 'stone',
-      ),
+          map[DBColumn.colorTag] as String? ?? 'stone'),
       wordCount: map[DBColumn.wordCount] as int? ?? 0,
+      entryDate: DateTime.parse(
+          map[DBColumn.entryDate] as String? ??
+              map[DBColumn.createdAt] as String),
       createdAt: DateTime.parse(map[DBColumn.createdAt] as String),
       updatedAt: DateTime.parse(map[DBColumn.updatedAt] as String),
     );
   }
-
-  // ── Dart → Supabase ────────────────────────────────────────
-  // id, userId, createdAt are set by the database — not included
-  // in insert maps. updatedAt is handled by a DB trigger.
 
   Map<String, dynamic> toInsertMap() {
     return {
@@ -58,6 +49,7 @@ class Entry {
       DBColumn.content:   content,
       DBColumn.colorTag:  colorTag.dbValue,
       DBColumn.wordCount: wordCount,
+      DBColumn.entryDate: entryDate.toIso8601String().substring(0, 10),
     };
   }
 
@@ -67,13 +59,11 @@ class Entry {
       DBColumn.content:   content,
       DBColumn.colorTag:  colorTag.dbValue,
       DBColumn.wordCount: wordCount,
+      DBColumn.entryDate: entryDate.toIso8601String().substring(0, 10),
       DBColumn.updatedAt: DateTime.now().toIso8601String(),
     };
   }
 
-  // ── Utilities ──────────────────────────────────────────────
-
-  /// Returns the first line of content — used in entry cards.
   String get contentPreview {
     final firstLine = content.split('\n').firstWhere(
           (line) => line.trim().isNotEmpty,
@@ -84,13 +74,10 @@ class Entry {
         : firstLine;
   }
 
-  /// Counts words in a string — called before saving.
   static int countWords(String text) {
     if (text.trim().isEmpty) return 0;
     return text.trim().split(RegExp(r'\s+')).length;
   }
-
-  // ── CopyWith ───────────────────────────────────────────────
 
   Entry copyWith({
     String? id,
@@ -99,6 +86,7 @@ class Entry {
     String? content,
     EntryColorData? colorTag,
     int? wordCount,
+    DateTime? entryDate,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<String>? photoUrls,
@@ -110,14 +98,12 @@ class Entry {
       content:   content   ?? this.content,
       colorTag:  colorTag  ?? this.colorTag,
       wordCount: wordCount ?? this.wordCount,
+      entryDate: entryDate ?? this.entryDate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       photoUrls: photoUrls ?? this.photoUrls,
     );
   }
-
-  // ── Export / Import ────────────────────────────────────────
-  // Used by export_service.dart when writing the JSON file.
 
   Map<String, dynamic> toExportMap() {
     return {
@@ -126,6 +112,7 @@ class Entry {
       'content':    content,
       'color_tag':  colorTag.dbValue,
       'word_count': wordCount,
+      'entry_date': entryDate.toIso8601String().substring(0, 10),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'photo_urls': photoUrls,
@@ -138,8 +125,12 @@ class Entry {
       userId:    userId,
       title:     map['title'] as String? ?? '',
       content:   map['content'] as String? ?? '',
-      colorTag:  EntryColors.fromDbValue(map['color_tag'] as String? ?? 'stone'),
+      colorTag:  EntryColors.fromDbValue(
+          map['color_tag'] as String? ?? 'stone'),
       wordCount: map['word_count'] as int? ?? 0,
+      entryDate: DateTime.parse(
+          map['entry_date'] as String? ??
+              map['created_at'] as String),
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
       photoUrls: List<String>.from(map['photo_urls'] as List? ?? []),

@@ -7,10 +7,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Auth Provider
 //  Location: lib/providers/auth_provider.dart
-//
-//  Manages authentication state and the PIN lock state.
-//  Listens to Supabase auth stream so the app reacts
-//  automatically when a session starts or expires.
 // ─────────────────────────────────────────────────────────────
 
 enum AuthStatus { unknown, authenticated, unauthenticated }
@@ -25,25 +21,22 @@ class AuthProvider extends ChangeNotifier {
   String? _errorMessage;
   bool _isLoading = false;
 
-  AuthStatus get status => _status;
-  User? get user => _user;
-  bool get isLocked => _isLocked;
-  bool get pinEnabled => _pinEnabled;
-  String? get errorMessage => _errorMessage;
-  bool get isLoading => _isLoading;
-  bool get isAuthenticated => _status == AuthStatus.authenticated;
+  AuthStatus get status    => _status;
+  User?      get user      => _user;
+  bool       get isLocked  => _isLocked;
+  bool       get pinEnabled => _pinEnabled;
+  String?    get errorMessage => _errorMessage;
+  bool       get isLoading => _isLoading;
+  bool       get isAuthenticated => _status == AuthStatus.authenticated;
 
   AuthProvider() {
     _init();
   }
 
-  // ── Initialise ────────────────────────────────────────────
-
   Future<void> _init() async {
-    // Check existing session
     final session = SupabaseConfig.client.auth.currentSession;
     if (session != null) {
-      _user = session.user;
+      _user   = session.user;
       _status = AuthStatus.authenticated;
       await _checkPinLock();
     } else {
@@ -51,7 +44,6 @@ class AuthProvider extends ChangeNotifier {
     }
     notifyListeners();
 
-    // Listen for future auth changes (login, logout, token refresh)
     SupabaseConfig.authStateStream.listen((data) async {
       final event = data.event;
       _user = data.session?.user;
@@ -60,47 +52,35 @@ class AuthProvider extends ChangeNotifier {
         _status = AuthStatus.authenticated;
         await _checkPinLock();
       } else if (event == AuthChangeEvent.signedOut) {
-        _status = AuthStatus.unauthenticated;
+        _status  = AuthStatus.unauthenticated;
         _isLocked = false;
       }
       notifyListeners();
     });
   }
 
-  // ── PIN lock ──────────────────────────────────────────────
-
   Future<void> _checkPinLock() async {
     final enabled = await _storage.read(key: StorageKeys.pinEnabled);
     _pinEnabled = enabled == 'true';
-    // Lock the app on every fresh sign-in if PIN is enabled
     if (_pinEnabled) _isLocked = true;
   }
 
-  /// Called by LockScreen when the user enters the correct PIN
   void unlock() {
     _isLocked = false;
     notifyListeners();
   }
 
-  /// Called by SecurityScreen when PIN is toggled on/off
   Future<void> setPinEnabled(bool enabled) async {
     _pinEnabled = enabled;
     await _storage.write(
       key: StorageKeys.pinEnabled,
       value: enabled.toString(),
     );
-    if (!enabled) {
-      await _storage.delete(key: StorageKeys.pinHash);
-    }
+    if (!enabled) await _storage.delete(key: StorageKeys.pinHash);
     notifyListeners();
   }
 
-  // ── Auth actions ──────────────────────────────────────────
-
-  Future<bool> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<bool> signIn({required String email, required String password}) async {
     _setLoading(true);
     _clearError();
     try {
@@ -122,10 +102,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> signUp({
-    required String email,
-    required String password,
-  }) async {
+  Future<bool> signUp({required String email, required String password}) async {
     _setLoading(true);
     _clearError();
     try {
@@ -155,9 +132,7 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     _clearError();
     try {
-      await SupabaseConfig.client.auth.resetPasswordForEmail(
-        email.trim(),
-      );
+      await SupabaseConfig.client.auth.resetPasswordForEmail(email.trim());
       return true;
     } on AuthException catch (e) {
       _errorMessage = e.message;
@@ -202,16 +177,12 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ── Helpers ───────────────────────────────────────────────
-
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
   }
 
-  void _clearError() {
-    _errorMessage = null;
-  }
+  void _clearError() => _errorMessage = null;
 
   void clearError() {
     _clearError();

@@ -1,59 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/constants.dart';
+import 'package:poppy/core/style/style.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Color Dot Widget
 //  Location: lib/core/widgets/color_dot.dart
-//
-//  Small filled circle representing an entry color tag.
-//  Used in the search screen color filter row and anywhere
-//  else a color needs to be represented as a dot.
 // ─────────────────────────────────────────────────────────────
 
 class ColorDot extends StatelessWidget {
   final EntryColorData colorData;
-
-  /// If true, draws a thin ring around the dot to show
-  /// it is the currently selected tag.
   final bool isSelected;
-
-  /// Dot diameter. Defaults to 20.
   final double size;
-
-  /// Optional tap handler — if null the dot is not tappable.
   final VoidCallback? onTap;
 
   const ColorDot({
     super.key,
     required this.colorData,
     this.isSelected = false,
-    this.size = 20,
+    this.size = AppComponentSize.colorDot,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final dot = AnimatedContainer(
-      duration: kAnimFast,
-      width: size,
+      duration: AppDuration.fast,
+      width:  size,
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: colorData.color,
+        color: colorData.color as Color,
         border: isSelected
             ? Border.all(
-          color: colorData.color.withOpacity(0.35),
-          width: 3,
+          color: (Colors.black).withOpacity(0.35),
+          width: AppStroke.thick,
         )
-            : null,
-        boxShadow: isSelected
-            ? [
-          BoxShadow(
-            color: colorData.color.withOpacity(0.3),
-            blurRadius: 6,
-            spreadRadius: 1,
-          ),
-        ]
             : null,
       ),
     );
@@ -63,8 +44,7 @@ class ColorDot extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Padding(
-        // Extra tap area around the small dot
-        padding: const EdgeInsets.all(kSpaceSM),
+        padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 0, 0, 0),
         child: dot,
       ),
     );

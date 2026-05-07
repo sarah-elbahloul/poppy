@@ -1,37 +1,21 @@
 import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:poppy/core/constants.dart';
-import 'package:poppy/core/theme/themes.dart';
+import 'package:poppy/core/style/style.dart';
 import 'package:poppy/models/photo.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Photo Strip Widget
 //  Location: lib/core/widgets/photo_strip.dart
-//
-//  A horizontal scrollable strip of photo thumbnails shown
-//  below the writing area — completely separate from text.
-//  Supports existing (network) photos and newly picked
-//  (local file) photos before they are uploaded.
 // ─────────────────────────────────────────────────────────────
 
 class PhotoStrip extends StatelessWidget {
-  /// Already-saved photos (have signed URLs from Supabase).
   final List<Photo> savedPhotos;
-
-  /// Newly picked local files not yet uploaded.
-  final List<File> pendingFiles;
-
-  /// Called when the user taps the add button.
+  final List<File>  pendingFiles;
   final VoidCallback onAddPhoto;
-
-  /// Called when the user long-presses a saved photo to delete.
   final ValueChanged<Photo> onDeleteSavedPhoto;
+  final ValueChanged<File>  onDeletePendingFile;
 
-  /// Called when the user long-presses a pending file to remove.
-  final ValueChanged<File> onDeletePendingFile;
-
-  /// Max number of photos per entry.
   static const int maxPhotos = 10;
 
   const PhotoStrip({
@@ -43,65 +27,39 @@ class PhotoStrip extends StatelessWidget {
     required this.onDeletePendingFile,
   });
 
-  int get _totalCount => savedPhotos.length + pendingFiles.length;
+  int  get _totalCount => savedPhotos.length + pendingFiles.length;
   bool get _canAddMore => _totalCount < maxPhotos;
 
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: t.surface,
-        border: Border(
-          top: BorderSide(color: t.border, width: 0.5),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Section label ─────────────────────────────────
           Padding(
-            padding: const EdgeInsets.only(
-              left: kSpaceLG,
-              top: kSpaceSM,
-              bottom: kSpaceXS,
-            ),
+            padding: const EdgeInsets.fromLTRB(0,0,0,AppSpacing.sm),
             child: Text(
               'Photos',
-              style: TextStyle(
-                fontSize: 10,
-                color: t.textTertiary,
-                letterSpacing: 0.5,
-              ),
+              style: AppTextStyles.meta(t.textTertiary),
             ),
           ),
-
-          // ── Scrollable thumbnail row ───────────────────────
           SizedBox(
-            height: 76,
+            height: AppComponentSize.photoStripHeight,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(
-                left: kSpaceLG,
-                right: kSpaceLG,
-                bottom: kSpaceSM,
-              ),
               children: [
-                // Saved photos
-                ...savedPhotos.map((photo) => _SavedThumb(
-                  photo: photo,
-                  onDelete: () => onDeleteSavedPhoto(photo),
+                ...savedPhotos.map((p) => _SavedThumb(
+                  photo:    p,
+                  onDelete: () => onDeleteSavedPhoto(p),
                 )),
-
-                // Pending local files
-                ...pendingFiles.map((file) => _PendingThumb(
-                  file: file,
-                  onDelete: () => onDeletePendingFile(file),
+                ...pendingFiles.map((f) => _PendingThumb(
+                  file:     f,
+                  onDelete: () => onDeletePendingFile(f),
                 )),
-
-                // Add button — hidden when limit is reached
                 if (_canAddMore) _AddButton(onTap: onAddPhoto),
               ],
             ),
@@ -112,7 +70,7 @@ class PhotoStrip extends StatelessWidget {
   }
 }
 
-// ── Saved photo thumbnail (network) ───────────────────────────
+// ── Saved photo thumbnail ──────────────────────────────────────
 
 class _SavedThumb extends StatelessWidget {
   final Photo photo;
@@ -127,40 +85,35 @@ class _SavedThumb extends StatelessWidget {
     return GestureDetector(
       onLongPress: () => _confirmDelete(context),
       child: Container(
-        width: 64,
-        height: 64,
-        margin: const EdgeInsets.only(right: kSpaceSM),
+        width:  AppComponentSize.photoThumbSize,
+        height: AppComponentSize.photoThumbSize,
+        margin: const EdgeInsets.only(right: AppSpacing.sm),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(kRadiusSM),
-          color: t.surface,
-          border: Border.all(color: t.border, width: 0.5),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          color:  t.surface,
+          border: Border.all(color: t.border, width: AppStroke.hairline),
         ),
         clipBehavior: Clip.antiAlias,
         child: photo.signedUrl != null
             ? CachedNetworkImage(
-          imageUrl: photo.signedUrl!,
-          fit: BoxFit.cover,
+          imageUrl:    photo.signedUrl!,
+          fit:         BoxFit.cover,
           placeholder: (_, __) => Center(
             child: SizedBox(
-              width: 16,
-              height: 16,
+              width: 16, height: 16,
               child: CircularProgressIndicator(
-                strokeWidth: 1.5,
-                color: t.textTertiary,
+                strokeWidth: 1.5, color: t.textTertiary,
               ),
             ),
           ),
           errorWidget: (_, __, ___) => Icon(
-            Icons.broken_image_outlined,
+            AppIcons.imageBroken,
             color: t.textTertiary,
-            size: 20,
+            size:  AppIconSize.sm,
           ),
         )
-            : Icon(
-          Icons.image_outlined,
-          color: t.textTertiary,
-          size: 20,
-        ),
+            : Icon(AppIcons.photo, color: t.textTertiary,
+            size: AppIconSize.sm),
       ),
     );
   }
@@ -170,16 +123,18 @@ class _SavedThumb extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Remove photo?'),
+        title:   const Text('Remove photo?'),
         content: const Text('This photo will be permanently deleted.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: t.textSecondary)),
+            child: Text('Cancel',
+                style: TextStyle(color: t.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Remove', style: TextStyle(color: t.accent)),
+            child: Text('Remove',
+                style: TextStyle(color: t.accent)),
           ),
         ],
       ),
@@ -188,7 +143,7 @@ class _SavedThumb extends StatelessWidget {
   }
 }
 
-// ── Pending (local file) thumbnail ────────────────────────────
+// ── Pending thumbnail ──────────────────────────────────────────
 
 class _PendingThumb extends StatelessWidget {
   final File file;
@@ -205,23 +160,23 @@ class _PendingThumb extends StatelessWidget {
       child: Stack(
         children: [
           Container(
-            width: 64,
-            height: 64,
-            margin: const EdgeInsets.only(right: kSpaceSM),
+            width:  AppComponentSize.photoThumbSize,
+            height: AppComponentSize.photoThumbSize,
+            margin: const EdgeInsets.only(right: AppSpacing.sm),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(kRadiusSM),
-              border: Border.all(color: t.accent.withOpacity(0.4), width: 1),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              border: Border.all(
+                color: t.accent.withOpacity(0.4),
+                width: AppStroke.thin,
+              ),
             ),
             clipBehavior: Clip.antiAlias,
             child: Image.file(file, fit: BoxFit.cover),
           ),
-          // Uploading indicator badge
           Positioned(
-            top: 4,
-            right: 12,
+            top: 4, right: 12,
             child: Container(
-              width: 8,
-              height: 8,
+              width: 8, height: 8,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: t.accent,
@@ -234,11 +189,10 @@ class _PendingThumb extends StatelessWidget {
   }
 }
 
-// ── Add photo button ──────────────────────────────────────────
+// ── Add button ─────────────────────────────────────────────────
 
 class _AddButton extends StatelessWidget {
   final VoidCallback onTap;
-
   const _AddButton({required this.onTap});
 
   @override
@@ -248,20 +202,14 @@ class _AddButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 64,
-        height: 64,
+        width:  AppComponentSize.photoThumbSize,
+        height: AppComponentSize.photoThumbSize,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(kRadiusSM),
-          border: Border.all(
-            color: t.border,
-            width: 1,
-          ),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          border: Border.all(color: t.border, width: AppStroke.thin),
         ),
-        child: Icon(
-          Icons.add,
-          color: t.textTertiary,
-          size: 22,
-        ),
+        child: Icon(AppIcons.add, color: t.textTertiary,
+            size: AppIconSize.md),
       ),
     );
   }

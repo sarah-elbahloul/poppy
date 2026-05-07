@@ -16,9 +16,6 @@ dependencies:
   # ── State management ─────────────────────────────────────────
   provider: ^6.1.2
 
-  # ── Routing ──────────────────────────────────────────────────
-  go_router: ^14.2.7
-
   # ── Secure storage (PIN lock) ─────────────────────────────────
   flutter_secure_storage: ^9.2.2
 
@@ -32,11 +29,15 @@ dependencies:
   file_picker: ^8.1.2
   flutter_image_compress: ^2.3.0
 
+  # ── Icons ──────────────────────────────────────────────────
+  iconsax: ^0.0.8
+
   # ── Encryption (PIN hashing) ──────────────────────────────────
   crypto: ^3.0.3
 
   # ── Date & text utilities ─────────────────────────────────────
   intl: ^0.19.0
+  google_fonts: ^6.2.1
 
   # ── UI niceties ───────────────────────────────────────────────
   flutter_svg: ^2.0.10+1       # for the Poppy logo SVG
@@ -55,12 +56,3 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
-
-  #fonts:
-  # We use the system default serif/sans.
-  # Add a custom font here later if desired, e.g.:
-  # - family: Lora
-  #   fonts:
-  #     - asset: assets/fonts/Lora-Regular.ttf
-  #     - asset: assets/fonts/Lora-Italic.ttf
-  #       style: italic

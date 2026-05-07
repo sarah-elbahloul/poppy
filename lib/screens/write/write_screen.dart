@@ -1,9 +1,10 @@
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:poppy/app.dart';
 import 'package:poppy/core/constants.dart';
-import 'package:poppy/core/theme/themes.dart';
+import 'package:poppy/core/style/style.dart';
 import 'package:poppy/core/widgets/color_tag_picker.dart';
 import 'package:poppy/core/widgets/photo_strip.dart';
 import 'package:poppy/models/entry.dart';
@@ -11,21 +12,6 @@ import 'package:poppy/models/photo.dart';
 import 'package:poppy/providers/entries_provider.dart';
 import 'package:poppy/services/photos_service.dart';
 import 'package:provider/provider.dart';
-
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Write Screen
-//  Location: lib/screens/write/write_screen.dart
-//
-//  Used for both creating a new entry and editing an existing
-//  one. Pass entryId to edit, leave null to create.
-//
-//  Layout (top to bottom):
-//    AppBar  — date on left, save button on right
-//    Title field
-//    Content field (expands to fill space)
-//    Photo strip  — completely separate from text
-//    Color tag picker
-// ─────────────────────────────────────────────────────────────
 
 class WriteScreen extends StatefulWidget {
   final String? entryId;
@@ -42,10 +28,10 @@ class _WriteScreenState extends State<WriteScreen> {
   final _photosService = PhotosService();
 
   EntryColorData _selectedColor = EntryColors.defaultColor;
+  DateTime _entryDate = DateTime.now();
   List<Photo> _savedPhotos = [];
   List<File> _pendingFiles = [];
   bool _isSaving = false;
-  bool _isLoadingPhotos = false;
   Entry? _existingEntry;
 
   bool get _isEditing => widget.entryId != null;
@@ -63,79 +49,89 @@ class _WriteScreenState extends State<WriteScreen> {
     super.dispose();
   }
 
-  // ── Load existing entry for editing ───────────────────────
-
   Future<void> _loadExistingEntry() async {
-    final provider = context.read<EntriesProvider>();
-    final entry = provider.getById(widget.entryId!);
+    final entry = context.read<EntriesProvider>().getById(widget.entryId!);
     if (entry == null) return;
-
     _existingEntry = entry;
     _titleController.text = entry.title;
     _contentController.text = entry.content;
-    setState(() => _selectedColor = entry.colorTag);
-
-    // Load photos separately
-    setState(() => _isLoadingPhotos = true);
+    setState(() {
+      _selectedColor = entry.colorTag;
+      _entryDate = entry.entryDate;
+    });
     try {
       final photos = await _photosService.fetchForEntry(entry.id);
-      setState(() => _savedPhotos = photos);
-    } finally {
-      setState(() => _isLoadingPhotos = false);
-    }
+      if (mounted) setState(() => _savedPhotos = photos);
+    } catch (_) {}
+  }
+
+  // ── Date picker ───────────────────────────────────────────
+
+  Future<void> _pickDate() async {
+    final t = context.poppyTheme;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _entryDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: ColorScheme.light(primary: t.accent),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _entryDate = picked);
   }
 
   // ── Photo actions ─────────────────────────────────────────
 
   Future<void> _onAddPhoto() async {
-    final total = _savedPhotos.length + _pendingFiles.length;
-    if (total >= PhotoStrip.maxPhotos) return;
-
-    // Let user pick source
-    final source = await _showPhotoSourceSheet();
+    if (_savedPhotos.length + _pendingFiles.length >= PhotoStrip.maxPhotos) {
+      return;
+    }
+    final source = await _showSourceSheet();
     if (source == null) return;
-
     final file = await _photosService.pickPhoto(fromCamera: source == 'camera');
     if (file == null) return;
-
     setState(() => _pendingFiles.add(file));
   }
 
-  Future<String?> _showPhotoSourceSheet() async {
+  Future<String?> _showSourceSheet() {
     final t = context.poppyTheme;
     return showModalBottomSheet<String>(
       context: context,
       backgroundColor: t.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusLG)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
       ),
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: kSpaceSM),
+            const SizedBox(height: AppSpacing.sm),
             Container(
-              width: 36,
-              height: 4,
+              width: AppComponentSize.sheetHandle,
+              height: AppComponentSize.sheetHandleHeight,
               decoration: BoxDecoration(
                 color: t.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: kSpaceLG),
+            const SizedBox(height: AppSpacing.lg),
             ListTile(
-              leading: Icon(Icons.photo_library_outlined, color: t.accent),
+              leading: Icon(AppIcons.gallery, color: t.accent),
               title: Text('Choose from gallery',
                   style: TextStyle(color: t.textPrimary)),
               onTap: () => Navigator.pop(context, 'gallery'),
             ),
             ListTile(
-              leading: Icon(Icons.camera_alt_outlined, color: t.accent),
+              leading: Icon(AppIcons.camera, color: t.accent),
               title:
-              Text('Take a photo', style: TextStyle(color: t.textPrimary)),
+                  Text('Take a photo', style: TextStyle(color: t.textPrimary)),
               onTap: () => Navigator.pop(context, 'camera'),
             ),
-            const SizedBox(height: kSpaceMD),
+            const SizedBox(height: AppSpacing.md),
           ],
         ),
       ),
@@ -147,16 +143,14 @@ class _WriteScreenState extends State<WriteScreen> {
     setState(() => _savedPhotos.remove(photo));
   }
 
-  void _onDeletePendingFile(File file) {
-    setState(() => _pendingFiles.remove(file));
-  }
+  void _onDeletePendingFile(File file) =>
+      setState(() => _pendingFiles.remove(file));
 
   // ── Save ──────────────────────────────────────────────────
 
   Future<void> _onSave() async {
     if (_isSaving) return;
     setState(() => _isSaving = true);
-
     final title = _titleController.text.trim();
     final content = _contentController.text.trim();
     final wordCount = Entry.countWords(content);
@@ -164,19 +158,17 @@ class _WriteScreenState extends State<WriteScreen> {
 
     try {
       String entryId;
-
       if (_isEditing && _existingEntry != null) {
-        // ── Update existing entry ──────────────────────────
         final updated = _existingEntry!.copyWith(
           title: title,
           content: content,
           colorTag: _selectedColor,
           wordCount: wordCount,
+          entryDate: _entryDate,
         );
         await provider.updateEntry(updated);
         entryId = updated.id;
       } else {
-        // ── Create new entry ───────────────────────────────
         final newEntry = Entry(
           id: '',
           userId: '',
@@ -184,6 +176,7 @@ class _WriteScreenState extends State<WriteScreen> {
           content: content,
           colorTag: _selectedColor,
           wordCount: wordCount,
+          entryDate: _entryDate,
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );
@@ -191,8 +184,6 @@ class _WriteScreenState extends State<WriteScreen> {
         if (created == null) throw Exception('Failed to create entry.');
         entryId = created.id;
       }
-
-      // ── Upload pending photos ──────────────────────────
       for (int i = 0; i < _pendingFiles.length; i++) {
         await _photosService.upload(
           file: _pendingFiles[i],
@@ -200,15 +191,11 @@ class _WriteScreenState extends State<WriteScreen> {
           orderIndex: _savedPhotos.length + i,
         );
       }
-
-      if (mounted) context.pop();
-    } catch (e) {
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not save. Please try again.'),
-            behavior: SnackBarBehavior.floating,
-          ),
+          const SnackBar(content: Text('Could not save. Please try again.')),
         );
       }
     } finally {
@@ -220,7 +207,6 @@ class _WriteScreenState extends State<WriteScreen> {
 
   Future<void> _onDelete() async {
     if (_existingEntry == null) return;
-
     final t = context.poppyTheme;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -230,8 +216,7 @@ class _WriteScreenState extends State<WriteScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child:
-            Text('Cancel', style: TextStyle(color: t.textSecondary)),
+            child: Text('Cancel', style: TextStyle(color: t.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -240,11 +225,26 @@ class _WriteScreenState extends State<WriteScreen> {
         ],
       ),
     );
-
     if (confirmed != true) return;
-
     await context.read<EntriesProvider>().deleteEntry(_existingEntry!.id);
-    if (mounted) context.go('/home');
+    if (mounted) {
+      Navigator.pushNamedAndRemoveUntil(
+          context, AppRoutes.home, (route) => false);
+    }
+  }
+
+  // ── Uniform Header Pill Helper ────────────────────────────
+  // Creates a consistently sized and styled container for header items
+  Widget _headerPill({required Widget child}) {
+    final t = context.poppyTheme;
+    return Container(
+      height: 44,
+      decoration: BoxDecoration(
+        color: t.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: child,
+    );
   }
 
   @override
@@ -252,140 +252,371 @@ class _WriteScreenState extends State<WriteScreen> {
     final t = context.poppyTheme;
 
     return Scaffold(
-      backgroundColor: t.background,
-      appBar: AppBar(
-        backgroundColor: t.background,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, size: 18, color: t.textSecondary),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          _isEditing
-              ? DateFormat('MMM d, yyyy')
-              .format(_existingEntry?.createdAt ?? DateTime.now())
-              : DateFormat('MMM d, yyyy').format(DateTime.now()),
-          style: TextStyle(
-            fontSize: 14,
-            color: t.textTertiary,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-        actions: [
-          // Delete — only shown when editing
-          if (_isEditing)
-            IconButton(
-              icon: Icon(Icons.delete_outline, size: 20, color: t.textTertiary),
-              onPressed: _onDelete,
-              tooltip: 'Delete entry',
-            ),
+      backgroundColor: t.accent,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            children: [
+              // ───────────────── HEADER ─────────────────
 
-          // Save button
-          Padding(
-            padding: const EdgeInsets.only(right: kSpaceSM),
-            child: TextButton(
-              onPressed: _isSaving ? null : _onSave,
-              child: _isSaving
-                  ? SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: t.accent,
-                ),
-              )
-                  : Text(
-                'Save',
-                style: TextStyle(
-                  color: t.accent,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-
-      body: Column(
-        children: [
-          // ── Title field ──────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              kSpaceLG, kSpaceSM, kSpaceLG, 0,
-            ),
-            child: TextField(
-              controller: _titleController,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
-                color: t.textPrimary,
-                letterSpacing: -0.3,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Title',
-                hintStyle: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w500,
-                  color: t.textTertiary,
-                  letterSpacing: -0.3,
-                ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-              ),
-              textCapitalization: TextCapitalization.sentences,
-              maxLines: 1,
-            ),
-          ),
-
-          // Hairline under title
-          Divider(height: kSpaceMD, thickness: 0.5, color: t.border,
-              indent: kSpaceLG, endIndent: kSpaceLG),
-
-          // ── Content field (expands) ──────────────────────
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: kSpaceLG),
-              child: TextField(
-                controller: _contentController,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: t.textPrimary,
-                  height: 1.7,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Write anything…',
-                  hintStyle: TextStyle(
-                    fontSize: 15,
-                    color: t.textTertiary,
-                    height: 1.7,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Back Button Pill
+                  GestureDetector(
+                    child: Icon(
+                      AppIcons.back,
+                      color: t.background,
+                      size: AppIconSize.sm,
+                    ),
+                    onTap: () => Navigator.pop(context),
                   ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.only(top: kSpaceSM),
-                ),
-                maxLines: null,
-                expands: true,
-                textAlignVertical: TextAlignVertical.top,
-                textCapitalization: TextCapitalization.sentences,
-                keyboardType: TextInputType.multiline,
+
+                  const SizedBox(
+                    width: AppSpacing.sm,
+                  ),
+
+                  // Date Pill
+                  Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: t.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                      border: Border.all(
+                        color: t.accentMuted,
+                        width: 3,
+                      ),
+                    ),
+                    child: GestureDetector(
+                      onTap: _pickDate,
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              DateFormat('dd').format(_entryDate),
+                              style: TextStyle(
+                                color: t.textPrimary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                height: 1,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              DateFormat('MMM')
+                                  .format(_entryDate)
+                                  .toUpperCase(),
+                              style: TextStyle(
+                                color: t.textTertiary,
+                                fontSize: 10,
+                                letterSpacing: 1,
+                                height: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  // Title Pill
+                  Expanded(
+                    child: SizedBox(
+                      height: 44,
+                      child: TextField(
+                        controller: _titleController,
+                        textAlign: TextAlign.center,
+                        textAlignVertical: TextAlignVertical.center,
+                        textCapitalization: TextCapitalization.sentences,
+                        style: AppTextStyles.writeTitle(t.textPrimary),
+                        expands: true,
+                        maxLines: null,
+                        minLines: null,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: t.surface,
+                          hintText: 'Title',
+                          hintStyle: AppTextStyles.writeTitle(t.textTertiary),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            borderSide: BorderSide.none,
+                          ),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Delete Pill
+                  if (_isEditing) ...[
+                    const SizedBox(
+                      width: AppSpacing.sm,
+                    ),
+                    GestureDetector(
+                      child: Icon(
+                        AppIcons.delete,
+                        color: t.background,
+                        size: AppIconSize.md,
+                      ),
+                      onTap: () => _onDelete(),
+                    ),
+                    const SizedBox(
+                      width: AppSpacing.sm,
+                    ),
+                    GestureDetector(
+                      child: _isSaving
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: t.surface,
+                              ),
+                            )
+                          : Icon(
+                              AppIcons.save,
+                              color: t.textPrimary,
+                              size: AppIconSize.md,
+                            ),
+                      onTap: () => _isSaving ? null : _onSave(),
+                    ),
+                  ],
+                ],
               ),
+
+              const SizedBox(height: AppSpacing.md),
+
+              // ───────────────── PAGE ─────────────────
+              Expanded(
+                child: Container(
+                  height: double.minPositive,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: t.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  child: Column(
+                    children: [
+                      // Meta row
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          AppSpacing.md,
+                          AppSpacing.md,
+                          0,
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(AppIcons.time,
+                                    size: AppIconSize.xs,
+                                    color: t.textTertiary),
+                                const SizedBox(width: AppSpacing.xs),
+                                Text(
+                                  _existingEntry != null
+                                      ? DateFormat('h:mm a')
+                                          .format(_existingEntry!.updatedAt)
+                                      : DateFormat('h:mm a')
+                                          .format(DateTime.now()),
+                                  style: AppTextStyles.meta(t.textTertiary),
+                                ),
+                                const SizedBox(width: AppSpacing.md),
+                                Icon(AppIcons.wordCount,
+                                    size: AppIconSize.xs,
+                                    color: t.textTertiary),
+                                const SizedBox(width: AppSpacing.xs),
+                                Text(
+                                  '${_existingEntry?.wordCount ?? 0} words',
+                                  style: AppTextStyles.meta(t.textTertiary),
+                                ),
+                                const SizedBox(width: AppSpacing.md),
+                              ],
+                            ),
+                            // Colors
+                            ColorTagPicker(
+                              selected: _selectedColor,
+                              onSelected: (c) => setState(
+                                () => _selectedColor = c,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Writing area
+                      Expanded(
+                        child: TextField(
+                          controller: _contentController,
+                          style: AppTextStyles.writeBody(
+                            t.textPrimary,
+                          ),
+                          decoration: InputDecoration(
+                            isCollapsed: true,
+                            hintText: 'Write anything…',
+                            hintStyle: AppTextStyles.writeBody(
+                              t.textTertiary,
+                            ),
+                            border: InputBorder.none,
+                          ),
+                          maxLines: null,
+                          textAlign: TextAlign.start,
+                          textAlignVertical: TextAlignVertical.top,
+                          keyboardType: TextInputType.multiline,
+                          textCapitalization: TextCapitalization.sentences,
+                        ),
+                      ),
+
+                      // Photos
+                      if (_savedPhotos.isNotEmpty) ...[
+                        SizedBox(
+                          height: 72,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md),
+                            itemCount: _savedPhotos.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: AppSpacing.sm),
+                            itemBuilder: (context, i) {
+                              final photo = _savedPhotos[i];
+                              return GestureDetector(
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    fullscreenDialog: true,
+                                    builder: (_) => _FullscreenViewer(
+                                      photos: _savedPhotos,
+                                      initialIndex: i,
+                                    ),
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.sm),
+                                  child: SizedBox(
+                                    width: 72,
+                                    height: 72,
+                                    child: photo.signedUrl != null
+                                        ? CachedNetworkImage(
+                                            imageUrl: photo.signedUrl!,
+                                            fit: BoxFit.cover,
+                                            placeholder: (_, __) =>
+                                                Container(color: t.surface),
+                                            errorWidget: (_, __, ___) =>
+                                                Container(
+                                              color: t.surface,
+                                              child: Icon(AppIcons.imageBroken,
+                                                  color: t.textTertiary),
+                                            ),
+                                          )
+                                        : Container(color: t.surface),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ] else ...[
+                        SizedBox(
+                          height: AppComponentSize.photoStripHeight +
+                              AppSpacing.xxl,
+                          child: PhotoStrip(
+                            savedPhotos: _savedPhotos,
+                            pendingFiles: _pendingFiles,
+                            onAddPhoto: _onAddPhoto,
+                            onDeleteSavedPhoto: _onDeleteSavedPhoto,
+                            onDeletePendingFile: _onDeletePendingFile,
+                          ),
+                        ),
+                      ]
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FullscreenViewer extends StatefulWidget {
+  final List<Photo> photos;
+  final int initialIndex;
+
+  const _FullscreenViewer({required this.photos, required this.initialIndex});
+
+  @override
+  State<_FullscreenViewer> createState() => _FullscreenViewerState();
+}
+
+class _FullscreenViewerState extends State<_FullscreenViewer> {
+  late final PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.photoViewerBg,
+      appBar: AppBar(
+        backgroundColor: AppColors.photoViewerBg,
+        iconTheme: const IconThemeData(color: AppColors.white),
+        title: Text(
+          '${_currentIndex + 1} / ${widget.photos.length}',
+          style: const TextStyle(color: AppColors.white, fontSize: 14),
+        ),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.photos.length,
+        onPageChanged: (i) => setState(() => _currentIndex = i),
+        itemBuilder: (_, i) {
+          final photo = widget.photos[i];
+          return InteractiveViewer(
+            child: Center(
+              child: photo.signedUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: photo.signedUrl!,
+                      fit: BoxFit.contain,
+                    )
+                  : Icon(AppIcons.imageBroken,
+                      color: Colors.white54, size: AppIconSize.xl),
             ),
-          ),
-
-          // ── Photo strip ───────────────────────────────────
-          PhotoStrip(
-            savedPhotos: _savedPhotos,
-            pendingFiles: _pendingFiles,
-            onAddPhoto: _onAddPhoto,
-            onDeleteSavedPhoto: _onDeleteSavedPhoto,
-            onDeletePendingFile: _onDeletePendingFile,
-          ),
-
-          // ── Color tag picker ──────────────────────────────
-          ColorTagPicker(
-            selected: _selectedColor,
-            onSelected: (color) => setState(() => _selectedColor = color),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

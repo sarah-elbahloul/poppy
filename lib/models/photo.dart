@@ -1,26 +1,12 @@
 import 'package:poppy/core/constants.dart';
 
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Photo Model
-//  Location: lib/models/photo.dart
-// ─────────────────────────────────────────────────────────────
-
 class Photo {
   final String id;
   final String entryId;
   final String userId;
-
-  /// Path inside the Supabase Storage bucket.
-  /// Format: {userId}/{entryId}/{filename}
   final String storagePath;
-
-  /// Position in the photo strip (0-based).
   final int orderIndex;
-
   final DateTime createdAt;
-
-  /// Signed URL — populated after fetching from storage.
-  /// Not stored in the database.
   final String? signedUrl;
 
   const Photo({
@@ -33,8 +19,6 @@ class Photo {
     this.signedUrl,
   });
 
-  // ── Supabase → Dart ────────────────────────────────────────
-
   factory Photo.fromMap(Map<String, dynamic> map) {
     return Photo(
       id:          map[DBColumn.id] as String,
@@ -46,8 +30,6 @@ class Photo {
     );
   }
 
-  // ── Dart → Supabase ────────────────────────────────────────
-
   Map<String, dynamic> toInsertMap() {
     return {
       DBColumn.entryId:     entryId,
@@ -57,10 +39,6 @@ class Photo {
     };
   }
 
-  // ── Utilities ──────────────────────────────────────────────
-
-  /// Builds the storage path for a new photo upload.
-  /// Called by photos_service before uploading.
   static String buildStoragePath({
     required String userId,
     required String entryId,
@@ -69,13 +47,10 @@ class Photo {
     return '$userId/$entryId/$filename';
   }
 
-  /// Returns a unique filename based on current timestamp.
   static String generateFilename() {
     final ts = DateTime.now().millisecondsSinceEpoch;
     return 'photo_$ts.jpg';
   }
-
-  // ── CopyWith ───────────────────────────────────────────────
 
   Photo copyWith({
     String? id,
@@ -103,7 +78,4 @@ class Photo {
 
   @override
   int get hashCode => id.hashCode;
-
-  @override
-  String toString() => 'Photo(id: $id, entryId: $entryId, order: $orderIndex)';
 }

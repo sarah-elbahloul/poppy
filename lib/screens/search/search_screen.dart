@@ -1,22 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:poppy/app.dart';
 import 'package:poppy/core/constants.dart';
-import 'package:poppy/core/theme/themes.dart';
+import 'package:poppy/core/style/style.dart';
 import 'package:poppy/core/widgets/color_dot.dart';
 import 'package:poppy/core/widgets/entry_card.dart';
 import 'package:poppy/providers/entries_provider.dart';
 import 'package:provider/provider.dart';
-
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Search Screen
-//  Location: lib/screens/search/search_screen.dart
-//
-//  Three ways to find entries:
-//    1. Full-text search (title + content)
-//    2. Filter by color tag
-//    3. Filter by date range
-//  Filters compose — you can combine all three.
-// ─────────────────────────────────────────────────────────────
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -28,9 +17,9 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final _searchController = TextEditingController();
   EntryColorData? _selectedColor;
-  DateTime? _fromDate;
-  DateTime? _toDate;
-  bool _hasSearched = false;
+  DateTime?       _fromDate;
+  DateTime?       _toDate;
+  bool            _hasSearched = false;
 
   @override
   void dispose() {
@@ -38,8 +27,6 @@ class _SearchScreenState extends State<SearchScreen> {
     context.read<EntriesProvider>().clearSearch();
     super.dispose();
   }
-
-  // ── Run search ────────────────────────────────────────────
 
   Future<void> _runSearch() async {
     setState(() => _hasSearched = true);
@@ -51,23 +38,19 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  // ── Clear all filters ─────────────────────────────────────
-
   void _clearAll() {
     _searchController.clear();
     setState(() {
       _selectedColor = null;
-      _fromDate = null;
-      _toDate = null;
-      _hasSearched = false;
+      _fromDate      = null;
+      _toDate        = null;
+      _hasSearched   = false;
     });
     context.read<EntriesProvider>().clearSearch();
   }
 
-  // ── Date picker ───────────────────────────────────────────
-
   Future<void> _pickDate({required bool isFrom}) async {
-    final t = context.poppyTheme;
+    final t   = context.poppyTheme;
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
@@ -82,21 +65,12 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
     if (picked == null) return;
-    setState(() {
-      if (isFrom) {
-        _fromDate = picked;
-      } else {
-        _toDate = picked;
-      }
-    });
+    setState(() => isFrom ? _fromDate = picked : _toDate = picked);
   }
-
-  bool get _hasActiveFilters =>
-      _selectedColor != null || _fromDate != null || _toDate != null;
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t        = context.poppyTheme;
     final provider = context.watch<EntriesProvider>();
 
     return Scaffold(
@@ -104,107 +78,83 @@ class _SearchScreenState extends State<SearchScreen> {
       appBar: AppBar(
         backgroundColor: t.background,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new,
-              size: 18, color: t.textSecondary),
-          onPressed: () => context.pop(),
+          icon: Icon(AppIcons.back, size: AppIconSize.xs, color: t.textSecondary),
+          onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Search',
-            style: TextStyle(fontSize: 18, color: t.textPrimary)),
+        title: Text('Search', style: AppTextStyles.appBarTitle(t.textPrimary)),
         actions: [
-          if (_hasActiveFilters || _hasSearched)
+          if (_hasSearched || _selectedColor != null || _fromDate != null || _toDate != null)
             TextButton(
               onPressed: _clearAll,
-              child: Text('Clear',
-                  style: TextStyle(fontSize: 13, color: t.accent)),
+              child: Text('Clear', style: AppTextStyles.link(t.accent)),
             ),
         ],
       ),
       body: Column(
         children: [
-          // ── Search bar ────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                kSpaceLG, kSpaceSM, kSpaceLG, kSpaceXS),
+                AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.xs),
             child: Container(
               decoration: BoxDecoration(
                 color: t.surface,
-                borderRadius: BorderRadius.circular(kRadiusMD),
-                border: Border.all(color: t.border, width: 0.5),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: t.border, width: AppStroke.hairline),
               ),
               child: TextField(
                 controller: _searchController,
                 autofocus: true,
-                style: TextStyle(fontSize: 15, color: t.textPrimary),
+                style: AppTextStyles.fieldText(t.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Search entries…',
-                  hintStyle:
-                  TextStyle(fontSize: 15, color: t.textTertiary),
-                  prefixIcon: Icon(Icons.search,
-                      size: 20, color: t.textTertiary),
+                  hintStyle: AppTextStyles.searchHint(t.textTertiary),
+                  prefixIcon: Icon(AppIcons.search,
+                      size: AppIconSize.sm, color: t.textTertiary),
                   border: InputBorder.none,
-                  contentPadding:
-                  const EdgeInsets.symmetric(vertical: kSpaceMD),
+                  contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                 ),
                 onSubmitted: (_) => _runSearch(),
                 textInputAction: TextInputAction.search,
               ),
             ),
           ),
-
-          // ── Color filter row ──────────────────────────────
           SizedBox(
             height: 44,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: kSpaceLG),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               children: EntryColors.all.map((colorData) {
                 final isSelected = _selectedColor?.id == colorData.id;
                 return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedColor =
-                      isSelected ? null : colorData;
-                    });
-                  },
+                  onTap: () => setState(() =>
+                  _selectedColor = isSelected ? null : colorData),
                   child: AnimatedContainer(
-                    duration: kAnimFast,
+                    duration: AppDuration.fast,
                     margin: const EdgeInsets.only(
-                        right: kSpaceSM, top: kSpaceXS, bottom: kSpaceXS),
+                        right: AppSpacing.sm, top: AppSpacing.xs, bottom: AppSpacing.xs),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: kSpaceSM, vertical: kSpaceXS),
+                        horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? colorData.color.withOpacity(0.12)
+                          ? (colorData.color as Color).withOpacity(0.12)
                           : t.surface,
-                      borderRadius: BorderRadius.circular(kRadiusXL),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                       border: Border.all(
-                        color: isSelected
-                            ? colorData.color
-                            : t.border,
-                        width: isSelected ? 1.5 : 0.5,
+                        color: isSelected ? colorData.color as Color : t.border,
+                        width: isSelected ? AppStroke.medium : AppStroke.hairline,
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        ColorDot(
-                          colorData: colorData,
-                          size: 10,
-                          isSelected: false,
-                        ),
-                        const SizedBox(width: kSpaceXS),
-                        Text(
-                          colorData.name,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isSelected
-                                ? colorData.color
-                                : t.textSecondary,
-                            fontWeight: isSelected
-                                ? FontWeight.w500
-                                : FontWeight.w400,
-                          ),
-                        ),
+                        ColorDot(colorData: colorData,
+                            size: AppComponentSize.colorDotChip, isSelected: false),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(colorData.name,
+                            style: AppTextStyles.searchFilterChip(
+                              isSelected ? colorData.color as Color : t.textSecondary,
+                              selected: isSelected,
+                            )),
                       ],
                     ),
                   ),
@@ -212,45 +162,41 @@ class _SearchScreenState extends State<SearchScreen> {
               }).toList(),
             ),
           ),
-
-          // ── Date range row ────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                kSpaceLG, kSpaceXS, kSpaceLG, kSpaceSM),
+                AppSpacing.lg, AppSpacing.xs, AppSpacing.lg, AppSpacing.sm),
             child: Row(
               children: [
                 Expanded(
                   child: _DateChip(
                     label: _fromDate == null
                         ? 'From date'
-                        : _formatDate(_fromDate!),
+                        : '${_fromDate!.day}/${_fromDate!.month}/${_fromDate!.year}',
                     isSet: _fromDate != null,
                     onTap: () => _pickDate(isFrom: true),
                     onClear: () => setState(() => _fromDate = null),
                   ),
                 ),
-                const SizedBox(width: kSpaceSM),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: _DateChip(
                     label: _toDate == null
                         ? 'To date'
-                        : _formatDate(_toDate!),
+                        : '${_toDate!.day}/${_toDate!.month}/${_toDate!.year}',
                     isSet: _toDate != null,
                     onTap: () => _pickDate(isFrom: false),
                     onClear: () => setState(() => _toDate = null),
                   ),
                 ),
-                const SizedBox(width: kSpaceSM),
-                // Search button
+                const SizedBox(width: AppSpacing.sm),
                 FilledButton(
                   onPressed: _runSearch,
                   style: FilledButton.styleFrom(
                     backgroundColor: t.accent,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: kSpaceMD, vertical: kSpaceSM),
+                        horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(kRadiusMD),
-                    ),
+                        borderRadius: BorderRadius.circular(AppRadius.md)),
                     minimumSize: const Size(0, 38),
                   ),
                   child: const Text('Search', style: TextStyle(fontSize: 13)),
@@ -258,123 +204,87 @@ class _SearchScreenState extends State<SearchScreen> {
               ],
             ),
           ),
-
-          Divider(height: 0.5, thickness: 0.5, color: t.border),
-
-          // ── Results ───────────────────────────────────────
+          Divider(height: AppStroke.hairline, thickness: AppStroke.hairline, color: t.border),
           Expanded(
-            child: _buildResults(context, t, provider),
+            child: provider.isSearching
+                ? Center(child: CircularProgressIndicator(strokeWidth: 2, color: t.accent))
+                : !_hasSearched
+                ? Center(
+              child: Text(
+                'Enter a term or pick a filter\nthen tap Search.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.emptySubtitle(t.textTertiary)
+                    .copyWith(height: 1.6),
+              ),
+            )
+                : provider.searchResults.isEmpty
+                ? Center(
+              child: Text('No entries found.',
+                  style: AppTextStyles.emptySubtitle(t.textTertiary)),
+            )
+                : ListView.separated(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+              itemCount: provider.searchResults.length,
+              separatorBuilder: (_, __) => Divider(
+                height: AppStroke.hairline,
+                thickness: AppStroke.hairline,
+                color: t.border,
+                indent: AppSpacing.lg + AppStroke.colorStrip,
+              ),
+              itemBuilder: (context, i) {
+                final entry = provider.searchResults[i];
+                return EntryCard(
+                  entry: entry,
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.write, arguments: entry.id),
+                );
+              },
+            ),
           ),
         ],
       ),
     );
   }
-
-  Widget _buildResults(
-      BuildContext context,
-      PoppyThemeExtension t,
-      EntriesProvider provider,
-      ) {
-    if (provider.isSearching) {
-      return Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: t.accent,
-        ),
-      );
-    }
-
-    if (!_hasSearched) {
-      return Center(
-        child: Text(
-          'Enter a term or pick a filter\nthen tap Search.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: t.textTertiary, height: 1.6),
-        ),
-      );
-    }
-
-    if (provider.searchResults.isEmpty) {
-      return Center(
-        child: Text(
-          'No entries found.',
-          style: TextStyle(fontSize: 14, color: t.textTertiary),
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.only(bottom: kSpaceXL),
-      itemCount: provider.searchResults.length,
-      separatorBuilder: (_, __) => Divider(
-        height: 0.5,
-        thickness: 0.5,
-        color: t.border,
-        indent: kSpaceLG + kColorStripWidth,
-      ),
-      itemBuilder: (context, i) {
-        final entry = provider.searchResults[i];
-        return EntryCard(
-          entry: entry,
-          onTap: () => context.push('/entry/${entry.id}'),
-        );
-      },
-    );
-  }
-
-  String _formatDate(DateTime dt) =>
-      '${dt.day}/${dt.month}/${dt.year}';
 }
-
-// ── Date chip ──────────────────────────────────────────────────
 
 class _DateChip extends StatelessWidget {
   final String label;
   final bool isSet;
   final VoidCallback onTap;
   final VoidCallback onClear;
-
   const _DateChip({
-    required this.label,
-    required this.isSet,
-    required this.onTap,
-    required this.onClear,
+    required this.label, required this.isSet,
+    required this.onTap, required this.onClear,
   });
 
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
-
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: kAnimFast,
+        duration: AppDuration.fast,
         padding: const EdgeInsets.symmetric(
-            horizontal: kSpaceSM, vertical: kSpaceXS),
+            horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
         decoration: BoxDecoration(
           color: isSet ? t.accentLight : t.surface,
-          borderRadius: BorderRadius.circular(kRadiusSM),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
           border: Border.all(
             color: isSet ? t.accent.withOpacity(0.4) : t.border,
-            width: 0.5,
+            width: AppStroke.hairline,
           ),
         ),
         child: Row(
           children: [
             Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isSet ? t.accent : t.textTertiary,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(label,
+                  style: AppTextStyles.searchFilterChip(
+                      isSet ? t.accent : t.textTertiary),
+                  overflow: TextOverflow.ellipsis),
             ),
             if (isSet)
               GestureDetector(
                 onTap: onClear,
-                child: Icon(Icons.close, size: 14, color: t.accent),
+                child: Icon(AppIcons.close, size: AppIconSize.xs, color: t.accent),
               ),
           ],
         ),

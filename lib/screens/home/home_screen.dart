@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:poppy/app.dart';
 import 'package:poppy/core/constants.dart';
-import 'package:poppy/core/theme/themes.dart';
+import 'package:poppy/core/style/style.dart';
 import 'package:poppy/core/widgets/entry_card.dart';
 import 'package:poppy/core/widgets/poppy_logo.dart';
+import 'package:poppy/models/entry.dart';
 import 'package:poppy/providers/entries_provider.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Home Screen
 //  Location: lib/screens/home/home_screen.dart
-//
-//  Shows the full entry list, newest first.
-//  Cards are compact and touch each other.
-//  FAB opens the write screen for a new entry.
 // ─────────────────────────────────────────────────────────────
 
 class HomeScreen extends StatefulWidget {
@@ -28,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Fetch entries once when the screen first mounts
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<EntriesProvider>().fetchEntries();
     });
@@ -36,55 +32,42 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t       = context.poppyTheme;
     final entries = context.watch<EntriesProvider>();
 
     return Scaffold(
       backgroundColor: t.background,
-
-      // ── App bar ──────────────────────────────────────────
       appBar: AppBar(
         backgroundColor: t.background,
         title: Row(
           children: [
-            PoppyLogo(size: 26, prominent: false),
-            const SizedBox(width: kSpaceSM),
-            Text(
-              kAppName,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-                color: t.textPrimary,
-                letterSpacing: -0.3,
-              ),
-            ),
+            PoppyLogo(size: 40, prominent: false),
+            const SizedBox(width: AppSpacing.sm),
+            Text(kAppName,
+                style: AppTextStyles.appBarTitle(t.textPrimary)),
           ],
         ),
         actions: [
-          // Search
           IconButton(
-            icon: Icon(Icons.search, color: t.textSecondary, size: 22),
-            onPressed: () => context.push('/search'),
+            icon: Icon(AppIcons.search,
+                color: t.textSecondary, size: AppIconSize.sm),
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.search),
             tooltip: 'Search',
           ),
-          // Settings
           IconButton(
-            icon: Icon(Icons.tune_outlined, color: t.textSecondary, size: 22),
-            onPressed: () => context.push('/settings'),
+            icon: Icon(AppIcons.settings,
+                color: t.textSecondary, size: AppIconSize.sm),
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.settings),
             tooltip: 'Settings',
           ),
-          const SizedBox(width: kSpaceXS),
+          const SizedBox(width: AppSpacing.xs),
         ],
       ),
-
-      // ── Body ─────────────────────────────────────────────
       body: _buildBody(context, t, entries),
-
-      // ── FAB ──────────────────────────────────────────────
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/write'),
+        onPressed: () => Navigator.pushNamed(context, AppRoutes.write),
         tooltip: 'New entry',
-        child: const Icon(Icons.edit_outlined, size: 22),
+        child: const Icon(AppIcons.write, size: AppIconSize.sm),
       ),
     );
   }
@@ -94,87 +77,70 @@ class _HomeScreenState extends State<HomeScreen> {
       PoppyThemeExtension t,
       EntriesProvider entries,
       ) {
-    // Loading state
     if (entries.isLoading) {
       return ListView.separated(
         itemCount: 8,
-        separatorBuilder: (_, __) =>
-            Divider(height: 0.5, thickness: 0.5, color: t.border),
+        separatorBuilder: (_, __) => Divider(
+          height: AppStroke.hairline,
+          thickness: AppStroke.hairline,
+          color: t.border,
+        ),
         itemBuilder: (_, __) => _SkeletonCard(),
       );
     }
 
-    // Error state
     if (entries.status == EntriesStatus.error) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.wifi_off_outlined, size: 36, color: t.textTertiary),
-            const SizedBox(height: kSpaceMD),
-            Text(
-              'Could not load entries.',
-              style: TextStyle(color: t.textSecondary, fontSize: 14),
-            ),
-            const SizedBox(height: kSpaceSM),
+            Icon(AppIcons.offline,
+                size: AppIconSize.xl, color: t.textTertiary),
+            const SizedBox(height: AppSpacing.md),
+            Text('Could not load entries.',
+                style: AppTextStyles.emptySubtitle(t.textSecondary)),
+            const SizedBox(height: AppSpacing.sm),
             TextButton(
               onPressed: () => entries.fetchEntries(),
-              child: Text(
-                'Try again',
-                style: TextStyle(color: t.accent),
-              ),
+              child: Text('Try again',
+                  style: AppTextStyles.link(t.accent)),
             ),
           ],
         ),
       );
     }
 
-    // Empty state
-    if (entries.entries.isEmpty) {
-      return _EmptyState();
-    }
+    if (entries.entries.isEmpty) return _EmptyState();
 
-    // ── Entry list ────────────────────────────────────────
-    // Group entries by month so the list has clear sections.
-    final grouped = _groupByMonth(entries.entries
-        .map((e) => e)
-        .toList());
+    final grouped = _groupByMonth(entries.entries);
 
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 100),
       itemCount: grouped.length,
       itemBuilder: (context, sectionIndex) {
-        final section = grouped[sectionIndex];
-        final monthLabel = section['month'] as String;
-        final sectionEntries = section['entries'] as List;
+        final section        = grouped[sectionIndex];
+        final monthLabel     = section['month'] as String;
+        final sectionEntries = section['entries'] as List<Entry>;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Month header
             Padding(
               padding: const EdgeInsets.only(
-                left: kSpaceLG,
-                top: kSpaceLG,
-                bottom: kSpaceXS,
+                left:   AppSpacing.lg,
+                top:    AppSpacing.lg,
+                bottom: AppSpacing.xs,
               ),
-              child: Text(
-                monthLabel,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: t.textTertiary,
-                  letterSpacing: 0.6,
-                ),
-              ),
+              child: Text(monthLabel,
+                  style: AppTextStyles.sectionLabel(t.textTertiary)),
             ),
-
-            // Cards for this month — separated by a hairline divider
             Container(
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(color: t.border, width: 0.5),
-                  bottom: BorderSide(color: t.border, width: 0.5),
+                  top:    BorderSide(color: t.border,
+                      width: AppStroke.hairline),
+                  bottom: BorderSide(color: t.border,
+                      width: AppStroke.hairline),
                 ),
               ),
               child: ListView.separated(
@@ -182,18 +148,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: sectionEntries.length,
                 separatorBuilder: (_, __) => Divider(
-                  height: 0.5,
-                  thickness: 0.5,
-                  color: t.border,
-                  indent: kSpaceLG + kColorStripWidth,
+                  height:    AppStroke.hairline,
+                  thickness: AppStroke.hairline,
+                  color:     t.border,
+                  indent:    AppSpacing.lg + AppStroke.colorStrip,
                 ),
-                itemBuilder: (context, i) {
-                  final entry = sectionEntries[i];
-                  return EntryCard(
-                    entry: entry,
-                    onTap: () => context.push('/entry/${entry.id}'),
-                  );
-                },
+                itemBuilder: (context, i) => EntryCard(
+                  entry: sectionEntries[i],
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.write, arguments: sectionEntries[i].id),
+                ),
               ),
             ),
           ],
@@ -202,100 +166,78 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Group entries by "MMMM yyyy" label ────────────────────
-
-  List<Map<String, dynamic>> _groupByMonth(List entries) {
-    final Map<String, List> map = {};
-
-    for (final entry in entries) {
-      final label = DateFormat('MMMM yyyy').format(entry.createdAt);
-      map.putIfAbsent(label, () => []).add(entry);
+  List<Map<String, dynamic>> _groupByMonth(List<Entry> entries) {
+    final Map<String, List<Entry>> map = {};
+    for (final e in entries) {
+      final label = DateFormat('MMMM yyyy').format(e.createdAt);
+      map.putIfAbsent(label, () => []).add(e);
     }
-
     return map.entries
         .map((e) => {'month': e.key, 'entries': e.value})
         .toList();
   }
 }
 
-// ── Empty state ────────────────────────────────────────────────
-
 class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
-
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          PoppyLogo(size: 52, prominent: false),
-          const SizedBox(height: kSpaceLG),
-          Text(
-            'Your diary is empty.',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: t.textPrimary,
-            ),
-          ),
-          const SizedBox(height: kSpaceXS),
-          Text(
-            'Tap + to write your first entry.',
-            style: TextStyle(fontSize: 13, color: t.textTertiary),
-          ),
+          PoppyLogo(size: AppIconSize.logo, prominent: false),
+          const SizedBox(height: AppSpacing.lg),
+          Text('Your diary is empty.',
+              style: AppTextStyles.emptyTitle(t.textPrimary)),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Tap + to write your first entry.',
+              style: AppTextStyles.emptySubtitle(t.textTertiary)),
         ],
       ),
     );
   }
 }
 
-// ── Skeleton loading card ──────────────────────────────────────
-
 class _SkeletonCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
-
     return SizedBox(
-      height: 58,
+      height: AppComponentSize.entryCardHeight,
       child: Row(
         children: [
-          // Color strip placeholder
-          Container(width: kColorStripWidth, color: t.border),
-          // Date placeholder
-          Container(
-            width: 48,
-            color: t.surface,
+          Container(width: AppStroke.colorStrip, color: t.border),
+          Container(width: 48, color: t.surface),
+          VerticalDivider(
+            width: AppStroke.hairline,
+            thickness: AppStroke.hairline,
+            color: t.border,
           ),
-          VerticalDivider(width: 1, thickness: 0.5, color: t.border),
-          // Text placeholder
           Expanded(
             child: Container(
               color: t.surface,
               padding: const EdgeInsets.symmetric(
-                horizontal: kSpaceMD,
-                vertical: kSpaceMD,
+                horizontal: AppSpacing.md,
+                vertical:   AppSpacing.md,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment:  MainAxisAlignment.center,
                 children: [
                   Container(
-                    height: 12,
-                    width: 140,
+                    height: 12, width: 140,
                     decoration: BoxDecoration(
                       color: t.border,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Container(
-                    height: 10,
-                    width: 90,
+                    height: 10, width: 90,
                     decoration: BoxDecoration(
                       color: t.border.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
                     ),
                   ),
                 ],

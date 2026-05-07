@@ -8,30 +8,25 @@ import 'package:poppy/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
-//  POPPY — App Entry Point
+//  POPPY — Entry Point
 //  Location: lib/main.dart
 // ─────────────────────────────────────────────────────────────
 
 Future<void> main() async {
-  // Must be called before any Flutter framework code
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Lock the app to portrait mode only
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Make the status bar transparent so our backgrounds
-  // bleed cleanly to the top edge on all themes
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
+      statusBarColor:           Colors.transparent,
+      statusBarIconBrightness:  Brightness.dark,
     ),
   );
 
-  // Boot Supabase before the widget tree mounts
   await SupabaseConfig.init();
 
   runApp(

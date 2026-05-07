@@ -1,65 +1,30 @@
-import 'package:flutter/material.dart';
+import 'package:poppy/core/style/style.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — App-wide Constants
 //  Location: lib/core/constants.dart
+//
+//  Only app identity strings and DB/storage name constants
+//  live here now. All sizing, spacing, radius, duration,
+//  and icon constants have moved to lib/core/style/.
 // ─────────────────────────────────────────────────────────────
 
-// ── App identity ─────────────────────────────────────────────
+// ── App identity ──────────────────────────────────────────────
 
-const String kAppName = 'Poppy';
+const String kAppName    = 'Poppy';
 const String kAppTagline = 'where every day finds its petal';
 
-// ── Spacing scale ─────────────────────────────────────────────
-// Use these instead of raw numbers so spacing is consistent
-// across every screen.
-
-const double kSpaceXS = 4.0;
-const double kSpaceSM = 8.0;
-const double kSpaceMD = 14.0;
-const double kSpaceLG = 20.0;
-const double kSpaceXL = 32.0;
-
-// ── Border radius ─────────────────────────────────────────────
-
-const double kRadiusSM = 8.0;
-const double kRadiusMD = 12.0;
-const double kRadiusLG = 16.0;
-const double kRadiusXL = 24.0;
-
-// ── Entry color tag strip width ───────────────────────────────
-// The 3px left accent strip on every entry card.
-
-const double kColorStripWidth = 3.0;
-
-// ── Animation durations ───────────────────────────────────────
-
-const Duration kAnimFast = Duration(milliseconds: 150);
-const Duration kAnimNormal = Duration(milliseconds: 250);
-const Duration kAnimSlow = Duration(milliseconds: 400);
-
 // ─────────────────────────────────────────────────────────────
-//  COLOR TAG SYSTEM
-//  These are the 6 tag colors users can assign to entries.
-//  They are intentionally independent of the app theme —
-//  a Poppy-red tag looks the same whether the user picked
-//  the Iris or Marigold theme.
+//  ENTRY COLOR TAG SYSTEM
 // ─────────────────────────────────────────────────────────────
 
-enum EntryColor {
-  poppy,
-  iris,
-  lily,
-  marigold,
-  lavender,
-  stone,
-}
+enum EntryColor { poppy, iris, lily, marigold, lavender, stone }
 
 class EntryColorData {
   final EntryColor id;
-  final String name;       // shown in the color picker
-  final Color color;       // the strip color
-  final String dbValue;    // what gets stored in Supabase
+  final String name;
+  final dynamic color; // Color — avoids importing flutter here
+  final String dbValue;
 
   const EntryColorData({
     required this.id,
@@ -75,52 +40,48 @@ class EntryColors {
   static const poppy = EntryColorData(
     id: EntryColor.poppy,
     name: 'Poppy',
-    color: Color(0xFFC94040),
+    color: AppColors.tagPoppy,
     dbValue: 'poppy',
   );
 
   static const iris = EntryColorData(
     id: EntryColor.iris,
     name: 'Iris',
-    color: Color(0xFF5C7FC4),
+    color: AppColors.tagIris,
     dbValue: 'iris',
   );
 
   static const lily = EntryColorData(
     id: EntryColor.lily,
     name: 'Lily',
-    color: Color(0xFF4FAD74),
+    color: AppColors.tagLily,
     dbValue: 'lily',
   );
 
   static const marigold = EntryColorData(
     id: EntryColor.marigold,
     name: 'Marigold',
-    color: Color(0xFFB87030),
+    color: AppColors.tagMarigold,
     dbValue: 'marigold',
   );
 
   static const lavender = EntryColorData(
     id: EntryColor.lavender,
     name: 'Lavender',
-    color: Color(0xFF9050A8),
+    color: AppColors.tagLavender,
     dbValue: 'lavender',
   );
 
   static const stone = EntryColorData(
     id: EntryColor.stone,
     name: 'Stone',
-    color: Color(0xFF888888),
+    color: AppColors.tagStone,
     dbValue: 'stone',
   );
 
-  /// All tags in display order
   static const all = [poppy, iris, lily, marigold, lavender, stone];
-
-  /// Default tag for new entries
   static const defaultColor = stone;
 
-  /// Convert a db string back to EntryColorData
   static EntryColorData fromDbValue(String value) {
     return all.firstWhere(
           (c) => c.dbValue == value,
@@ -128,7 +89,6 @@ class EntryColors {
     );
   }
 
-  /// Convert EntryColor enum to EntryColorData
   static EntryColorData fromId(EntryColor id) {
     return all.firstWhere((c) => c.id == id);
   }
@@ -136,24 +96,19 @@ class EntryColors {
 
 // ─────────────────────────────────────────────────────────────
 //  SECURE STORAGE KEYS
-//  Keys used with flutter_secure_storage.
-//  Centralised here so there are no magic strings scattered
-//  across the codebase.
 // ─────────────────────────────────────────────────────────────
 
 class StorageKeys {
   StorageKeys._();
 
-  static const String pinHash        = 'poppy_pin_hash';
-  static const String pinEnabled     = 'poppy_pin_enabled';
-  static const String selectedTheme  = 'poppy_theme';
+  static const String pinHash         = 'poppy_pin_hash';
+  static const String pinEnabled      = 'poppy_pin_enabled';
+  static const String selectedTheme   = 'poppy_theme';
   static const String supabaseSession = 'poppy_supabase_session';
 }
 
 // ─────────────────────────────────────────────────────────────
-//  SUPABASE TABLE & COLUMN NAMES
-//  Single source of truth — change a table name here and
-//  it updates everywhere.
+//  DATABASE TABLE & COLUMN NAMES
 // ─────────────────────────────────────────────────────────────
 
 class DBTable {
@@ -167,28 +122,21 @@ class DBTable {
 class DBColumn {
   DBColumn._();
 
-  // shared
-  static const String id        = 'id';
-  static const String userId    = 'user_id';
-  static const String createdAt = 'created_at';
-  static const String updatedAt = 'updated_at';
-
-  // entries
-  static const String title     = 'title';
-  static const String content   = 'content';
-  static const String colorTag  = 'color_tag';
-  static const String wordCount = 'word_count';
-
-  // photos
+  static const String id           = 'id';
+  static const String userId       = 'user_id';
+  static const String createdAt    = 'created_at';
+  static const String updatedAt    = 'updated_at';
+  static const String title        = 'title';
+  static const String content      = 'content';
+  static const String colorTag     = 'color_tag';
+  static const String wordCount    = 'word_count';
+  static const String entryDate    = 'entry_date';   // ← new
   static const String entryId      = 'entry_id';
   static const String storagePath  = 'storage_path';
   static const String orderIndex   = 'order_index';
-
-  // profiles
   static const String theme        = 'theme';
   static const String pinEnabled   = 'pin_enabled';
 }
-
 // ─────────────────────────────────────────────────────────────
 //  SUPABASE STORAGE
 // ─────────────────────────────────────────────────────────────
@@ -206,6 +154,6 @@ class StorageBucket {
 class ExportConfig {
   ExportConfig._();
 
-  static const String jsonFileName     = 'poppy_export.json';
-  static const String jsonVersion      = '1.0';
+  static const String jsonFileName = 'poppy_export.json';
+  static const String jsonVersion  = '1.0';
 }

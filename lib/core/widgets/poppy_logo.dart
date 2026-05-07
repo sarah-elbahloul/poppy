@@ -1,26 +1,19 @@
-import 'package:flutter/material.dart';
 import 'dart:math' as math;
-import 'package:poppy/core/theme/themes.dart';
+import 'package:flutter/material.dart';
+import 'package:poppy/core/style/style.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Logo Widget
 //  Location: lib/core/widgets/poppy_logo.dart
-//
-//  Draws the Poppy flower mark in pure Flutter canvas.
-//  Six petals arranged radially around a dark centre.
-//  Uses the current theme accent color for petals.
 // ─────────────────────────────────────────────────────────────
 
 class PoppyLogo extends StatelessWidget {
   final double size;
-
-  /// If true uses the full accent color — for splash / lock screens.
-  /// If false uses the muted accent — for nav bars / small sizes.
   final bool prominent;
 
   const PoppyLogo({
     super.key,
-    this.size = 48,
+    this.size = AppIconSize.logo,
     this.prominent = true,
   });
 
@@ -30,9 +23,9 @@ class PoppyLogo extends StatelessWidget {
     return CustomPaint(
       size: Size(size, size),
       painter: _PoppyPainter(
-        petalColor: prominent ? t.accent : t.accentMuted,
-        centreColor: const Color(0xFF2D1B0E),
-        highlightColor: const Color(0xFF6B3F20),
+        petalColor:     prominent ? t.accent : t.accentMuted,
+        centreColor:    AppColors.logoCentre,
+        highlightColor: AppColors.logoHighlight,
       ),
     );
   }
@@ -55,68 +48,116 @@ class _PoppyPainter extends CustomPainter {
     final cy = size.height / 2;
     final r = size.width / 2;
 
-    // ── Petal shape (same for all, like SVG) ──
+    // Move canvas origin to flower center
+    canvas.translate(cx, cy);
+
+    // Shared petal shape
     final petalRect = Rect.fromCenter(
-      center: Offset(0, -r * 0.35), // shift upward like SVG (cy=20 vs 32)
-      width: r * 0.6,
+      center: Offset(0, -r * 0.35),
+      width: r * 0.7,
       height: r * 0.9,
     );
 
-    // ── Light petals (background layer) ──
+    // ── Light petals ───────────────────────────
     final lightPaint = Paint()
-      ..color = petalColor.withOpacity(0.35)
       ..style = PaintingStyle.fill
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.5);
+      ..shader = RadialGradient(
+        colors: [
+          petalColor.withOpacity(0.8),
+          petalColor.withOpacity(0.35),
+        ],
+      ).createShader(petalRect)
+      ..maskFilter = const MaskFilter.blur(
+        BlurStyle.normal,
+        0.4,
+      );
 
+    // ── Dark petals ────────────────────────────
     final darkPaint = Paint()
-      ..color = petalColor.withOpacity(0.65)
       ..style = PaintingStyle.fill
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.5);
+      ..shader = RadialGradient(
+        colors: [
+          petalColor.withOpacity(1.0),
+          petalColor.withOpacity(0.5),
+        ],
+      ).createShader(petalRect)
+      ..maskFilter = const MaskFilter.blur(
+        BlurStyle.normal,
+        0.4,
+      );
 
-    // Move to center once
-    canvas.translate(cx, cy);
+    const petalCount = 10;
 
-    // Draw light petals: 0, 60, 120
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < petalCount; i++) {
+      final angle = (i * 2 * math.pi) / petalCount;
+
+      final paint = i.isEven
+          ? darkPaint
+          : lightPaint;
+
       canvas.save();
-      canvas.rotate(i * math.pi / 3); // 60°
-      canvas.drawOval(petalRect, lightPaint);
+      canvas.rotate(angle);
+      canvas.drawOval(petalRect, paint);
       canvas.restore();
     }
 
-    // Draw dark petals: 30, 90, 150
-    for (int i = 0; i < 3; i++) {
-      canvas.save();
-      canvas.rotate((i * math.pi / 3) + (math.pi / 6)); // +30°
-      canvas.drawOval(petalRect, darkPaint);
-      canvas.restore();
-    }
-
-    // ── Centre circle ──
+    // ── Centre circle ──────────────────────────
     final centrePaint = Paint()
       ..color = centreColor
       ..style = PaintingStyle.fill;
 
-    canvas.drawCircle(Offset.zero, r * 0.25, centrePaint);
+    canvas.drawCircle(
+      Offset.zero,
+      r * 0.28,
+      centrePaint,
+    );
 
-    // ── Centre highlight dots ──
+    // ── Highlight dots ─────────────────────────
     final dotPaint = Paint()
       ..color = highlightColor
       ..style = PaintingStyle.fill;
 
     final dots = [
-      Offset(-r * 0.08, -r * 0.08),
-      Offset(r * 0.1, -r * 0.05),
-      Offset(-r * 0.02, r * 0.1),
+      Offset(-r * 0.10, -r * 0.08),
+      Offset(r * 0.08, -r * 0.09),
+
+      Offset(-r * 0.14, 0),
+      Offset(r * 0.12, r * 0.02),
+
+      Offset(-r * 0.05, r * 0.10),
+      Offset(r * 0.05, r * 0.12),
     ];
 
-    for (final d in dots) {
-      canvas.drawCircle(d, r * 0.035, dotPaint);
+    final sizes = [
+      0.032,
+      0.026,
+      0.030,
+      0.024,
+      0.028,
+      0.025,
+    ];
+
+    for (int i = 0; i < dots.length; i++) {
+      canvas.drawCircle(
+        dots[i],
+        r * sizes[i],
+        dotPaint,
+      );
     }
+
+    // Center highlight dot
+    final centerDotPaint = Paint()
+      ..color = highlightColor.withOpacity(0.9)
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(
+      Offset.zero,
+      r * 0.04,
+      centerDotPaint,
+    );
   }
 
   @override
   bool shouldRepaint(_PoppyPainter old) =>
-      old.petalColor != petalColor ||
-          old.centreColor != centreColor;
+      old.petalColor != petalColor || old.centreColor != centreColor;
 }

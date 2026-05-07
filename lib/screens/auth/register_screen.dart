@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:poppy/app.dart';
 import 'package:poppy/core/constants.dart';
-import 'package:poppy/core/theme/themes.dart';
+import 'package:poppy/core/style/style.dart';
 import 'package:poppy/core/widgets/poppy_logo.dart';
 import 'package:poppy/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
@@ -9,10 +9,6 @@ import 'package:provider/provider.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Register Screen
 //  Location: lib/screens/auth/register_screen.dart
-//
-//  Two stages:
-//    1. Enter email + password → Supabase sends confirm email
-//    2. Confirmation pending screen → user checks inbox
 // ─────────────────────────────────────────────────────────────
 
 class RegisterScreen extends StatefulWidget {
@@ -23,15 +19,13 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _emailController = TextEditingController();
+  final _emailController    = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmController = TextEditingController();
-  bool _obscurePassword = true;
-  bool _obscureConfirm = true;
-
-  // After successful sign-up, show the confirmation pending screen
+  final _confirmController  = TextEditingController();
+  bool _obscurePassword     = true;
+  bool _obscureConfirm      = true;
   bool _awaitingConfirmation = false;
-  String _submittedEmail = '';
+  String _submittedEmail    = '';
 
   @override
   void dispose() {
@@ -41,103 +35,67 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  // ── Validation ─────────────────────────────────────────────
-
   String? _validate() {
-    final email = _emailController.text.trim();
+    final email    = _emailController.text.trim();
     final password = _passwordController.text;
-    final confirm = _confirmController.text;
-
-    if (email.isEmpty) return 'Please enter your email address.';
-    if (!email.contains('@') || !email.contains('.')) {
-      return 'Please enter a valid email address.';
-    }
-    if (password.isEmpty) return 'Please enter a password.';
-    if (password.length < 6) {
-      return 'Password must be at least 6 characters.';
-    }
-    if (confirm.isEmpty) return 'Please confirm your password.';
-    if (password != confirm) return 'Passwords do not match.';
+    final confirm  = _confirmController.text;
+    if (email.isEmpty)                              return 'Please enter your email address.';
+    if (!email.contains('@') || !email.contains('.')) return 'Please enter a valid email address.';
+    if (password.isEmpty)                           return 'Please enter a password.';
+    if (password.length < 6)                        return 'Password must be at least 6 characters.';
+    if (confirm.isEmpty)                            return 'Please confirm your password.';
+    if (password != confirm)                        return 'Passwords do not match.';
     return null;
   }
 
-  // ── Register ───────────────────────────────────────────────
-
   Future<void> _onRegister() async {
-    final validationError = _validate();
-    if (validationError != null) {
+    final err = _validate();
+    if (err != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(validationError),
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text(err)),
       );
       return;
     }
-
     final auth = context.read<AuthProvider>();
     auth.clearError();
-
     final success = await auth.signUp(
-      email: _emailController.text.trim(),
+      email:    _emailController.text.trim(),
       password: _passwordController.text,
     );
-
     if (!mounted) return;
-
     if (success) {
       setState(() {
-        _submittedEmail = _emailController.text.trim();
+        _submittedEmail       = _emailController.text.trim();
         _awaitingConfirmation = true;
       });
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return _awaitingConfirmation
-        ? _ConfirmationPendingScreen(email: _submittedEmail)
-        : _RegisterFormScreen(
-      emailController: _emailController,
-      passwordController: _passwordController,
-      confirmController: _confirmController,
-      obscurePassword: _obscurePassword,
-      obscureConfirm: _obscureConfirm,
-      onTogglePassword: () =>
-          setState(() => _obscurePassword = !_obscurePassword),
-      onToggleConfirm: () =>
-          setState(() => _obscureConfirm = !_obscureConfirm),
-      onRegister: _onRegister,
-    );
+  String _friendlyError(String raw) {
+    final l = raw.toLowerCase();
+    if (l.contains('already registered') || l.contains('already exists')) {
+      return 'An account with this email already exists. Try signing in instead.';
+    }
+    if (l.contains('invalid email')) return 'Please enter a valid email address.';
+    if (l.contains('network') || l.contains('socket')) {
+      return 'No internet connection. Please try again.';
+    }
+    if (l.contains('database') || l.contains('transaction')) {
+      return 'Something went wrong on our end. Please try again.';
+    }
+    if (l.contains('rate limit') || l.contains('too many')) {
+      return 'Too many attempts. Please wait a few minutes.';
+    }
+    return 'Could not create your account. Please try again.';
   }
-}
-
-// ── Registration form ──────────────────────────────────────────
-
-class _RegisterFormScreen extends StatelessWidget {
-  final TextEditingController emailController;
-  final TextEditingController passwordController;
-  final TextEditingController confirmController;
-  final bool obscurePassword;
-  final bool obscureConfirm;
-  final VoidCallback onTogglePassword;
-  final VoidCallback onToggleConfirm;
-  final VoidCallback onRegister;
-
-  const _RegisterFormScreen({
-    required this.emailController,
-    required this.passwordController,
-    required this.confirmController,
-    required this.obscurePassword,
-    required this.obscureConfirm,
-    required this.onTogglePassword,
-    required this.onToggleConfirm,
-    required this.onRegister,
-  });
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    if (_awaitingConfirmation) {
+      return _ConfirmationScreen(email: _submittedEmail);
+    }
+
+    final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
 
     return Scaffold(
@@ -145,149 +103,91 @@ class _RegisterFormScreen extends StatelessWidget {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(
-            horizontal: kSpaceLG,
-            vertical: kSpaceXL,
+            horizontal: AppSpacing.lg,
+            vertical:   AppSpacing.xl,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: kSpaceXL),
+              const SizedBox(height: AppSpacing.xl),
 
-              // ── Logo ─────────────────────────────────────
-              Center(child: const PoppyLogo(size: 52)),
-              const SizedBox(height: kSpaceMD),
-              Center(
-                child: Text(
-                  kAppName,
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w500,
-                    color: t.textPrimary,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-              ),
-              Center(
-                child: Text(
-                  kAppTagline,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: t.textTertiary,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
+              const Center(child: PoppyLogo(size: AppIconSize.logo)),
+              const SizedBox(height: AppSpacing.sm),
+              Center(child: Text(kAppName,
+                  style: AppTextStyles.appName(t.textPrimary))),
+              Center(child: Text(kAppTagline,
+                  style: AppTextStyles.tagline(t.textTertiary))),
 
-              const SizedBox(height: kSpaceXL * 1.5),
+              const SizedBox(height: AppSpacing.xl * 1.5),
 
-              Text(
-                'Create your diary',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w500,
-                  color: t.textPrimary,
-                  letterSpacing: -0.3,
-                ),
-              ),
-              const SizedBox(height: kSpaceXS),
-              Text(
-                'Your entries are private and belong only to you.',
-                style: TextStyle(fontSize: 13, color: t.textTertiary),
-              ),
+              Text('Create your diary',
+                  style: AppTextStyles.authHeading(t.textPrimary)),
+              const SizedBox(height: AppSpacing.xs),
+              Text('Your entries are private and belong only to you.',
+                  style: AppTextStyles.authSubtitle(t.textTertiary)),
 
-              const SizedBox(height: kSpaceLG),
+              const SizedBox(height: AppSpacing.lg),
 
               _Field(
-                controller: emailController,
-                label: 'Email address',
+                controller:  _emailController,
+                label:       'Email address',
                 keyboardType: TextInputType.emailAddress,
               ),
-              const SizedBox(height: kSpaceSM),
+              const SizedBox(height: AppSpacing.sm),
               _Field(
-                controller: passwordController,
-                label: 'Password',
-                obscureText: obscurePassword,
+                controller:  _passwordController,
+                label:       'Password',
+                obscureText: _obscurePassword,
                 suffixIcon: _VisibilityToggle(
-                  obscure: obscurePassword,
-                  onToggle: onTogglePassword,
+                  obscure:  _obscurePassword,
+                  onToggle: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
-              const SizedBox(height: kSpaceSM),
+              const SizedBox(height: AppSpacing.sm),
               _Field(
-                controller: confirmController,
-                label: 'Confirm password',
-                obscureText: obscureConfirm,
+                controller:  _confirmController,
+                label:       'Confirm password',
+                obscureText: _obscureConfirm,
                 suffixIcon: _VisibilityToggle(
-                  obscure: obscureConfirm,
-                  onToggle: onToggleConfirm,
+                  obscure:  _obscureConfirm,
+                  onToggle: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
               ),
 
-              // ── Meaningful error message ──────────────────
               if (auth.errorMessage != null) ...[
-                const SizedBox(height: kSpaceMD),
-                Container(
-                  padding: const EdgeInsets.all(kSpaceMD),
-                  decoration: BoxDecoration(
-                    color: t.accentLight,
-                    borderRadius: BorderRadius.circular(kRadiusSM),
-                    border: Border.all(
-                        color: t.accent.withOpacity(0.3), width: 0.5),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.info_outline, size: 16, color: t.accent),
-                      const SizedBox(width: kSpaceSM),
-                      Expanded(
-                        child: Text(
-                          _friendlyError(auth.errorMessage!),
-                          style: TextStyle(fontSize: 13, color: t.accent),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                const SizedBox(height: AppSpacing.md),
+                _ErrorBanner(message: _friendlyError(auth.errorMessage!)),
               ],
 
-              const SizedBox(height: kSpaceLG),
+              const SizedBox(height: AppSpacing.lg),
 
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: auth.isLoading ? null : onRegister,
+                  onPressed: auth.isLoading ? null : _onRegister,
                   style: FilledButton.styleFrom(
                     backgroundColor: t.accent,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(kRadiusMD),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                   ),
                   child: auth.isLoading
-                      ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                      : const Text(
-                    'Create account',
-                    style: TextStyle(fontSize: 15),
-                  ),
+                      ? const _LoadingIndicator()
+                      : const Text('Create account',
+                      style: TextStyle(fontSize: 15)),
                 ),
               ),
 
-              const SizedBox(height: kSpaceMD),
+              const SizedBox(height: AppSpacing.md),
 
               Center(
                 child: TextButton(
-                  onPressed: () => context.go('/login'),
-                  child: Text(
-                    'Already have an account? Sign in',
-                    style: TextStyle(fontSize: 13, color: t.textTertiary),
-                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text('Already have an account? Sign in',
+                      style: AppTextStyles.link(t.textTertiary)),
                 ),
               ),
             ],
@@ -296,41 +196,13 @@ class _RegisterFormScreen extends StatelessWidget {
       ),
     );
   }
-
-  String _friendlyError(String raw) {
-    final lower = raw.toLowerCase();
-    if (lower.contains('already registered') ||
-        lower.contains('already exists') ||
-        lower.contains('user already')) {
-      return 'An account with this email already exists. Try signing in instead.';
-    }
-    if (lower.contains('invalid email') || lower.contains('valid email')) {
-      return 'Please enter a valid email address.';
-    }
-    if (lower.contains('password') && lower.contains('short')) {
-      return 'Password is too short. Please use at least 6 characters.';
-    }
-    if (lower.contains('network') ||
-        lower.contains('socket') ||
-        lower.contains('connection')) {
-      return 'No internet connection. Please check your network and try again.';
-    }
-    if (lower.contains('database') || lower.contains('transaction')) {
-      return 'Something went wrong on our end. Please wait a moment and try again.';
-    }
-    if (lower.contains('rate limit') || lower.contains('too many')) {
-      return 'Too many attempts. Please wait a few minutes and try again.';
-    }
-    return 'Could not create your account. Please try again.';
-  }
 }
 
 // ── Confirmation pending screen ────────────────────────────────
 
-class _ConfirmationPendingScreen extends StatelessWidget {
+class _ConfirmationScreen extends StatelessWidget {
   final String email;
-
-  const _ConfirmationPendingScreen({required this.email});
+  const _ConfirmationScreen({required this.email});
 
   @override
   Widget build(BuildContext context) {
@@ -341,67 +213,43 @@ class _ConfirmationPendingScreen extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: kSpaceLG,
-            vertical: kSpaceXL,
+            horizontal: AppSpacing.lg,
+            vertical:   AppSpacing.xl,
           ),
           child: Column(
             children: [
               const Spacer(flex: 2),
 
               Container(
-                width: 72,
-                height: 72,
+                width:  AppComponentSize.confirmIconCircle,
+                height: AppComponentSize.confirmIconCircle,
                 decoration: BoxDecoration(
-                  color: t.accentLight,
-                  shape: BoxShape.circle,
+                  color:  t.accentLight,
+                  shape:  BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.mark_email_unread_outlined,
-                  size: 32,
-                  color: t.accent,
-                ),
+                child: Icon(AppIcons.emailUnread,
+                    size: AppIconSize.xl, color: t.accent),
               ),
 
-              const SizedBox(height: kSpaceLG),
+              const SizedBox(height: AppSpacing.lg),
 
+              Text('Check your inbox',
+                  style: AppTextStyles.screenTitle(t.textPrimary)),
+              const SizedBox(height: AppSpacing.sm),
+              Text('We sent a confirmation link to',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.authSubtitle(t.textSecondary)),
+              const SizedBox(height: AppSpacing.xs),
+              Text(email,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.authHeading(t.textPrimary)
+                      .copyWith(fontSize: 14)),
+              const SizedBox(height: AppSpacing.md),
               Text(
-                'Check your inbox',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w500,
-                  color: t.textPrimary,
-                  letterSpacing: -0.4,
-                ),
-              ),
-
-              const SizedBox(height: kSpaceSM),
-
-              Text(
-                'We sent a confirmation link to',
+                'Tap the link in the email to activate your account,\nthen come back and sign in.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: t.textSecondary),
-              ),
-              const SizedBox(height: kSpaceXS),
-              Text(
-                email,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: t.textPrimary,
-                ),
-              ),
-
-              const SizedBox(height: kSpaceMD),
-
-              Text(
-                'Tap the link in the email to activate your account, then come back here and sign in.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: t.textTertiary,
-                  height: 1.6,
-                ),
+                style: AppTextStyles.authSubtitle(t.textTertiary)
+                    .copyWith(height: 1.6),
               ),
 
               const Spacer(flex: 3),
@@ -409,30 +257,24 @@ class _ConfirmationPendingScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: () => context.go('/login'),
+                  onPressed: () => Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false),
                   style: FilledButton.styleFrom(
                     backgroundColor: t.accent,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(kRadiusMD),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                   ),
-                  child: const Text(
-                    'Go to sign in',
-                    style: TextStyle(fontSize: 15),
-                  ),
+                  child: const Text('Go to sign in',
+                      style: TextStyle(fontSize: 15)),
                 ),
               ),
 
-              const SizedBox(height: kSpaceMD),
-
-              Text(
-                "Didn't get the email? Check your spam folder.",
-                style: TextStyle(fontSize: 12, color: t.textTertiary),
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: kSpaceLG),
+              const SizedBox(height: AppSpacing.md),
+              Text("Didn't get the email? Check your spam folder.",
+                  style: AppTextStyles.version(t.textTertiary),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: AppSpacing.lg),
             ],
           ),
         ),
@@ -441,7 +283,7 @@ class _ConfirmationPendingScreen extends StatelessWidget {
   }
 }
 
-// ── Shared field widget ────────────────────────────────────────
+// ── Shared private widgets ─────────────────────────────────────
 
 class _Field extends StatelessWidget {
   final TextEditingController controller;
@@ -464,22 +306,22 @@ class _Field extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: t.surface,
-        borderRadius: BorderRadius.circular(kRadiusMD),
-        border: Border.all(color: t.border, width: 0.5),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: t.border, width: AppStroke.hairline),
       ),
       child: TextField(
-        controller: controller,
-        obscureText: obscureText,
+        controller:   controller,
+        obscureText:  obscureText,
         keyboardType: keyboardType,
-        style: TextStyle(fontSize: 15, color: t.textPrimary),
+        style: AppTextStyles.fieldText(t.textPrimary),
         decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(fontSize: 13, color: t.textTertiary),
+          labelText:  label,
+          labelStyle: AppTextStyles.fieldLabel(t.textTertiary),
           suffixIcon: suffixIcon,
-          border: InputBorder.none,
+          border:     InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: kSpaceMD,
-            vertical: kSpaceMD,
+            horizontal: AppSpacing.md,
+            vertical:   AppSpacing.md,
           ),
         ),
       ),
@@ -487,12 +329,9 @@ class _Field extends StatelessWidget {
   }
 }
 
-// ── Visibility toggle ──────────────────────────────────────────
-
 class _VisibilityToggle extends StatelessWidget {
   final bool obscure;
   final VoidCallback onToggle;
-
   const _VisibilityToggle({required this.obscure, required this.onToggle});
 
   @override
@@ -500,13 +339,52 @@ class _VisibilityToggle extends StatelessWidget {
     final t = context.poppyTheme;
     return IconButton(
       icon: Icon(
-        obscure
-            ? Icons.visibility_outlined
-            : Icons.visibility_off_outlined,
-        size: 18,
+        obscure ? AppIcons.visibilityOn : AppIcons.visibilityOff,
+        size:  AppIconSize.xs,
         color: t.textTertiary,
       ),
       onPressed: onToggle,
     );
   }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  const _ErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.poppyTheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: t.accentLight,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(
+            color: t.accent.withOpacity(0.3), width: AppStroke.hairline),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(message,
+                style: AppTextStyles.errorText(t.accent)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingIndicator extends StatelessWidget {
+  const _LoadingIndicator();
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(
+    width: 18, height: 18,
+    child: CircularProgressIndicator(
+        strokeWidth: 2, color: Colors.white),
+  );
 }
