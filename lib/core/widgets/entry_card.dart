@@ -10,29 +10,36 @@ import 'package:poppy/models/entry.dart';
 
 class EntryCard extends StatelessWidget {
   final Entry entry;
-  final VoidCallback onTap;
+  final VoidCallback  onTap;
+  final VoidCallback? onLongPress;
 
-  const EntryCard({super.key, required this.entry, required this.onTap});
+  const EntryCard({
+    super.key,
+    required this.entry,
+    required this.onTap,
+    this.onLongPress,
+  });
 
   @override
   Widget build(BuildContext context) {
     final t   = context.poppyTheme;
     final now = DateTime.now();
+
     return InkWell(
-      onTap: onTap,
+      onTap:       onTap,
+      onLongPress: onLongPress,
       splashColor:    t.accentLight,
       highlightColor: t.accentLight.withOpacity(0.5),
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Color accent strip ──────────────────────
+            // Color strip
             Container(
               width: AppStroke.colorStrip,
               color: entry.colorTag.color as Color,
             ),
-
-            // ── Date column ─────────────────────────────
+            // Date column
             Container(
               width: 48,
               padding: const EdgeInsets.symmetric(
@@ -54,15 +61,12 @@ class EntryCard extends StatelessWidget {
                 ],
               ),
             ),
-
-            // ── Divider ─────────────────────────────────
             VerticalDivider(
-              width: AppStroke.hairline,
+              width:     AppStroke.hairline,
               thickness: AppStroke.hairline,
-              color: t.border,
+              color:     t.border,
             ),
-
-            // ── Title + preview ──────────────────────────
+            // Title + preview
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -94,8 +98,7 @@ class EntryCard extends StatelessWidget {
                 ),
               ),
             ),
-
-            // ── Word count + chevron ─────────────────────
+            // Word count + chevron
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.md),
               child: Column(
@@ -117,4 +120,7 @@ class EntryCard extends StatelessWidget {
       ),
     );
   }
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 }

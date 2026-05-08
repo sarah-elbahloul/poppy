@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/app.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:poppy/providers/auth_provider.dart';
 import 'package:poppy/providers/entries_provider.dart';
 import 'package:poppy/providers/theme_provider.dart';
 import 'package:poppy/services/export_service.dart';
 import 'package:provider/provider.dart';
+import '../../core/app_routes.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Settings Screen
@@ -104,19 +104,19 @@ class SettingsScreen extends StatelessWidget {
           // Let's check the legal screen routes.
           _Section(children: [
             _Row(
-              icon:     AppIcons.info,
+              icon:     AppIcons.privacyPolicy,
               label:    'Privacy Policy',
               onTap:    () => Navigator.pushNamed(context, '/settings/legal/privacy'),
             ),
             _Divider(),
             _Row(
-              icon:     AppIcons.info,
+              icon:     AppIcons.Tos,
               label:    'Terms of Use',
               onTap:    () => Navigator.pushNamed(context, '/settings/legal/terms'),
             ),
             _Divider(),
             _Row(
-              icon:     AppIcons.info,
+              icon:     AppIcons.Osl,
               label:    'Open Source Licenses',
               onTap:    () => Navigator.pushNamed(context, '/settings/legal/opensource'),
             ),
@@ -248,7 +248,7 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t     = context.poppyTheme;
-    final color = isDestructive ? t.accent : t.textPrimary;
+    final color = isDestructive ? Theme.of(context).colorScheme.error : t.textPrimary;
 
     return InkWell(
       onTap: onTap,
@@ -262,7 +262,7 @@ class _Row extends StatelessWidget {
           children: [
             Icon(icon,
                 size:  AppComponentSize.settingsIconCol,
-                color: isDestructive ? t.accent : t.textTertiary),
+                color: isDestructive ? Theme.of(context).colorScheme.error : t.textTertiary),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -281,7 +281,7 @@ class _Row extends StatelessWidget {
             ),
             if (!isDestructive)
               Icon(AppIcons.chevronRight,
-                  size: AppIconSize.xs, color: t.textTertiary),
+                  size: AppIconSize.xs, color: Theme.of(context).colorScheme.error),
           ],
         ),
       ),

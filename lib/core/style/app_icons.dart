@@ -64,6 +64,9 @@ class AppIcons {
   static const IconData export_    = Iconsax.export;
   static const IconData import_    = Iconsax.import;
   static const IconData info       = Iconsax.info_circle;
+  static const IconData privacyPolicy       = Iconsax.shield;
+  static const IconData Tos       = Iconsax.document;
+  static const IconData Osl       = Iconsax.info_circle;
 
   // ── Entry states ───────────────────────────────────────
   static const IconData emptyDiary = Iconsax.note;

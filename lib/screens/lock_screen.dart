@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/app.dart';
+import 'package:poppy/core/app_routes.dart';
 import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:poppy/core/widgets/pin_pad.dart';
@@ -30,7 +30,9 @@ class _LockScreenState extends State<LockScreen> {
 
     if (isCorrect) {
       context.read<AuthProvider>().unlock();
-      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.home, (route) => false,
+      );
     } else {
       setState(() => _hasError = true);
       await Future.delayed(AppDuration.errorReset);
@@ -40,9 +42,10 @@ class _LockScreenState extends State<LockScreen> {
 
   Future<void> _onSignOut() async {
     await context.read<AuthProvider>().signOut();
-    if (mounted) {
-      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false);
-    }
+    if (!mounted) return;
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      AppRoutes.login, (route) => false,
+    );
   }
 
   @override
@@ -60,23 +63,22 @@ class _LockScreenState extends State<LockScreen> {
               Column(
                 children: [
                   const PoppyLogo(size: AppIconSize.logoLg),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(kAppName, style: AppTextStyles.appName(t.textPrimary)),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(kAppName,
+                      style: AppTextStyles.appName(t.textPrimary)),
                 ],
               ),
               const Spacer(flex: 2),
               PinPad(
-                label:    'Enter your PIN',
-                hasError: _hasError,
+                label:      'Enter your PIN',
+                hasError:   _hasError,
                 onComplete: _onPinComplete,
               ),
               const Spacer(flex: 3),
               TextButton(
                 onPressed: _onSignOut,
-                child: Text(
-                  'Sign out instead',
-                  style: AppTextStyles.link(t.textTertiary),
-                ),
+                child: Text('Sign out instead',
+                    style: AppTextStyles.link(t.textTertiary)),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/app.dart';
 import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:poppy/core/widgets/color_dot.dart';
 import 'package:poppy/core/widgets/entry_card.dart';
 import 'package:poppy/providers/entries_provider.dart';
 import 'package:provider/provider.dart';
+import '../../core/app_routes.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:poppy/core/app_routes.dart';
 import 'package:poppy/core/supabase_client.dart';
 import 'package:poppy/providers/auth_provider.dart';
 import 'package:poppy/providers/theme_provider.dart';
@@ -9,11 +10,21 @@ import 'package:poppy/screens/lock_screen.dart';
 import 'package:poppy/screens/search/search_screen.dart';
 import 'package:poppy/screens/settings/account_screen.dart';
 import 'package:poppy/screens/settings/appearance_screen.dart';
+import 'package:poppy/screens/settings/legal_screen.dart';
 import 'package:poppy/screens/settings/security_screen.dart';
 import 'package:poppy/screens/settings/settings_screen.dart';
-import 'package:poppy/screens/settings/legal_screen.dart';
 import 'package:poppy/screens/write/write_screen.dart';
 import 'package:provider/provider.dart';
+
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Root App Widget
+//  Location: lib/app.dart
+//
+//  Uses Flutter's built-in Navigator with named routes.
+// ─────────────────────────────────────────────────────────────
+
+final GlobalKey<NavigatorState> navigatorKey =
+GlobalKey<NavigatorState>();
 
 class PoppyApp extends StatelessWidget {
   const PoppyApp({super.key});
@@ -23,84 +34,135 @@ class PoppyApp extends StatelessWidget {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, _) {
         return MaterialApp(
+          navigatorKey: navigatorKey,
           title: 'Poppy',
           debugShowCheckedModeBanner: false,
           theme: themeProvider.currentThemeData.toThemeData(),
-          home: const AuthWrapper(),
-          onGenerateRoute: AppRoutes.onGenerateRoute,
+
+          // Start at home — auth guard redirects if needed
+          initialRoute: AppRoutes.home,
+
+          // ── Route definitions ──────────────────────────
+          routes: {
+            AppRoutes.login: (_) => const LoginScreen(),
+            AppRoutes.register: (_) => const RegisterScreen(),
+            AppRoutes.lock: (_) => const LockScreen(),
+            AppRoutes.home: (_) => const HomeScreen(),
+            AppRoutes.search: (_) => const SearchScreen(),
+            AppRoutes.settings: (_) => const SettingsScreen(),
+            AppRoutes.appearance: (_) => const AppearanceScreen(),
+            AppRoutes.account: (_) => const AccountScreen(),
+            AppRoutes.security: (_) => const SecurityScreen(),
+
+            AppRoutes.legalPrivacy:
+                (_) => const LegalScreen(doc: LegalDoc.privacy),
+
+            AppRoutes.legalTerms:
+                (_) => const LegalScreen(doc: LegalDoc.terms),
+
+            AppRoutes.legalOpensource:
+                (_) => const LegalScreen(doc: LegalDoc.opensource),
+          },
+
+          // ── Dynamic routes ─────────────────────────────
+          onGenerateRoute: (settings) {
+            if (settings.name == AppRoutes.write) {
+              final entryId = settings.arguments as String?;
+
+              return MaterialPageRoute(
+                builder: (_) => WriteScreen(entryId: entryId),
+                settings: settings,
+              );
+            }
+
+            return null;
+          },
+
+          // ── Auth Guard ─────────────────────────────────
+          builder: (context, child) {
+            return _AuthGuard(
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
         );
       },
     );
   }
 }
 
-/// A wrapper that decides which screen to show based on auth and lock state.
-class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({super.key});
+// ─────────────────────────────────────────────────────────────
+//  Auth Guard
+// ─────────────────────────────────────────────────────────────
+
+class _AuthGuard extends StatefulWidget {
+  final Widget child;
+
+  const _AuthGuard({
+    required this.child,
+  });
+
+  @override
+  State<_AuthGuard> createState() => _AuthGuardState();
+}
+
+class _AuthGuardState extends State<_AuthGuard> {
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _check();
+      }
+    });
+  }
+
+  void _check() {
+    final auth = context.read<AuthProvider>();
+    final isLoggedIn = SupabaseConfig.currentUser != null;
+
+    final nav = navigatorKey.currentState;
+
+    if (nav == null) return;
+
+    final currentContext = nav.context;
+    final currentRoute =
+        ModalRoute.of(currentContext)?.settings.name;
+
+    // ── Not logged in ────────────────────────────────
+    if (!isLoggedIn &&
+        currentRoute != AppRoutes.login) {
+      nav.pushNamedAndRemoveUntil(
+        AppRoutes.login,
+            (route) => false,
+      );
+
+      return;
+    }
+
+    // ── Locked ───────────────────────────────────────
+    if (auth.isLocked &&
+        currentRoute != AppRoutes.lock) {
+      nav.pushNamedAndRemoveUntil(
+        AppRoutes.lock,
+            (route) => false,
+      );
+
+      return;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthProvider>(
-      builder: (context, auth, _) {
-        final isLoggedIn = SupabaseConfig.currentUser != null;
-        if (!isLoggedIn) return const LoginScreen();
-        if (auth.isLocked) return const LockScreen();
-        return const HomeScreen();
-      },
-    );
-  }
-}
+    // Rebuild whenever auth state changes
+    context.watch<AuthProvider>();
 
-class AppRoutes {
-  static const login = '/login';
-  static const register = '/register';
-  static const lock = '/lock';
-  static const home = '/home';
-  static const write = '/write';
-  static const search = '/search';
-  static const settings = '/settings';
-  static const appearance = '/settings/appearance';
-  static const account = '/settings/account';
-  static const security = '/settings/security';
-  static const legalPrivacy = '/settings/legal/privacy';
-  static const legalTerms = '/settings/legal/terms';
-  static const legalOpensource = '/settings/legal/opensource';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _check();
+      }
+    });
 
-  static Route<dynamic> onGenerateRoute(RouteSettings setting) {
-    switch (setting.name) {
-      case login:
-        return MaterialPageRoute(builder: (_) => const LoginScreen());
-      case register:
-        return MaterialPageRoute(builder: (_) => const RegisterScreen());
-      case lock:
-        return MaterialPageRoute(builder: (_) => const LockScreen());
-      case home:
-        return MaterialPageRoute(builder: (_) => const HomeScreen());
-      case write:
-        final entryId = setting.arguments as String?;
-        return MaterialPageRoute(builder: (_) => WriteScreen(entryId: entryId));
-      case search:
-        return MaterialPageRoute(builder: (_) => const SearchScreen());
-      case settings:
-        return MaterialPageRoute(builder: (_) => const SettingsScreen());
-      case appearance:
-        return MaterialPageRoute(builder: (_) => const AppearanceScreen());
-      case account:
-        return MaterialPageRoute(builder: (_) => const AccountScreen());
-      case security:
-        return MaterialPageRoute(builder: (_) => const SecurityScreen());
-      case legalPrivacy:
-        return MaterialPageRoute(builder: (_) => const LegalScreen(doc: LegalDoc.privacy));
-      case legalTerms:
-        return MaterialPageRoute(builder: (_) => const LegalScreen(doc: LegalDoc.terms));
-      case legalOpensource:
-        return MaterialPageRoute(builder: (_) => const LegalScreen(doc: LegalDoc.opensource));
-      default:
-        return MaterialPageRoute(
-          builder: (_) => Scaffold(
-            body: Center(child: Text('No route defined for ${setting.name}')),
-          ),
-        );
-    }
+    return widget.child;
   }
 }

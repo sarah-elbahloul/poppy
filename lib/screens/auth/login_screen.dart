@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/app.dart';
+import 'package:poppy/core/app_routes.dart';
 import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:poppy/core/widgets/poppy_logo.dart';
@@ -21,8 +21,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController    = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _obscurePassword     = true;
-  bool _forgotPasswordMode  = false;
+  bool _obscurePassword    = true;
+  bool _forgotPasswordMode = false;
 
   @override
   void dispose() {
@@ -38,10 +38,10 @@ class _LoginScreenState extends State<LoginScreen> {
       email:    _emailController.text,
       password: _passwordController.text,
     );
-    // Note: The AuthWrapper in app.dart handles navigation based on auth status.
-    // However, if we want to force a refresh or navigate manually:
     if (success && mounted) {
-      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.home, (route) => false,
+      );
     }
   }
 
@@ -52,15 +52,18 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success && mounted) {
       setState(() => _forgotPasswordMode = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Check your email for a reset link.')),
+        const SnackBar(
+            content: Text('Check your email for a reset link.')),
       );
     }
   }
 
   String _friendlyError(String raw) {
     final l = raw.toLowerCase();
-    if (l.contains('invalid login') || l.contains('invalid credentials') ||
-        l.contains('wrong password') || l.contains('user not found')) {
+    if (l.contains('invalid login') ||
+        l.contains('invalid credentials') ||
+        l.contains('wrong password') ||
+        l.contains('user not found')) {
       return 'Email or password is incorrect.';
     }
     if (l.contains('email not confirmed')) {
@@ -85,23 +88,19 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical:   AppSpacing.xl,
+            horizontal: AppSpacing.lg, vertical: AppSpacing.xl,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSpacing.xl),
-
-              const Center(child: PoppyLogo(size: AppIconSize.logo)),
-              const SizedBox(height: AppSpacing.sm),
+              Center(child: const PoppyLogo(size: AppIconSize.logo)),
+              const SizedBox(height: AppSpacing.md),
               Center(child: Text(kAppName,
                   style: AppTextStyles.appName(t.textPrimary))),
               Center(child: Text(kAppTagline,
                   style: AppTextStyles.tagline(t.textTertiary))),
-
-              const SizedBox(height: AppSpacing.xl * 1.5),
-
+              SizedBox(height: AppSpacing.xl * 1.5),
               Text(
                 _forgotPasswordMode ? 'Reset password' : 'Welcome back',
                 style: AppTextStyles.authHeading(t.textPrimary),
@@ -113,15 +112,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     : 'Sign in to your diary.',
                 style: AppTextStyles.authSubtitle(t.textTertiary),
               ),
-
               const SizedBox(height: AppSpacing.lg),
-
               _Field(
-                controller:  _emailController,
-                label:       'Email',
+                controller:   _emailController,
+                label:        'Email',
                 keyboardType: TextInputType.emailAddress,
               ),
-
               if (!_forgotPasswordMode) ...[
                 const SizedBox(height: AppSpacing.sm),
                 _Field(
@@ -133,28 +129,27 @@ class _LoginScreenState extends State<LoginScreen> {
                       _obscurePassword
                           ? AppIcons.visibilityOn
                           : AppIcons.visibilityOff,
-                      size:  AppIconSize.xs,
-                      color: t.textTertiary,
+                      size: AppIconSize.xs, color: t.textTertiary,
                     ),
                     onPressed: () => setState(
                             () => _obscurePassword = !_obscurePassword),
                   ),
                 ),
               ],
-
               if (auth.errorMessage != null) ...[
                 const SizedBox(height: AppSpacing.md),
-                _ErrorBanner(message: _friendlyError(auth.errorMessage!)),
+                _ErrorBanner(
+                    message: _friendlyError(auth.errorMessage!)),
               ],
-
               const SizedBox(height: AppSpacing.lg),
-
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: auth.isLoading
                       ? null
-                      : (_forgotPasswordMode ? _onResetPassword : _onSignIn),
+                      : (_forgotPasswordMode
+                      ? _onResetPassword
+                      : _onSignIn),
                   style: FilledButton.styleFrom(
                     backgroundColor: t.accent,
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -165,14 +160,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: auth.isLoading
                       ? const _LoadingIndicator()
                       : Text(
-                    _forgotPasswordMode ? 'Send reset link' : 'Sign in',
+                    _forgotPasswordMode
+                        ? 'Send reset link'
+                        : 'Sign in',
                     style: const TextStyle(fontSize: 15),
                   ),
                 ),
               ),
-
               const SizedBox(height: AppSpacing.md),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -188,7 +183,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   if (!_forgotPasswordMode)
                     TextButton(
-                      onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
+                      onPressed: () => Navigator.of(context)
+                          .pushNamed(AppRoutes.register),
                       child: Text('Create account',
                           style: AppTextStyles.link(t.accent)),
                     ),
@@ -202,21 +198,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// ── Shared widgets ─────────────────────────────────────────────
-
 class _Field extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final bool obscureText;
   final TextInputType? keyboardType;
   final Widget? suffixIcon;
-
   const _Field({
-    required this.controller,
-    required this.label,
-    this.obscureText = false,
-    this.keyboardType,
-    this.suffixIcon,
+    required this.controller, required this.label,
+    this.obscureText = false, this.keyboardType, this.suffixIcon,
   });
 
   @override
@@ -229,18 +219,15 @@ class _Field extends StatelessWidget {
         border: Border.all(color: t.border, width: AppStroke.hairline),
       ),
       child: TextField(
-        controller:   controller,
-        obscureText:  obscureText,
+        controller: controller, obscureText: obscureText,
         keyboardType: keyboardType,
         style: AppTextStyles.fieldText(t.textPrimary),
         decoration: InputDecoration(
-          labelText:  label,
+          labelText: label,
           labelStyle: AppTextStyles.fieldLabel(t.textTertiary),
-          suffixIcon: suffixIcon,
-          border:     InputBorder.none,
+          suffixIcon: suffixIcon, border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical:   AppSpacing.md,
+            horizontal: AppSpacing.md, vertical: AppSpacing.md,
           ),
         ),
       ),
@@ -268,10 +255,8 @@ class _ErrorBanner extends StatelessWidget {
         children: [
           Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
           const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(message,
-                style: AppTextStyles.errorText(t.accent)),
-          ),
+          Expanded(child: Text(message,
+              style: AppTextStyles.errorText(t.accent))),
         ],
       ),
     );
@@ -284,7 +269,6 @@ class _LoadingIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const SizedBox(
     width: 18, height: 18,
-    child: CircularProgressIndicator(
-        strokeWidth: 2, color: Colors.white),
+    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
   );
 }
