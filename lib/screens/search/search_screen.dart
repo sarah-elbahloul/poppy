@@ -89,6 +89,8 @@ class _SearchScreenState extends State<SearchScreen> {
               child: Text('Clear', style: AppTextStyles.link(t.accent)),
             ),
         ],
+        actionsPadding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm, 0, AppSpacing.sm,0),
       ),
       body: Column(
         children: [

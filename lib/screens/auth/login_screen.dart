@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/app_routes.dart';
 import 'package:poppy/core/constants.dart';
+import 'package:poppy/core/error_messages.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:poppy/core/widgets/poppy_logo.dart';
 import 'package:poppy/providers/auth_provider.dart';
@@ -32,50 +33,50 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _onSignIn() async {
+    // Client-side validation first
+    final emailErr = AppErrors.validateEmail(_emailController.text);
+    if (emailErr != null) {
+      _showSnack(emailErr);
+      return;
+    }
+
     final auth = context.read<AuthProvider>();
     auth.clearError();
+
     final success = await auth.signIn(
       email:    _emailController.text,
       password: _passwordController.text,
     );
-    if (success && mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.home, (route) => false,
-      );
+
+    // Navigation handled by _AuthListener in app.dart
+    // No need to push here — sign-in triggers the auth stream
+    // which _AuthListener watches and routes to home.
+    if (!success && mounted && auth.errorMessage != null) {
+      // Error already stored in provider — displayed in build()
     }
   }
 
   Future<void> _onResetPassword() async {
+    final emailErr = AppErrors.validateEmail(_emailController.text);
+    if (emailErr != null) {
+      _showSnack(emailErr);
+      return;
+    }
+
     final auth = context.read<AuthProvider>();
     auth.clearError();
-    final success = await auth.resetPassword(_emailController.text);
+
+    final success =
+    await auth.resetPassword(_emailController.text);
     if (success && mounted) {
       setState(() => _forgotPasswordMode = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Check your email for a reset link.')),
-      );
+      _showSnack('Check your email for a reset link.');
     }
   }
 
-  String _friendlyError(String raw) {
-    final l = raw.toLowerCase();
-    if (l.contains('invalid login') ||
-        l.contains('invalid credentials') ||
-        l.contains('wrong password') ||
-        l.contains('user not found')) {
-      return 'Email or password is incorrect.';
-    }
-    if (l.contains('email not confirmed')) {
-      return 'Please confirm your email before signing in. Check your inbox.';
-    }
-    if (l.contains('network') || l.contains('socket')) {
-      return 'No internet connection. Please try again.';
-    }
-    if (l.contains('rate limit') || l.contains('too many')) {
-      return 'Too many attempts. Please wait a few minutes.';
-    }
-    return 'Could not sign in. Please try again.';
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -102,7 +103,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: AppTextStyles.tagline(t.textTertiary))),
               SizedBox(height: AppSpacing.xl * 1.5),
               Text(
-                _forgotPasswordMode ? 'Reset password' : 'Welcome back',
+                _forgotPasswordMode
+                    ? 'Reset password'
+                    : 'Welcome back',
                 style: AppTextStyles.authHeading(t.textPrimary),
               ),
               const SizedBox(height: AppSpacing.xs),
@@ -136,11 +139,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ],
+
+              // Error message — uses AppErrors for friendly text
               if (auth.errorMessage != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 _ErrorBanner(
-                    message: _friendlyError(auth.errorMessage!)),
+                  message: _forgotPasswordMode
+                      ? AppErrors.resetPassword(auth.errorMessage!)
+                      : AppErrors.signIn(auth.errorMessage!),
+                ),
               ],
+
               const SizedBox(height: AppSpacing.lg),
               SizedBox(
                 width: double.infinity,
@@ -172,8 +181,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   TextButton(
-                    onPressed: () => setState(
-                            () => _forgotPasswordMode = !_forgotPasswordMode),
+                    onPressed: () {
+                      context.read<AuthProvider>().clearError();
+                      setState(() => _forgotPasswordMode =
+                      !_forgotPasswordMode);
+                    },
                     child: Text(
                       _forgotPasswordMode
                           ? 'Back to sign in'
@@ -197,6 +209,8 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+
+// ── Shared private widgets ─────────────────────────────────────
 
 class _Field extends StatelessWidget {
   final TextEditingController controller;
@@ -223,9 +237,10 @@ class _Field extends StatelessWidget {
         keyboardType: keyboardType,
         style: AppTextStyles.fieldText(t.textPrimary),
         decoration: InputDecoration(
-          labelText: label,
+          labelText:  label,
           labelStyle: AppTextStyles.fieldLabel(t.textTertiary),
-          suffixIcon: suffixIcon, border: InputBorder.none,
+          suffixIcon: suffixIcon,
+          border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md, vertical: AppSpacing.md,
           ),
@@ -269,6 +284,7 @@ class _LoadingIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const SizedBox(
     width: 18, height: 18,
-    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+    child: CircularProgressIndicator(
+        strokeWidth: 2, color: Colors.white),
   );
 }

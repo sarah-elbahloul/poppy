@@ -19,7 +19,7 @@ class AppIcons {
   static const IconData search     = Iconsax.search_normal_14;
   static const IconData settings   = Iconsax.setting_2;
   static const IconData more       = Iconsax.more;
-  static const IconData check      = Iconsax.tick_circle;
+  static const IconData check      = Icons.check;
   static const IconData checkCircle = Iconsax.tick_circle;
   static const IconData add        = Iconsax.add;
   static const IconData delete     = Iconsax.trash;
@@ -30,7 +30,7 @@ class AppIcons {
   static const IconData chevronUp    = Iconsax.arrow_up_1;
 
   // ── Writing ────────────────────────────────────────────
-  static const IconData write      = Iconsax.edit;
+  static const IconData write      = Iconsax.edit_2;
   static const IconData title      = Iconsax.text;
   static const IconData wordCount  = Iconsax.text_block;
   static const IconData tag        = Iconsax.tag;
@@ -60,7 +60,7 @@ class AppIcons {
 
   // ── Settings sections ──────────────────────────────────
   static const IconData appearance = Iconsax.colorfilter;
-  static const IconData security   = Iconsax.security_safe;
+  static const IconData security   = Iconsax.lock_1;
   static const IconData export_    = Iconsax.export;
   static const IconData import_    = Iconsax.import;
   static const IconData info       = Iconsax.info_circle;

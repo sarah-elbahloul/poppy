@@ -10,25 +10,28 @@ import 'package:poppy/models/entry.dart';
 
 class EntryCard extends StatelessWidget {
   final Entry entry;
-  final VoidCallback  onTap;
+  final VoidCallback onTap;
   final VoidCallback? onLongPress;
+  final bool isBatchMode;
+  final bool isSelected;
 
   const EntryCard({
     super.key,
     required this.entry,
     required this.onTap,
     this.onLongPress,
+    this.isBatchMode = false,
+    this.isSelected = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final t   = context.poppyTheme;
-    final now = DateTime.now();
+    final t = context.poppyTheme;
 
     return InkWell(
-      onTap:       onTap,
+      onTap: onTap,
       onLongPress: onLongPress,
-      splashColor:    t.accentLight,
+      splashColor: t.accentLight,
       highlightColor: t.accentLight.withOpacity(0.5),
       child: IntrinsicHeight(
         child: Row(
@@ -41,9 +44,9 @@ class EntryCard extends StatelessWidget {
             ),
             // Date column
             Container(
-              width: 48,
+              width: AppSpacing.xxl,
               padding: const EdgeInsets.symmetric(
-                vertical:   AppSpacing.md,
+                vertical: AppSpacing.md,
                 horizontal: AppSpacing.sm,
               ),
               child: Column(
@@ -62,20 +65,20 @@ class EntryCard extends StatelessWidget {
               ),
             ),
             VerticalDivider(
-              width:     AppStroke.hairline,
+              width: AppStroke.hairline,
               thickness: AppStroke.hairline,
-              color:     t.border,
+              color: t.border,
             ),
             // Title + preview
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
-                  vertical:   AppSpacing.md,
+                  vertical: AppSpacing.md,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment:  MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       entry.title.isEmpty ? 'Untitled' : entry.title,
@@ -101,18 +104,38 @@ class EntryCard extends StatelessWidget {
             // Word count + chevron
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.md),
-              child: Column(
-                mainAxisAlignment:  MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Icon(AppIcons.chevronRight,
-                      size: AppIconSize.xs, color: t.textTertiary),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${entry.wordCount}w',
-                    style: AppTextStyles.wordCount(t.textTertiary),
-                  ),
-                ],
+              child: Center(
+                child: isBatchMode
+                    ? AnimatedContainer(
+                        duration: AppDuration.fast,
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isSelected ? t.accent : Colors.transparent,
+                          border: Border.all(
+                            color: isSelected ? t.accent : t.border,
+                            width: AppStroke.thin,
+                          ),
+                        ),
+                        child: isSelected
+                            ? Icon(AppIcons.check,
+                                size: 12, color: AppColors.white)
+                            : null,
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Icon(AppIcons.chevronRight,
+                              size: AppIconSize.xs, color: t.textTertiary),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${entry.wordCount}w',
+                            style: AppTextStyles.wordCount(t.textTertiary),
+                          ),
+                        ],
+                      ),
               ),
             ),
           ],

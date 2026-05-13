@@ -18,11 +18,8 @@ class EntriesService {
   Future<Entry> create(Entry entry) async {
     final map = entry.toInsertMap();
     map[DBColumn.userId] = SupabaseConfig.userId;
-    final response = await _client
-        .from(DBTable.entries)
-        .insert(map)
-        .select()
-        .single();
+    final response =
+        await _client.from(DBTable.entries).insert(map).select().single();
     return Entry.fromMap(response as Map<String, dynamic>);
   }
 
@@ -32,9 +29,15 @@ class EntriesService {
         .update(entry.toUpdateMap())
         .eq(DBColumn.id, entry.id)
         .eq(DBColumn.userId, SupabaseConfig.userId)
-        .select()
-        .single();
-    return Entry.fromMap(response as Map<String, dynamic>);
+        .select();
+
+    if ((response as List).isEmpty) {
+      throw Exception(
+        'Update failed: entry not found or permission denied.',
+      );
+    }
+
+    return Entry.fromMap(response.first as Map<String, dynamic>);
   }
 
   Future<void> delete(String entryId) async {

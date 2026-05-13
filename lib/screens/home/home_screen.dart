@@ -23,6 +23,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final Set<String> _selectedIds = {};
+
   bool get _isBatchMode => _selectedIds.isNotEmpty;
 
   @override
@@ -61,19 +62,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void _cancelBatch() => setState(() => _selectedIds.clear());
 
   Future<void> _deleteBatch() async {
-    final t     = context.poppyTheme;
+    final t = context.poppyTheme;
     final count = _selectedIds.length;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(
-            'Delete $count ${count == 1 ? 'entry' : 'entries'}?'),
+        title: Text('Delete $count ${count == 1 ? 'entry' : 'entries'}?'),
         content: const Text('This cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel',
-                style: TextStyle(color: t.textSecondary)),
+            child: Text('Cancel', style: TextStyle(color: t.textSecondary)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -92,23 +91,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t       = context.poppyTheme;
+    final t = context.poppyTheme;
     final entries = context.watch<EntriesProvider>();
 
     return Scaffold(
       backgroundColor: t.background,
-      appBar: _isBatchMode
-          ? _buildBatchAppBar(t)
-          : _buildNormalAppBar(t),
+      appBar: _isBatchMode ? _buildBatchAppBar(t) : _buildNormalAppBar(t),
       body: _buildBody(context, t, entries),
       floatingActionButton: _isBatchMode
           ? null
           : FloatingActionButton(
-        onPressed: () =>
-            Navigator.of(context).pushNamed(AppRoutes.write),
-        tooltip: 'New entry',
-        child: Icon(AppIcons.write, size: AppIconSize.sm),
-      ),
+              onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
+              tooltip: 'New entry',
+              child: Icon(AppIcons.write, size: AppIconSize.sm),
+            ),
     );
   }
 
@@ -117,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: t.background,
       title: Row(
         children: [
-          PoppyLogo(size: 26, prominent: false),
+          const PoppyLogo(size: 26, prominent: false),
           const SizedBox(width: AppSpacing.sm),
           Text(kAppName, style: AppTextStyles.appBarTitle(t.textPrimary)),
         ],
@@ -126,15 +122,13 @@ class _HomeScreenState extends State<HomeScreen> {
         IconButton(
           icon: Icon(AppIcons.search,
               color: t.textSecondary, size: AppIconSize.sm),
-          onPressed: () =>
-              Navigator.of(context).pushNamed(AppRoutes.search),
+          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
           tooltip: 'Search',
         ),
         IconButton(
           icon: Icon(AppIcons.settings,
               color: t.textSecondary, size: AppIconSize.sm),
-          onPressed: () =>
-              Navigator.of(context).pushNamed(AppRoutes.settings),
+          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.settings),
           tooltip: 'Settings',
         ),
         const SizedBox(width: AppSpacing.xs),
@@ -146,8 +140,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return AppBar(
       backgroundColor: t.background,
       leading: IconButton(
-        icon: Icon(AppIcons.close,
-            color: t.textSecondary, size: AppIconSize.sm),
+        icon:
+            Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
         onPressed: _cancelBatch,
       ),
       title: Text('${_selectedIds.length} selected',
@@ -165,8 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Text('All', style: AppTextStyles.link(t.accent)),
         ),
         IconButton(
-          icon: Icon(AppIcons.delete,
-              color: t.accent, size: AppIconSize.sm),
+          icon: Icon(AppIcons.delete, color: t.accent, size: AppIconSize.sm),
           onPressed: _selectedIds.isEmpty ? null : _deleteBatch,
         ),
         const SizedBox(width: AppSpacing.xs),
@@ -174,8 +167,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBody(BuildContext context, PoppyThemeExtension t,
-      EntriesProvider entries) {
+  Widget _buildBody(
+      BuildContext context, PoppyThemeExtension t, EntriesProvider entries) {
     if (entries.isLoading) {
       return ListView.separated(
         itemCount: 8,
@@ -191,16 +184,14 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(AppIcons.offline,
-                size: AppIconSize.xl, color: t.textTertiary),
+            Icon(AppIcons.offline, size: AppIconSize.xl, color: t.textTertiary),
             const SizedBox(height: AppSpacing.md),
             Text('Could not load entries.',
                 style: AppTextStyles.emptySubtitle(t.textSecondary)),
             const SizedBox(height: AppSpacing.sm),
             TextButton(
               onPressed: () => entries.fetchEntries(),
-              child: Text('Try again',
-                  style: AppTextStyles.link(t.accent)),
+              child: Text('Try again', style: AppTextStyles.link(t.accent)),
             ),
           ],
         ),
@@ -214,8 +205,8 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.only(bottom: 100),
       itemCount: grouped.length,
       itemBuilder: (context, sectionIndex) {
-        final section      = grouped[sectionIndex];
-        final monthLabel   = section['month'] as String;
+        final section = grouped[sectionIndex];
+        final monthLabel = section['month'] as String;
         final sectionItems = section['entries'] as List<Entry>;
 
         return Column(
@@ -223,7 +214,8 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.only(
-                left: AppSpacing.lg, top: AppSpacing.lg,
+                left: AppSpacing.lg,
+                top: AppSpacing.lg,
                 bottom: AppSpacing.xs,
               ),
               child: Text(monthLabel,
@@ -232,10 +224,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               decoration: BoxDecoration(
                 border: Border(
-                  top:    BorderSide(
-                      color: t.border, width: AppStroke.hairline),
-                  bottom: BorderSide(
-                      color: t.border, width: AppStroke.hairline),
+                  top: BorderSide(color: t.border, width: AppStroke.hairline),
+                  bottom:
+                      BorderSide(color: t.border, width: AppStroke.hairline),
                 ),
               ),
               child: ListView.separated(
@@ -249,43 +240,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   indent: AppSpacing.lg + AppStroke.colorStrip,
                 ),
                 itemBuilder: (context, i) {
-                  final entry      = sectionItems[i];
+                  final entry = sectionItems[i];
                   final isSelected = _selectedIds.contains(entry.id);
 
                   return Stack(
                     children: [
                       if (isSelected)
-                        Positioned.fill(
-                            child: Container(color: t.accentLight)),
+                        Positioned.fill(child: Container(color: t.accentLight)),
                       EntryCard(
-                        entry:       entry,
-                        onTap:       () => _onEntryTap(entry),
+                        entry: entry,
+                        onTap: () => _onEntryTap(entry),
                         onLongPress: () => _onEntryLongPress(entry),
+                        isBatchMode: _isBatchMode,
+                        isSelected: isSelected,
                       ),
-                      if (_isBatchMode)
-                        Positioned(
-                          right: AppSpacing.md, top: 0, bottom: 0,
-                          child: Center(
-                            child: AnimatedContainer(
-                              duration: AppDuration.fast,
-                              width: 22, height: 22,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isSelected
-                                    ? t.accent
-                                    : Colors.transparent,
-                                border: Border.all(
-                                  color: isSelected ? t.accent : t.border,
-                                  width: AppStroke.thin,
-                                ),
-                              ),
-                              child: isSelected
-                                  ? Icon(AppIcons.check,
-                                  size: 12, color: AppColors.white)
-                                  : null,
-                            ),
-                          ),
-                        ),
                     ],
                   );
                 },
@@ -351,10 +319,11 @@ class _SkeletonCard extends StatelessWidget {
                   horizontal: AppSpacing.md, vertical: AppSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment:  MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    height: 12, width: 140,
+                    height: 12,
+                    width: 140,
                     decoration: BoxDecoration(
                       color: t.border,
                       borderRadius: BorderRadius.circular(AppRadius.xs),
@@ -362,7 +331,8 @@ class _SkeletonCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Container(
-                    height: 10, width: 90,
+                    height: 10,
+                    width: 90,
                     decoration: BoxDecoration(
                       color: t.border.withOpacity(0.6),
                       borderRadius: BorderRadius.circular(AppRadius.xs),

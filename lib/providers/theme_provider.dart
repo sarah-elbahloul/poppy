@@ -23,15 +23,18 @@ class ThemeProvider extends ChangeNotifier {
   Future<void> _loadSavedTheme() async {
     try {
       final saved = await _storage.read(key: StorageKeys.selectedTheme);
-      if (saved != null) {
-        final match = PoppyTheme.values.firstWhere(
-              (t) => t.name == saved,
-          orElse: () => PoppyTheme.poppy,
-        );
-        _currentTheme = match;
-        notifyListeners();
-      }
-    } catch (_) {}
+
+      // Always resolve to a valid theme
+      _currentTheme = PoppyTheme.values.firstWhere(
+            (t) => t.name == saved,
+        orElse: () => PoppyTheme.poppy,
+      );
+    } catch (_) {
+      _currentTheme = PoppyTheme.poppy;
+    }
+
+    // Always notify once after resolving
+    notifyListeners();
   }
 
   Future<void> setTheme(PoppyTheme theme) async {
