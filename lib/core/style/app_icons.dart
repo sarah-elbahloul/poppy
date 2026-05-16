@@ -24,7 +24,7 @@ class AppIcons {
   static const IconData add        = Iconsax.add;
   static const IconData delete     = Iconsax.trash;
   static const IconData edit       = Iconsax.edit_2;
-  static const IconData save       = Iconsax.tick_circle;
+  static const IconData save       = Icons.check_rounded;
   static const IconData chevronRight = Iconsax.arrow_right_3;
   static const IconData chevronDown  = Iconsax.arrow_down_1;
   static const IconData chevronUp    = Iconsax.arrow_up_1;

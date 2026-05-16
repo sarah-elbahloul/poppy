@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/app_routes.dart';
 import 'package:poppy/core/constants.dart';
+import 'package:poppy/core/error_messages.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:poppy/core/widgets/poppy_logo.dart';
 import 'package:poppy/providers/auth_provider.dart';
@@ -36,23 +37,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   String? _validate() {
-    final email    = _emailController.text.trim();
-    final password = _passwordController.text;
-    final confirm  = _confirmController.text;
-    if (email.isEmpty)                               return 'Please enter your email address.';
-    if (!email.contains('@') || !email.contains('.')) return 'Please enter a valid email address.';
-    if (password.isEmpty)                            return 'Please enter a password.';
-    if (password.length < 6)                         return 'Password must be at least 6 characters.';
-    if (confirm.isEmpty)                             return 'Please confirm your password.';
-    if (password != confirm)                         return 'Passwords do not match.';
-    return null;
+    final emailErr = AppErrors.validateEmail(_emailController.text);
+    if (emailErr != null) return emailErr;
+    final passwordErr = AppErrors.validatePassword(_passwordController.text);
+    if (passwordErr != null) return passwordErr;
+    final confirmErr = AppErrors.validateConfirm(
+      _passwordController.text, _confirmController.text,
+    );
+    return confirmErr;
   }
 
   Future<void> _onRegister() async {
     final err = _validate();
     if (err != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(err)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(err)));
       return;
     }
     final auth = context.read<AuthProvider>();
@@ -70,26 +69,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  String _friendlyError(String raw) {
-    final l = raw.toLowerCase();
-    if (l.contains('already registered') || l.contains('already exists')) {
-      return 'An account with this email already exists. Try signing in instead.';
-    }
-    if (l.contains('network') || l.contains('socket')) {
-      return 'No internet connection. Please try again.';
-    }
-    if (l.contains('database') || l.contains('transaction')) {
-      return 'Something went wrong on our end. Please try again.';
-    }
-    return 'Could not create your account. Please try again.';
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_awaitingConfirmation) {
       return _ConfirmationScreen(email: _submittedEmail);
     }
-
     final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
 
@@ -144,9 +128,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           () => _obscureConfirm = !_obscureConfirm),
                 ),
               ),
+              // Error already friendly from auth_provider via AppErrors
               if (auth.errorMessage != null) ...[
                 const SizedBox(height: AppSpacing.md),
-                _ErrorBanner(message: _friendlyError(auth.errorMessage!)),
+                _ErrorBanner(message: auth.errorMessage!),
               ],
               const SizedBox(height: AppSpacing.lg),
               SizedBox(
@@ -186,8 +171,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-// ── Confirmation screen ────────────────────────────────────────
-
 class _ConfirmationScreen extends StatelessWidget {
   final String email;
   const _ConfirmationScreen({required this.email});
@@ -209,8 +192,7 @@ class _ConfirmationScreen extends StatelessWidget {
                 width: AppComponentSize.confirmIconCircle,
                 height: AppComponentSize.confirmIconCircle,
                 decoration: BoxDecoration(
-                  color: t.accentLight, shape: BoxShape.circle,
-                ),
+                    color: t.accentLight, shape: BoxShape.circle),
                 child: Icon(AppIcons.emailUnread,
                     size: AppIconSize.xl, color: t.accent),
               ),
@@ -264,8 +246,6 @@ class _ConfirmationScreen extends StatelessWidget {
   }
 }
 
-// ── Private shared widgets ─────────────────────────────────────
-
 class _Field extends StatelessWidget {
   final TextEditingController controller;
   final String label;
@@ -293,7 +273,8 @@ class _Field extends StatelessWidget {
         decoration: InputDecoration(
           labelText:  label,
           labelStyle: AppTextStyles.fieldLabel(t.textTertiary),
-          suffixIcon: suffixIcon, border: InputBorder.none,
+          suffixIcon: suffixIcon,
+          border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md, vertical: AppSpacing.md,
           ),

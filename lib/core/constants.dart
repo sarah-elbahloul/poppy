@@ -17,51 +17,28 @@ enum EntryColor { poppy, iris, lily, marigold, lavender, stone }
 class EntryColorData {
   final EntryColor id;
   final String     name;
-  final dynamic    color; // Color — avoids importing flutter here
+  final dynamic    color;
   final String     dbValue;
-
   const EntryColorData({
-    required this.id,
-    required this.name,
-    required this.color,
-    required this.dbValue,
+    required this.id, required this.name,
+    required this.color, required this.dbValue,
   });
 }
 
 class EntryColors {
   EntryColors._();
-
-  static const poppy = EntryColorData(
-    id: EntryColor.poppy, name: 'Poppy',
-    color: AppColors.tagPoppy, dbValue: 'poppy',
-  );
-  static const iris = EntryColorData(
-    id: EntryColor.iris, name: 'Iris',
-    color: AppColors.tagIris, dbValue: 'iris',
-  );
-  static const lily = EntryColorData(
-    id: EntryColor.lily, name: 'Lily',
-    color: AppColors.tagLily, dbValue: 'lily',
-  );
-  static const marigold = EntryColorData(
-    id: EntryColor.marigold, name: 'Marigold',
-    color: AppColors.tagMarigold, dbValue: 'marigold',
-  );
-  static const lavender = EntryColorData(
-    id: EntryColor.lavender, name: 'Lavender',
-    color: AppColors.tagLavender, dbValue: 'lavender',
-  );
-  static const stone = EntryColorData(
-    id: EntryColor.stone, name: 'Stone',
-    color: AppColors.tagStone, dbValue: 'stone',
-  );
+  static const poppy    = EntryColorData(id: EntryColor.poppy,    name: 'Poppy',    color: AppColors.tagPoppy,    dbValue: 'poppy');
+  static const iris     = EntryColorData(id: EntryColor.iris,     name: 'Iris',     color: AppColors.tagIris,     dbValue: 'iris');
+  static const lily     = EntryColorData(id: EntryColor.lily,     name: 'Lily',     color: AppColors.tagLily,     dbValue: 'lily');
+  static const marigold = EntryColorData(id: EntryColor.marigold, name: 'Marigold', color: AppColors.tagMarigold, dbValue: 'marigold');
+  static const lavender = EntryColorData(id: EntryColor.lavender, name: 'Lavender', color: AppColors.tagLavender, dbValue: 'lavender');
+  static const stone    = EntryColorData(id: EntryColor.stone,    name: 'Stone',    color: AppColors.tagStone,    dbValue: 'stone');
 
   static const all          = [poppy, iris, lily, marigold, lavender, stone];
   static const defaultColor = stone;
 
-  static EntryColorData fromDbValue(String value) => all.firstWhere(
-        (c) => c.dbValue == value, orElse: () => stone,
-  );
+  static EntryColorData fromDbValue(String value) =>
+      all.firstWhere((c) => c.dbValue == value, orElse: () => stone);
   static EntryColorData fromId(EntryColor id) =>
       all.firstWhere((c) => c.id == id);
 }
@@ -97,6 +74,10 @@ class DBColumn {
   static const String updatedAt    = 'updated_at';
   static const String title        = 'title';
   static const String content      = 'content';
+  // Encrypted columns — AES-256-GCM ciphertext stored as JSONB
+  // Format: {"c":"<base64>","n":"<base64>","m":"<base64>"}
+  static const String titleEnc     = 'title_enc';
+  static const String contentEnc   = 'content_enc';
   static const String colorTag     = 'color_tag';
   static const String wordCount    = 'word_count';
   static const String entryDate    = 'entry_date';
@@ -122,7 +103,7 @@ class StorageBucket {
 
 class ExportConfig {
   ExportConfig._();
-  static const String jsonVersion  = '1.0';
-  static const String jsonFileName = 'poppy_export.json';   // legacy
-  static const String poppyFileName = 'poppy_export.poppy'; // new format
+  static const String jsonVersion   = '1.0';
+  static const String jsonFileName  = 'poppy_export.json';
+  static const String poppyFileName = 'poppy_export.poppy';
 }

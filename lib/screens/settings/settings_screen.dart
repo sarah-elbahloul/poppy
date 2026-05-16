@@ -35,7 +35,7 @@ class SettingsScreen extends StatelessWidget {
       ),
       body: ListView(
         children: [
-          // Account email
+          // Email
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.lg, AppSpacing.lg,
@@ -105,23 +105,23 @@ class SettingsScreen extends StatelessWidget {
           // Legal
           _Section(children: [
             _Row(
-              icon:     AppIcons.privacyPolicy,
-              label:    'Privacy Policy',
-              onTap:    () => Navigator.of(context)
+              icon:  AppIcons.info,
+              label: 'Privacy Policy',
+              onTap: () => Navigator.of(context)
                   .pushNamed(AppRoutes.legalPrivacy),
             ),
             _RowDivider(),
             _Row(
-              icon:     AppIcons.Tos,
-              label:    'Terms of Use',
-              onTap:    () => Navigator.of(context)
+              icon:  AppIcons.info,
+              label: 'Terms of Use',
+              onTap: () => Navigator.of(context)
                   .pushNamed(AppRoutes.legalTerms),
             ),
             _RowDivider(),
             _Row(
-              icon:     AppIcons.Osl,
-              label:    'Open Source Licenses',
-              onTap:    () => Navigator.of(context)
+              icon:  AppIcons.info,
+              label: 'Open Source Licenses',
+              onTap: () => Navigator.of(context)
                   .pushNamed(AppRoutes.legalOpensource),
             ),
           ]),
@@ -151,6 +151,8 @@ class SettingsScreen extends StatelessWidget {
   }
 
   // ── Export ────────────────────────────────────────────────
+  // Asks whether to export plain (readable) or encrypted
+  // (secure, requires same password to import).
 
   Future<void> _onExport(BuildContext context) async {
     final entries = context.read<EntriesProvider>().entries;
@@ -160,21 +162,56 @@ class SettingsScreen extends StatelessWidget {
       );
       return;
     }
+
+    final t      = context.poppyTheme;
+    final choice = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Export diary'),
+        content: const Text(
+          'How would you like to export your entries?',
+        ),
+        actions: [
+          // Plain — readable by anyone
+          TextButton.icon(
+            icon: Icon(AppIcons.export_, color: t.textSecondary,
+                size: AppIconSize.xs),
+            onPressed: () => Navigator.pop(context, false),
+            label: Text('Plain text',
+                style: TextStyle(color: t.textSecondary)),
+          ),
+          // Encrypted — requires password to import
+          FilledButton.icon(
+            icon: Icon(AppIcons.lock, color: AppColors.white,
+                size: AppIconSize.xs),
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: t.accent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+            ),
+            label: const Text('Encrypted'),
+          ),
+        ],
+      ),
+    );
+
+    if (choice == null) return; // dismissed
+
     try {
-      await ExportService().exportEntries(entries);
+      await ExportService().exportEntries(entries, encrypted: choice);
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Export failed. Please try again.')),
+          const SnackBar(
+              content: Text('Export failed. Please try again.')),
         );
       }
     }
   }
 
   // ── Import ────────────────────────────────────────────────
-  // After import, fetchEntries() is called to sync the
-  // in-memory list. Without this, edits to imported entries
-  // will silently fail because the provider holds stale data.
 
   Future<void> _onImport(BuildContext context) async {
     try {
@@ -182,13 +219,14 @@ class SettingsScreen extends StatelessWidget {
       if (!context.mounted) return;
 
       if (count > 0) {
+        // Refresh in-memory list after import
         await context.read<EntriesProvider>().fetchEntries();
-
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                '$count ${count == 1 ? 'entry' : 'entries'} imported successfully.',
+                '$count ${count == 1 ? 'entry' : 'entries'} '
+                    'imported successfully.',
               ),
             ),
           );
@@ -209,7 +247,9 @@ class SettingsScreen extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Import failed. Check the file format.')),
+              content: Text(
+                  'Import failed. Make sure you are using '
+                      'the correct account to decrypt this file.')),
         );
       }
     }
@@ -281,11 +321,8 @@ class _Row extends StatelessWidget {
   final bool isDestructive;
 
   const _Row({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.sublabel,
-    this.isDestructive = false,
+    required this.icon, required this.label, required this.onTap,
+    this.sublabel, this.isDestructive = false,
   });
 
   @override

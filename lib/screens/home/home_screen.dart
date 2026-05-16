@@ -25,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final Set<String> _selectedIds = {};
 
   bool get _isBatchMode => _selectedIds.isNotEmpty;
+  String? _selectedYear;
 
   @override
   void initState() {
@@ -103,17 +104,17 @@ class _HomeScreenState extends State<HomeScreen> {
           : FloatingActionButton(
               onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
               tooltip: 'New entry',
-              child: Icon(AppIcons.write, size: AppIconSize.sm),
+              child: const Icon(AppIcons.write, size: AppIconSize.sm),
             ),
     );
   }
 
   AppBar _buildNormalAppBar(PoppyThemeExtension t) {
     return AppBar(
-      backgroundColor: t.background,
+      backgroundColor: t.surface,
       title: Row(
         children: [
-          const PoppyLogo(size: 26, prominent: false),
+          const PoppyLogo(size: 30, prominent: false),
           const SizedBox(width: AppSpacing.sm),
           Text(kAppName, style: AppTextStyles.appBarTitle(t.textPrimary)),
         ],
@@ -168,26 +169,34 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBody(
-      BuildContext context, PoppyThemeExtension t, EntriesProvider entries) {
+      BuildContext context,
+      PoppyThemeExtension t,
+      EntriesProvider entries,
+      ) {
     if (entries.isLoading) {
       return ListView.separated(
         itemCount: 8,
         separatorBuilder: (_, __) => Divider(
-            height: AppStroke.hairline,
-            thickness: AppStroke.hairline,
-            color: t.border),
+          height: AppStroke.hairline,
+          thickness: AppStroke.hairline,
+          color: t.border,
+        ),
         itemBuilder: (_, __) => _SkeletonCard(),
       );
     }
+
     if (entries.status == EntriesStatus.error) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(AppIcons.offline, size: AppIconSize.xl, color: t.textTertiary),
+            Icon(AppIcons.offline,
+                size: AppIconSize.xl, color: t.textTertiary),
             const SizedBox(height: AppSpacing.md),
-            Text('Could not load entries.',
-                style: AppTextStyles.emptySubtitle(t.textSecondary)),
+            Text(
+              'Could not load entries.',
+              style: AppTextStyles.emptySubtitle(t.textSecondary),
+            ),
             const SizedBox(height: AppSpacing.sm),
             TextButton(
               onPressed: () => entries.fetchEntries(),
@@ -197,82 +206,119 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
+
     if (entries.entries.isEmpty) return _EmptyState();
 
-    final grouped = _groupByMonth(entries.entries);
+    final grouped = _groupByYear(entries.entries);
 
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 100),
-      itemCount: grouped.length,
-      itemBuilder: (context, sectionIndex) {
-        final section = grouped[sectionIndex];
-        final monthLabel = section['month'] as String;
-        final sectionItems = section['entries'] as List<Entry>;
+    List<Entry> visibleEntries;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(
-                left: AppSpacing.lg,
-                top: AppSpacing.lg,
-                bottom: AppSpacing.xs,
-              ),
-              child: Text(monthLabel,
-                  style: AppTextStyles.sectionLabel(t.textTertiary)),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: t.border, width: AppStroke.hairline),
-                  bottom:
-                      BorderSide(color: t.border, width: AppStroke.hairline),
-                ),
-              ),
-              child: ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: sectionItems.length,
-                separatorBuilder: (_, __) => Divider(
-                  height: AppStroke.hairline,
-                  thickness: AppStroke.hairline,
-                  color: t.border,
-                  indent: AppSpacing.lg + AppStroke.colorStrip,
-                ),
-                itemBuilder: (context, i) {
-                  final entry = sectionItems[i];
-                  final isSelected = _selectedIds.contains(entry.id);
+    if (_selectedYear == null) {
+      visibleEntries = entries.entries; // ALL entries
+    } else {
+      final selectedSection = grouped.firstWhere(
+            (section) => section['year'] == _selectedYear,
+      );
+      visibleEntries = selectedSection['entries'] as List<Entry>;
+    }
 
-                  return Stack(
-                    children: [
-                      if (isSelected)
-                        Positioned.fill(child: Container(color: t.accentLight)),
-                      EntryCard(
-                        entry: entry,
-                        onTap: () => _onEntryTap(entry),
-                        onLongPress: () => _onEntryLongPress(entry),
-                        isBatchMode: _isBatchMode,
-                        isSelected: isSelected,
-                      ),
-                    ],
-                  );
+    return Column(
+      children: [
+        // ─────────────────────────────────────────
+        // YEAR TABS (horizontal)
+        // ─────────────────────────────────────────
+        SizedBox(
+          height: AppSpacing.xxl,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            scrollDirection: Axis.horizontal,
+            itemCount: grouped.length,
+            itemBuilder: (context, index) {
+              final year = grouped[index]['year'] as String;
+              final isSelected = _selectedYear == year;
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (_selectedYear == year) {
+                      _selectedYear = null; // toggle OFF → ALL
+                    } else {
+                      _selectedYear = year; // filter
+                    }
+                  });
                 },
-              ),
+                child: Container(
+                  margin: const EdgeInsets.only(right: AppSpacing.sm),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.xs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected ? t.accentLight : t.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: t.border),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    year,
+                    style: AppTextStyles.sectionLabel(
+                      isSelected ? t.accent : t.textSecondary,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: AppSpacing.sm),
+
+        // ─────────────────────────────────────────
+        // ENTRIES LIST (filtered or all)
+        // ─────────────────────────────────────────
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.only(bottom: 100),
+            itemCount: visibleEntries.length,
+            separatorBuilder: (_, __) => Divider(
+              height: AppStroke.hairline,
+              thickness: AppStroke.hairline,
+              color: t.border,
+              indent: AppSpacing.lg + AppStroke.colorStrip,
             ),
-          ],
-        );
-      },
+            itemBuilder: (context, i) {
+              final entry = visibleEntries[i];
+              final isSelected = _selectedIds.contains(entry.id);
+
+              return Stack(
+                children: [
+                  if (isSelected)
+                    Positioned.fill(
+                      child: Container(color: t.accentLight),
+                    ),
+                  EntryCard(
+                    entry: entry,
+                    onTap: () => _onEntryTap(entry),
+                    onLongPress: () => _onEntryLongPress(entry),
+                    isBatchMode: _isBatchMode,
+                    isSelected: isSelected,
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
-
-  List<Map<String, dynamic>> _groupByMonth(List<Entry> entries) {
+  List<Map<String, dynamic>> _groupByYear(List<Entry> entries) {
     final Map<String, List<Entry>> map = {};
     for (final e in entries) {
-      final label = DateFormat('MMMM yyyy').format(e.entryDate);
+      final label = DateFormat('yyyy').format(e.entryDate);
       map.putIfAbsent(label, () => []).add(e);
     }
     return map.entries
-        .map((e) => {'month': e.key, 'entries': e.value})
+        .map((e) => {'year': e.key, 'entries': e.value})
         .toList();
   }
 }
@@ -285,7 +331,7 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          PoppyLogo(size: AppIconSize.logo, prominent: false),
+          const PoppyLogo(size: AppIconSize.logo, prominent: false),
           const SizedBox(height: AppSpacing.lg),
           Text('Your diary is empty.',
               style: AppTextStyles.emptyTitle(t.textPrimary)),

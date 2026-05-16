@@ -5,18 +5,37 @@ import 'package:poppy/core/style/style.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — PIN Pad Widget
 //  Location: lib/core/widgets/pin_pad.dart
+//
+//  A 4-digit PIN entry pad.
+//
+//  Two modes controlled by [autoSubmit]:
+//    autoSubmit = true  (default for lock screen)
+//      → onComplete fires automatically when 4 digits entered.
+//        Used on the lock screen where the user just wants
+//        to get in quickly.
+//    autoSubmit = false (used in security settings)
+//      → A confirm button appears after 4 digits are entered.
+//        The user must tap it to confirm. This prevents
+//        accidental PIN setting from a mistyped digit.
 // ─────────────────────────────────────────────────────────────
 
 class PinPad extends StatefulWidget {
   final ValueChanged<String> onComplete;
   final String label;
-  final bool hasError;
+  final bool   hasError;
+
+  /// When true, fires onComplete as soon as the 4th digit
+  /// is entered (lock screen behaviour).
+  /// When false, shows a confirm button the user must tap
+  /// (security settings behaviour).
+  final bool autoSubmit;
 
   const PinPad({
     super.key,
     required this.onComplete,
-    this.label    = 'Enter your PIN',
-    this.hasError = false,
+    this.label      = 'Enter your PIN',
+    this.hasError   = false,
+    this.autoSubmit = true,
   });
 
   @override
@@ -29,6 +48,8 @@ class _PinPadState extends State<PinPad>
   late AnimationController _shakeController;
   late Animation<double>   _shakeAnimation;
 
+  bool get _isComplete => _input.length == 4;
+
   @override
   void initState() {
     super.initState();
@@ -37,10 +58,7 @@ class _PinPadState extends State<PinPad>
       duration: AppDuration.shake,
     );
     _shakeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _shakeController,
-        curve:  AppCurve.spring,
-      ),
+      CurvedAnimation(parent: _shakeController, curve: AppCurve.spring),
     );
   }
 
@@ -59,12 +77,24 @@ class _PinPadState extends State<PinPad>
   void _onDigit(String digit) {
     if (_input.length >= 4) return;
     setState(() => _input += digit);
-    if (_input.length == 4) widget.onComplete(_input);
+
+    // Auto-submit mode: fire immediately on 4th digit
+    if (widget.autoSubmit && _input.length == 4) {
+      widget.onComplete(_input);
+    }
   }
 
   void _onDelete() {
     if (_input.isEmpty) return;
     setState(() => _input = _input.substring(0, _input.length - 1));
+  }
+
+  void _onConfirm() {
+    if (!_isComplete) return;
+    widget.onComplete(_input);
+    // Reset after confirm so the pad is ready for a fresh entry
+    // (e.g. confirmation step in set-PIN flow)
+    setState(() => _input = '');
   }
 
   @override
@@ -80,17 +110,17 @@ class _PinPadState extends State<PinPad>
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Label
         Text(widget.label, style: AppTextStyles.pinLabel(t.textSecondary)),
 
         const SizedBox(height: AppSpacing.lg),
 
-        // ── Dot indicators ────────────────────────────
+        // Dot indicators with shake animation
         AnimatedBuilder(
           animation: _shakeAnimation,
           builder: (_, child) => Transform.translate(
             offset: Offset(
-              math.sin(_shakeAnimation.value * math.pi * 6) * 8,
-              0,
+              math.sin(_shakeAnimation.value * math.pi * 6) * 8, 0,
             ),
             child: child,
           ),
@@ -102,7 +132,8 @@ class _PinPadState extends State<PinPad>
                 duration: AppDuration.fast,
                 width:  AppComponentSize.pinDot,
                 height: AppComponentSize.pinDot,
-                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                margin: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: filled ? t.accent : AppColors.transparent,
@@ -118,12 +149,12 @@ class _PinPadState extends State<PinPad>
 
         const SizedBox(height: AppSpacing.xl),
 
-        // ── Number grid ────────────────────────────────
+        // Number grid
         SizedBox(
           width: 240,
           child: GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap:     true,
+            crossAxisCount:  3,
+            shrinkWrap:      true,
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing:  AppSpacing.md,
             crossAxisSpacing: AppSpacing.md,
@@ -131,21 +162,48 @@ class _PinPadState extends State<PinPad>
               ...'123456789'.split('').map(
                     (d) => _DigitKey(digit: d, onTap: () => _onDigit(d)),
               ),
-              const SizedBox.shrink(),
+              const SizedBox.shrink(), // empty bottom-left
               _DigitKey(digit: '0', onTap: () => _onDigit('0')),
               _DeleteKey(onTap: _onDelete),
             ],
           ),
         ),
+
+        // Confirm button — only shown in manual mode when all 4 digits entered
+        if (!widget.autoSubmit) ...[
+          const SizedBox(height: AppSpacing.lg),
+          AnimatedOpacity(
+            duration: AppDuration.normal,
+            opacity: _isComplete ? 1.0 : 0.0,
+            child: SizedBox(
+              width: 240,
+              child: FilledButton(
+                onPressed: _isComplete ? _onConfirm : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: t.accent,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                  ),
+                ),
+                child: Text(
+                  'Confirm',
+                  style: AppTextStyles.settingsRowLabel(AppColors.white),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
+// ── Digit key ──────────────────────────────────────────────────
+
 class _DigitKey extends StatelessWidget {
   final String digit;
   final VoidCallback onTap;
-
   const _DigitKey({required this.digit, required this.onTap});
 
   @override
@@ -155,17 +213,20 @@ class _DigitKey extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: t.surface,
+          shape:  BoxShape.circle,
+          color:  t.surface,
           border: Border.all(color: t.border, width: AppStroke.hairline),
         ),
         child: Center(
-          child: Text(digit, style: AppTextStyles.pinDigit(t.textPrimary)),
+          child: Text(digit,
+              style: AppTextStyles.pinDigit(t.textPrimary)),
         ),
       ),
     );
   }
 }
+
+// ── Delete key ─────────────────────────────────────────────────
 
 class _DeleteKey extends StatelessWidget {
   final VoidCallback onTap;

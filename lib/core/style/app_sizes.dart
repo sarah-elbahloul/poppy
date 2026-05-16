@@ -26,7 +26,7 @@ class AppSpacing {
   static const double xl = 32.0;
 
   /// 48 dp — splash screen / lock screen vertical offsets
-  static const double xxl = 48.0;
+  static const double xxl = 50.0;
 }
 
 class AppRadius {
@@ -88,7 +88,7 @@ class AppIconSize {
   static const double xl  = 36.0;
 
   /// 52 dp — logo on auth screens
-  static const double logo = 52.0;
+  static const double logo = 70.0;
 
   /// 64 dp — large logo on lock / splash
   static const double logoLg = 64.0;

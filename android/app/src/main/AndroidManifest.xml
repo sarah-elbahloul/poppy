@@ -2,9 +2,6 @@
 <!-- ─────────────────────────────────────────────────────────
      POPPY — Android Manifest
      Location: android/app/src/main/AndroidManifest.xml
-
-     Replace the entire contents of the existing
-     AndroidManifest.xml with this file.
 ──────────────────────────────────────────────────────────── -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -32,10 +29,12 @@
     <uses-permission android:name="android.permission.VIBRATE"/>
 
     <application
-        android:label="Poppy"
+        android:label="Poppy Diary"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">
+
+        <meta-data android:name="flutterEmbedding" android:value="2" />
 
         <activity
             android:name=".MainActivity"

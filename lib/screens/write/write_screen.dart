@@ -12,6 +12,7 @@ import 'package:poppy/models/photo.dart';
 import 'package:poppy/providers/entries_provider.dart';
 import 'package:poppy/services/photos_service.dart';
 import 'package:provider/provider.dart';
+import 'dart:ui' as ui;
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Write Screen
@@ -103,11 +104,12 @@ class _WriteScreenState extends State<WriteScreen> {
     });
     try {
       final photos = await _photosService.fetchForEntry(entry.id);
-      if (mounted)
+      if (mounted) {
         setState(() {
           _savedPhotos = photos;
           _photosExpanded = photos.isNotEmpty;
         });
+      }
     } catch (_) {}
   }
 
@@ -116,8 +118,8 @@ class _WriteScreenState extends State<WriteScreen> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _entryDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(2100),
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: ColorScheme.light(primary: t.accent),
@@ -331,6 +333,7 @@ class _WriteScreenState extends State<WriteScreen> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
@@ -466,6 +469,7 @@ class _WriteScreenState extends State<WriteScreen> {
                 Expanded(
                   child: Container(
                     width: double.infinity,
+                    height: double.infinity,
                     decoration: BoxDecoration(
                       color: t.surface,
                       borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -514,21 +518,19 @@ class _WriteScreenState extends State<WriteScreen> {
                         // Writing area
                         Expanded(
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 0, AppSpacing.sm, 0),
+                            padding: const EdgeInsets.fromLTRB(AppSpacing.xs, 0, AppSpacing.xs, 0),
                             child: TextField(
                               controller: _contentController,
                               style: AppTextStyles.writeBody(t.textPrimary),
                               decoration: InputDecoration(
                                 hintText: 'Write anything…',
-                                hintStyle:
-                                    AppTextStyles.writeBody(t.textTertiary),
+                                hintStyle: AppTextStyles.writeBody(t.textTertiary),
                                 border: InputBorder.none,
                               ),
+                              keyboardType: TextInputType.multiline,
                               maxLines: null,
                               expands: true,
                               textAlignVertical: TextAlignVertical.top,
-                              keyboardType: TextInputType.multiline,
-                              textCapitalization: TextCapitalization.sentences,
                             ),
                           ),
                         ),
@@ -598,7 +600,7 @@ class _PhotoSection extends StatelessWidget {
                   top: BorderSide(color: t.border, width: AppStroke.hairline)),
             ),
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                horizontal: AppSpacing.md, vertical: AppSpacing.md),
             child: Row(
               children: [
                 Icon(AppIcons.photo, size: AppIconSize.xs, color: t.textTertiary),
@@ -626,8 +628,7 @@ class _PhotoSection extends StatelessWidget {
             height: 80,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md,0, AppSpacing.md, AppSpacing.md),
               children: [
                 ...savedPhotos.map((p) =>
                     _SavedThumb(photo: p, onDelete: () => onDeleteSaved(p))),

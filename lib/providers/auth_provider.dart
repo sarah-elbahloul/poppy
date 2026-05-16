@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:poppy/core/constants.dart';
+import 'package:poppy/core/error_messages.dart';
 import 'package:poppy/core/supabase_client.dart';
+import 'package:poppy/services/encryption_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -13,25 +15,24 @@ enum AuthStatus { unknown, authenticated, unauthenticated }
 
 class AuthProvider extends ChangeNotifier {
   final _storage = const FlutterSecureStorage();
+  final _enc     = EncryptionService.instance;
 
-  AuthStatus _status = AuthStatus.unknown;
-  User? _user;
-  bool _isLocked = false;
-  bool _pinEnabled = false;
-  String? _errorMessage;
-  bool _isLoading = false;
+  AuthStatus _status      = AuthStatus.unknown;
+  User?      _user;
+  bool       _isLocked    = false;
+  bool       _pinEnabled  = false;
+  String?    _errorMessage;
+  bool       _isLoading   = false;
 
-  AuthStatus get status    => _status;
-  User?      get user      => _user;
-  bool       get isLocked  => _isLocked;
-  bool       get pinEnabled => _pinEnabled;
-  String?    get errorMessage => _errorMessage;
-  bool       get isLoading => _isLoading;
+  AuthStatus get status        => _status;
+  User?      get user          => _user;
+  bool       get isLocked      => _isLocked;
+  bool       get pinEnabled    => _pinEnabled;
+  String?    get errorMessage  => _errorMessage;
+  bool       get isLoading     => _isLoading;
   bool       get isAuthenticated => _status == AuthStatus.authenticated;
 
-  AuthProvider() {
-    _init();
-  }
+  AuthProvider() { _init(); }
 
   Future<void> _init() async {
     final session = SupabaseConfig.client.auth.currentSession;
@@ -39,21 +40,22 @@ class AuthProvider extends ChangeNotifier {
       _user   = session.user;
       _status = AuthStatus.authenticated;
       await _checkPinLock();
+      await _enc.loadCachedKey();
     } else {
       _status = AuthStatus.unauthenticated;
     }
     notifyListeners();
 
     SupabaseConfig.authStateStream.listen((data) async {
-      final event = data.event;
       _user = data.session?.user;
-
-      if (event == AuthChangeEvent.signedIn) {
+      if (data.event == AuthChangeEvent.signedIn) {
         _status = AuthStatus.authenticated;
         await _checkPinLock();
-      } else if (event == AuthChangeEvent.signedOut) {
-        _status  = AuthStatus.unauthenticated;
+        await _enc.loadCachedKey();
+      } else if (data.event == AuthChangeEvent.signedOut) {
+        _status   = AuthStatus.unauthenticated;
         _isLocked = false;
+        await _enc.clearKey();
       }
       notifyListeners();
     });
@@ -65,63 +67,51 @@ class AuthProvider extends ChangeNotifier {
     if (_pinEnabled) _isLocked = true;
   }
 
-  void unlock() {
-    _isLocked = false;
-    notifyListeners();
-  }
+  void unlock() { _isLocked = false; notifyListeners(); }
 
   Future<void> setPinEnabled(bool enabled) async {
     _pinEnabled = enabled;
-    await _storage.write(
-      key: StorageKeys.pinEnabled,
-      value: enabled.toString(),
-    );
+    await _storage.write(key: StorageKeys.pinEnabled, value: enabled.toString());
     if (!enabled) await _storage.delete(key: StorageKeys.pinHash);
     notifyListeners();
   }
 
   Future<bool> signIn({required String email, required String password}) async {
-    _setLoading(true);
-    _clearError();
+    _setLoading(true); _clearError();
     try {
+      await _enc.initFromPassword(password);
       await SupabaseConfig.client.auth.signInWithPassword(
-        email: email.trim(),
-        password: password,
+        email: email.trim(), password: password,
       );
       return true;
     } on AuthException catch (e) {
-      _errorMessage = e.message;
-      notifyListeners();
-      return false;
-    } catch (_) {
-      _errorMessage = 'Something went wrong. Please try again.';
-      notifyListeners();
-      return false;
-    } finally {
-      _setLoading(false);
-    }
+      _errorMessage = AppErrors.signIn(e.message);
+      await _enc.clearKey();
+      notifyListeners(); return false;
+    } catch (e) {
+      _errorMessage = AppErrors.fromException(e);
+      await _enc.clearKey();
+      notifyListeners(); return false;
+    } finally { _setLoading(false); }
   }
 
   Future<bool> signUp({required String email, required String password}) async {
-    _setLoading(true);
-    _clearError();
+    _setLoading(true); _clearError();
     try {
+      await _enc.initFromPassword(password);
       await SupabaseConfig.client.auth.signUp(
-        email: email.trim(),
-        password: password,
+        email: email.trim(), password: password,
       );
       return true;
     } on AuthException catch (e) {
-      _errorMessage = e.message;
-      notifyListeners();
-      return false;
-    } catch (_) {
-      _errorMessage = 'Something went wrong. Please try again.';
-      notifyListeners();
-      return false;
-    } finally {
-      _setLoading(false);
-    }
+      _errorMessage = AppErrors.signUp(e.message);
+      await _enc.clearKey();
+      notifyListeners(); return false;
+    } catch (e) {
+      _errorMessage = AppErrors.fromException(e);
+      await _enc.clearKey();
+      notifyListeners(); return false;
+    } finally { _setLoading(false); }
   }
 
   Future<void> signOut() async {
@@ -129,63 +119,54 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> resetPassword(String email) async {
-    _setLoading(true);
-    _clearError();
+    _setLoading(true); _clearError();
     try {
       await SupabaseConfig.client.auth.resetPasswordForEmail(email.trim());
       return true;
     } on AuthException catch (e) {
-      _errorMessage = e.message;
-      notifyListeners();
-      return false;
-    } finally {
-      _setLoading(false);
-    }
+      _errorMessage = AppErrors.resetPassword(e.message);
+      notifyListeners(); return false;
+    } catch (e) {
+      _errorMessage = AppErrors.fromException(e);
+      notifyListeners(); return false;
+    } finally { _setLoading(false); }
   }
 
   Future<bool> updateEmail(String newEmail) async {
-    _setLoading(true);
-    _clearError();
+    _setLoading(true); _clearError();
     try {
       await SupabaseConfig.client.auth.updateUser(
         UserAttributes(email: newEmail.trim()),
       );
       return true;
     } on AuthException catch (e) {
-      _errorMessage = e.message;
-      notifyListeners();
-      return false;
-    } finally {
-      _setLoading(false);
-    }
+      _errorMessage = AppErrors.updateEmail(e.message);
+      notifyListeners(); return false;
+    } catch (e) {
+      _errorMessage = AppErrors.fromException(e);
+      notifyListeners(); return false;
+    } finally { _setLoading(false); }
   }
 
   Future<bool> updatePassword(String newPassword) async {
-    _setLoading(true);
-    _clearError();
+    _setLoading(true); _clearError();
     try {
       await SupabaseConfig.client.auth.updateUser(
         UserAttributes(password: newPassword),
       );
+      // Re-derive key from new password
+      await _enc.initFromPassword(newPassword);
       return true;
     } on AuthException catch (e) {
-      _errorMessage = e.message;
-      notifyListeners();
-      return false;
-    } finally {
-      _setLoading(false);
-    }
+      _errorMessage = AppErrors.updatePassword(e.message);
+      notifyListeners(); return false;
+    } catch (e) {
+      _errorMessage = AppErrors.fromException(e);
+      notifyListeners(); return false;
+    } finally { _setLoading(false); }
   }
 
-  void _setLoading(bool value) {
-    _isLoading = value;
-    notifyListeners();
-  }
-
+  void _setLoading(bool v) { _isLoading = v; notifyListeners(); }
   void _clearError() => _errorMessage = null;
-
-  void clearError() {
-    _clearError();
-    notifyListeners();
-  }
+  void clearError() { _clearError(); notifyListeners(); }
 }

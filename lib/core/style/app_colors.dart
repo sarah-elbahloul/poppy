@@ -91,3 +91,25 @@ class AppColors {
   static const logoCentre    = Color(0xFF2D1B0E);
   static const logoHighlight = Color(0xFFF2D100);
 }
+
+
+class MonthColors {
+  MonthColors._();
+
+  static const Map<int, Color> colors = {
+    1:  Color(0xFF90A4AE), // Jan — cool gray-blue (winter)
+    2:  Color(0xFFE57373), // Feb — soft rose (valentine)
+    3:  Color(0xFF81C784), // Mar — fresh green (spring)
+    4:  Color(0xFF64B5F6), // Apr — sky blue (rain)
+    5:  Color(0xFFFFD54F), // May — warm yellow (sun/bloom)
+    6:  Color(0xFFBA68C8), // Jun — soft purple (early summer)
+    7:  Color(0xFFFF8A65), // Jul — coral (heat)
+    8:  Color(0xFFFFB74D), // Aug — amber (late summer)
+    9:  Color(0xFFA1887F), // Sep — warm brown (autumn start)
+    10: Color(0xFFFF7043), // Oct — pumpkin orange
+    11: Color(0xFF7986CB), // Nov — muted indigo
+    12: Color(0xFF4DB6AC), // Dec — teal (cool festive)
+  };
+
+  static Color of(int month) => colors[month] ?? Colors.grey;
+}

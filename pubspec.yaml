@@ -34,6 +34,7 @@ dependencies:
 
   # ── Encryption (PIN hashing) ──────────────────────────────────
   crypto: ^3.0.3
+  cryptography: ^2.9.0
 
   # ── Date & text utilities ─────────────────────────────────────
   intl: ^0.19.0
@@ -44,6 +45,7 @@ dependencies:
   gap: ^3.0.1                  # clean spacing widget
   modal_bottom_sheet: ^3.0.0   # smooth bottom sheets
   shimmer: ^3.0.0              # loading skeleton effect
+
 
 dev_dependencies:
   flutter_test:

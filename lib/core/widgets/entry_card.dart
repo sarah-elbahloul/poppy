@@ -27,6 +27,7 @@ class EntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final monthColor = MonthColors.of(entry.entryDate.month);
 
     return InkWell(
       onTap: onTap,
@@ -49,18 +50,21 @@ class EntryCard extends StatelessWidget {
                 vertical: AppSpacing.md,
                 horizontal: AppSpacing.sm,
               ),
+              decoration: BoxDecoration(
+                color: monthColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     entry.entryDate.day.toString(),
-                    style: AppTextStyles.entryDayNumber(t.textPrimary),
+                    style: AppTextStyles.entryDayNumber(monthColor),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     DateFormat('MMM').format(entry.entryDate).toUpperCase(),
-                    style: AppTextStyles.entryMonthAbbr(t.textTertiary),
-                  ),
+                    style: AppTextStyles.entryMonthAbbr(monthColor),                  ),
                 ],
               ),
             ),
@@ -82,9 +86,7 @@ class EntryCard extends StatelessWidget {
                   children: [
                     Text(
                       entry.title.isEmpty ? 'Untitled' : entry.title,
-                      style: AppTextStyles.entryTitle(
-                        entry.title.isEmpty ? t.textTertiary : t.textPrimary,
-                      ),
+                      style: AppTextStyles.entryTitle(entry.title.isEmpty ? t.textTertiary : t.textPrimary,),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -101,7 +103,7 @@ class EntryCard extends StatelessWidget {
                 ),
               ),
             ),
-            // Word count + chevron
+            // Word count
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.md),
               child: Center(
@@ -119,23 +121,14 @@ class EntryCard extends StatelessWidget {
                           ),
                         ),
                         child: isSelected
-                            ? Icon(AppIcons.check,
+                            ? const Icon(AppIcons.check,
                                 size: 12, color: AppColors.white)
                             : null,
                       )
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Icon(AppIcons.chevronRight,
-                              size: AppIconSize.xs, color: t.textTertiary),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${entry.wordCount}w',
-                            style: AppTextStyles.wordCount(t.textTertiary),
-                          ),
-                        ],
-                      ),
+                    : Text(
+                      '${entry.wordCount}w',
+                      style: AppTextStyles.wordCount(t.textTertiary),
+                    ),
               ),
             ),
           ],

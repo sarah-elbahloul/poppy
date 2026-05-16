@@ -2,15 +2,14 @@
 --  POPPY — Migration 01: Tables
 --  File: supabase/migrations/01_tables.sql
 --
---  Run this first. Creates all tables with their columns,
---  constraints, and default values.
+--  Clean schema — only columns actually used by the app.
+--  No legacy columns, no unused indexes.
 --  Run order: 01 → 02 → 03 → 04
 -- ═══════════════════════════════════════════════════════════════
 
 
 -- ──────────────────────────────────────────────────────────────
---  Drop existing tables (reverse dependency order)
---  Safe to run on a fresh database — IF EXISTS prevents errors.
+--  Drop existing (safe on a fresh database)
 -- ──────────────────────────────────────────────────────────────
 
 drop table if exists public.photos   cascade;
@@ -21,7 +20,6 @@ drop table if exists public.profiles cascade;
 -- ──────────────────────────────────────────────────────────────
 --  profiles
 --  One row per user. Auto-created by trigger in 04_functions.sql
---  when a new user signs up via Supabase Auth.
 -- ──────────────────────────────────────────────────────────────
 
 create table public.profiles (
@@ -36,68 +34,52 @@ create table public.profiles (
 
 -- ──────────────────────────────────────────────────────────────
 --  entries
---  Core diary entries table.
 --
---  Columns:
---    id            — UUID primary key, auto-generated
---    user_id       — owner, foreign key to auth.users
---    title         — entry title, can be empty
---    content       — full diary text
---    color_tag     — one of: poppy, iris, lily, marigold,
---                    lavender, stone (default)
---    word_count    — cached word count, updated on save
---    entry_date    — the date the user assigned to the entry
---                    (may differ from created_at)
---    created_at    — when the DB row was first created
---    updated_at    — auto-updated by trigger in 04_functions.sql
---    search_vector — full-text index, auto-computed from
---                    title + content (never write to this)
+--  title_enc / content_enc:
+--    AES-256-GCM ciphertext stored as JSONB.
+--    Format: {"c":"<base64 ciphertext>",
+--             "n":"<base64 nonce>",
+--             "m":"<base64 mac>"}
+--    Encrypted on the client BEFORE upload.
+--    Supabase never sees plaintext title or content.
 --
---  Constraints:
---    entries_content_length — 60,000 chars ≈ 10,000 words
---    valid_color_tag        — only accepted tag values
+--  word_count:
+--    Computed from plaintext before encryption.
+--    Stored unencrypted so the home screen card can show
+--    it without decrypting the full entry.
+--
+--  entry_date:
+--    The date the user assigned to the entry.
+--    Stored unencrypted — needed for sorting the home list.
+--
+--  color_tag:
+--    Stored unencrypted — needed for filtering in search.
 -- ──────────────────────────────────────────────────────────────
 
 create table public.entries (
-  id             uuid        primary key default gen_random_uuid(),
-  user_id        uuid        not null
-                             references auth.users(id)
-                             on delete cascade,
-  title          text        not null default '',
-  content        text        not null default '',
-  color_tag      text        not null default 'stone',
-  word_count     integer     not null default 0,
-  entry_date     date        not null default current_date,
-  created_at     timestamptz not null default now(),
-  updated_at     timestamptz not null default now(),
+  id           uuid        primary key default gen_random_uuid(),
+  user_id      uuid        not null
+                           references auth.users(id)
+                           on delete cascade,
+  title_enc    jsonb       not null default '{}',
+  content_enc  jsonb       not null default '{}',
+  color_tag    text        not null default 'stone',
+  word_count   integer     not null default 0,
+  entry_date   date        not null default current_date,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now(),
 
-  search_vector  tsvector    generated always as (
-    to_tsvector('english',
-      coalesce(title,   '') || ' ' ||
-      coalesce(content, '')
-    )
-  ) stored,
-
-  constraint entries_content_length
-    check (char_length(content) <= 60000),
-
-  constraint valid_color_tag
-    check (color_tag in (
-      'poppy', 'iris', 'lily', 'marigold', 'lavender', 'stone'
-    ))
+  constraint valid_color_tag check (color_tag in (
+    'poppy', 'iris', 'lily', 'marigold', 'lavender', 'stone'
+  ))
 );
 
 
 -- ──────────────────────────────────────────────────────────────
 --  photos
---  Photos attached to entries. Actual image files are stored
---  in Supabase Storage (bucket: entry-photos). This table
---  only holds the storage path and display order.
---
---  Columns:
---    storage_path — path inside the entry-photos bucket,
---                   format: {user_id}/{entry_id}/{filename}
---    order_index  — 0-based display order in the photo strip
+--  Stores the Supabase Storage path and display order.
+--  Actual image files live in the entry-photos bucket.
+--  Path format: {user_id}/{entry_id}/{filename}
 -- ──────────────────────────────────────────────────────────────
 
 create table public.photos (

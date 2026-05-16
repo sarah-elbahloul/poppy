@@ -1,17 +1,28 @@
 import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/style/style.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Entry Model
+//  Location: lib/models/entry.dart
+//
+//  Encryption notes:
+//  - title and content are always the DECRYPTED values in memory
+//  - title_enc and content_enc are the raw JSONB strings from DB
+//  - The service layer handles encrypt/decrypt before storing
+//    and after fetching — this model is always clean plaintext
+// ─────────────────────────────────────────────────────────────
+
 class Entry {
-  final String id;
-  final String userId;
-  final String title;
-  final String content;
+  final String         id;
+  final String         userId;
+  final String         title;
+  final String         content;
   final EntryColorData colorTag;
-  final int wordCount;
-  final DateTime entryDate;   // ← user-chosen date, used for display & sorting
-  final DateTime createdAt;   // ← when the DB record was created, never changes
-  final DateTime updatedAt;
-  final List<String> photoUrls;
+  final int            wordCount;
+  final DateTime       entryDate;
+  final DateTime       createdAt;
+  final DateTime       updatedAt;
+  final List<String>   photoUrls;
 
   const Entry({
     required this.id,
@@ -26,15 +37,20 @@ class Entry {
     this.photoUrls = const [],
   });
 
+  // ── fromMap ───────────────────────────────────────────────
+  // Called AFTER the service layer has decrypted title_enc
+  // and content_enc into plain strings.
+  // The map passed here already has plain 'title' and 'content'.
+
   factory Entry.fromMap(Map<String, dynamic> map) {
     return Entry(
-      id:        map[DBColumn.id] as String,
-      userId:    map[DBColumn.userId] as String,
-      title:     map[DBColumn.title] as String? ?? '',
-      content:   map[DBColumn.content] as String? ?? '',
+      id:        map[DBColumn.id]        as String,
+      userId:    map[DBColumn.userId]    as String,
+      title:     map[DBColumn.title]     as String? ?? '',
+      content:   map[DBColumn.content]   as String? ?? '',
       colorTag:  EntryColors.fromDbValue(
           map[DBColumn.colorTag] as String? ?? 'stone'),
-      wordCount: map[DBColumn.wordCount] as int? ?? 0,
+      wordCount: map[DBColumn.wordCount] as int?    ?? 0,
       entryDate: DateTime.parse(
           map[DBColumn.entryDate] as String? ??
               map[DBColumn.createdAt] as String),
@@ -43,31 +59,33 @@ class Entry {
     );
   }
 
-  Map<String, dynamic> toInsertMap() {
-    return {
-      DBColumn.title:     title,
-      DBColumn.content:   content,
-      DBColumn.colorTag:  colorTag.dbValue,
-      DBColumn.wordCount: wordCount,
-      DBColumn.entryDate: entryDate.toIso8601String().substring(0, 10),
-    };
-  }
+  // ── toInsertMap / toUpdateMap ─────────────────────────────
+  // These return plain title and content.
+  // The service layer replaces them with encrypted versions
+  // before sending to Supabase.
 
-  Map<String, dynamic> toUpdateMap() {
-    return {
-      DBColumn.title:     title,
-      DBColumn.content:   content,
-      DBColumn.colorTag:  colorTag.dbValue,
-      DBColumn.wordCount: wordCount,
-      DBColumn.entryDate: entryDate.toIso8601String().substring(0, 10),
-      DBColumn.updatedAt: DateTime.now().toIso8601String(),
-    };
-  }
+  Map<String, dynamic> toInsertMap() => {
+    DBColumn.titleEnc:     title,
+    DBColumn.contentEnc:   content,
+    DBColumn.colorTag:  colorTag.dbValue,
+    DBColumn.wordCount: wordCount,
+    DBColumn.entryDate: entryDate.toIso8601String().substring(0, 10),
+  };
+
+  Map<String, dynamic> toUpdateMap() => {
+    DBColumn.titleEnc:     title,
+    DBColumn.contentEnc:   content,
+    DBColumn.colorTag:  colorTag.dbValue,
+    DBColumn.wordCount: wordCount,
+    DBColumn.entryDate: entryDate.toIso8601String().substring(0, 10),
+    DBColumn.updatedAt: DateTime.now().toIso8601String(),
+  };
+
+  // ── Utilities ──────────────────────────────────────────────
 
   String get contentPreview {
     final firstLine = content.split('\n').firstWhere(
-          (line) => line.trim().isNotEmpty,
-      orElse: () => '',
+          (l) => l.trim().isNotEmpty, orElse: () => '',
     );
     return firstLine.length > 120
         ? '${firstLine.substring(0, 120)}…'
@@ -79,63 +97,58 @@ class Entry {
     return text.trim().split(RegExp(r'\s+')).length;
   }
 
+  // ── copyWith ───────────────────────────────────────────────
+
   Entry copyWith({
-    String? id,
-    String? userId,
-    String? title,
-    String? content,
-    EntryColorData? colorTag,
-    int? wordCount,
-    DateTime? entryDate,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-    List<String>? photoUrls,
-  }) {
-    return Entry(
-      id:        id        ?? this.id,
-      userId:    userId    ?? this.userId,
-      title:     title     ?? this.title,
-      content:   content   ?? this.content,
-      colorTag:  colorTag  ?? this.colorTag,
-      wordCount: wordCount ?? this.wordCount,
-      entryDate: entryDate ?? this.entryDate,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      photoUrls: photoUrls ?? this.photoUrls,
-    );
-  }
+    String? id, String? userId, String? title, String? content,
+    EntryColorData? colorTag, int? wordCount, DateTime? entryDate,
+    DateTime? createdAt, DateTime? updatedAt, List<String>? photoUrls,
+  }) => Entry(
+    id:        id        ?? this.id,
+    userId:    userId    ?? this.userId,
+    title:     title     ?? this.title,
+    content:   content   ?? this.content,
+    colorTag:  colorTag  ?? this.colorTag,
+    wordCount: wordCount ?? this.wordCount,
+    entryDate: entryDate ?? this.entryDate,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    photoUrls: photoUrls ?? this.photoUrls,
+  );
 
-  Map<String, dynamic> toExportMap() {
-    return {
-      'id':         id,
-      'title':      title,
-      'content':    content,
-      'color_tag':  colorTag.dbValue,
-      'word_count': wordCount,
-      'entry_date': entryDate.toIso8601String().substring(0, 10),
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-      'photo_urls': photoUrls,
-    };
-  }
+  // ── Export / Import ────────────────────────────────────────
+  // Export always uses plain decrypted values — the export
+  // service encrypts the whole payload if the user chooses
+  // secure export mode.
 
-  factory Entry.fromExportMap(Map<String, dynamic> map, String userId) {
-    return Entry(
-      id:        map['id'] as String,
-      userId:    userId,
-      title:     map['title'] as String? ?? '',
-      content:   map['content'] as String? ?? '',
-      colorTag:  EntryColors.fromDbValue(
-          map['color_tag'] as String? ?? 'stone'),
-      wordCount: map['word_count'] as int? ?? 0,
-      entryDate: DateTime.parse(
-          map['entry_date'] as String? ??
-              map['created_at'] as String),
-      createdAt: DateTime.parse(map['created_at'] as String),
-      updatedAt: DateTime.parse(map['updated_at'] as String),
-      photoUrls: List<String>.from(map['photo_urls'] as List? ?? []),
-    );
-  }
+  Map<String, dynamic> toExportMap() => {
+    'id':         id,
+    'title':      title,
+    'content':    content,
+    'color_tag':  colorTag.dbValue,
+    'word_count': wordCount,
+    'entry_date': entryDate.toIso8601String().substring(0, 10),
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    'photo_urls': photoUrls,
+  };
+
+  factory Entry.fromExportMap(Map<String, dynamic> map, String userId) =>
+      Entry(
+        id:        map['id']        as String,
+        userId:    userId,
+        title:     map['title']     as String? ?? '',
+        content:   map['content']   as String? ?? '',
+        colorTag:  EntryColors.fromDbValue(
+            map['color_tag'] as String? ?? 'stone'),
+        wordCount: map['word_count'] as int?    ?? 0,
+        entryDate: DateTime.parse(
+            map['entry_date'] as String? ??
+                map['created_at'] as String),
+        createdAt: DateTime.parse(map['created_at'] as String),
+        updatedAt: DateTime.parse(map['updated_at'] as String),
+        photoUrls: List<String>.from(map['photo_urls'] as List? ?? []),
+      );
 
   @override
   bool operator ==(Object other) =>
