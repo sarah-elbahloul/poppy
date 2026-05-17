@@ -15,19 +15,20 @@ class AppIcons {
 
   // ── Navigation & actions ───────────────────────────────
   static const IconData back       = Iconsax.arrow_left_2;
-  static const IconData close      = Iconsax.close_circle;
+  static const IconData close      = Icons.close;
   static const IconData search     = Iconsax.search_normal_14;
   static const IconData settings   = Iconsax.setting_2;
-  static const IconData more       = Iconsax.more;
+  static const IconData selectAll   = Iconsax.task;
+  static const IconData more       = Iconsax.more_circle;
   static const IconData check      = Icons.check;
   static const IconData checkCircle = Iconsax.tick_circle;
   static const IconData add        = Iconsax.add;
   static const IconData delete     = Iconsax.trash;
   static const IconData edit       = Iconsax.edit_2;
-  static const IconData save       = Icons.check_rounded;
+  static const IconData save       = Iconsax.tick_circle;
   static const IconData chevronRight = Iconsax.arrow_right_3;
   static const IconData chevronDown  = Iconsax.arrow_down_1;
-  static const IconData chevronUp    = Iconsax.arrow_up_1;
+  static const IconData chevronUp    = Iconsax.arrow_up_2;
 
   // ── Writing ────────────────────────────────────────────
   static const IconData write      = Iconsax.edit_2;

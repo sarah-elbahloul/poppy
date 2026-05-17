@@ -26,7 +26,10 @@ class AppSpacing {
   static const double xl = 32.0;
 
   /// 48 dp — splash screen / lock screen vertical offsets
-  static const double xxl = 50.0;
+  static const double xxl = 48.0;
+
+  /// 64 dp —
+  static const double xxxl = 64.0;
 }
 
 class AppRadius {
@@ -98,7 +101,7 @@ class AppComponentSize {
   AppComponentSize._();
 
   /// Standard app bar height (Flutter default is 56)
-  static const double appBarHeight = 56.0;
+  static const double appBarHeight = 60.0;
 
   /// Height of a compact entry card row
   static const double entryCardHeight = 58.0;

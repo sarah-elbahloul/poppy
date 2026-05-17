@@ -104,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
           : FloatingActionButton(
               onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
               tooltip: 'New entry',
-              child: const Icon(AppIcons.write, size: AppIconSize.sm),
+              child: const Icon(AppIcons.add, size: AppIconSize.sm),
             ),
     );
   }
@@ -139,6 +139,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   AppBar _buildBatchAppBar(PoppyThemeExtension t) {
     return AppBar(
+      actionsPadding: const EdgeInsets.all(AppSpacing.sm),
+      toolbarHeight: AppSpacing.xxxl,
+      elevation: 0,
       backgroundColor: t.background,
       leading: IconButton(
         icon:
@@ -148,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
       title: Text('${_selectedIds.length} selected',
           style: AppTextStyles.appBarTitle(t.textPrimary)),
       actions: [
-        TextButton(
+        IconButton(
           onPressed: () {
             final provider = context.read<EntriesProvider>();
             setState(() {
@@ -157,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ..addAll(provider.entries.map((e) => e.id));
             });
           },
-          child: Text('All', style: AppTextStyles.link(t.accent)),
+          icon: Icon(AppIcons.selectAll, color: t.accent, size: AppIconSize.sm),
         ),
         IconButton(
           icon: Icon(AppIcons.delete, color: t.accent, size: AppIconSize.sm),

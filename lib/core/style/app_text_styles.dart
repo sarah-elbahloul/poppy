@@ -84,7 +84,7 @@ class AppTextStyles {
 
   static TextStyle writeTitle(Color color) =>
       GoogleFonts.kavoon(
-        fontSize: 18,
+        fontSize: 15,
         color: color, letterSpacing: -0.3,
       );
 
@@ -155,19 +155,6 @@ class AppTextStyles {
         fontSize: 20, fontWeight: FontWeight.w300, color: color,
       );
 
-  // ── Photo strip ────────────────────────────────────────
-
-  static TextStyle photoSectionLabel(Color color) =>
-      GoogleFonts.chilanka(
-        fontSize: 10, color: color, letterSpacing: 0.5,
-      );
-
-  // ── Color tag picker ───────────────────────────────────
-
-  static TextStyle colorTagLabel(Color color) =>
-      GoogleFonts.chilanka(
-        fontSize: 11, color: color, letterSpacing: 0.5,
-      );
 
   // ── Search ─────────────────────────────────────────────
 
