@@ -9,6 +9,8 @@ import 'package:poppy/models/entry.dart';
 import 'package:poppy/providers/entries_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/widgets/color_dot.dart';
+
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Home Screen
 //  Location: lib/screens/home/home_screen.dart
@@ -24,8 +26,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final Set<String> _selectedIds = {};
 
-  bool get _isBatchMode => _selectedIds.isNotEmpty;
+  final TextEditingController _searchController = TextEditingController();
+
   String? _selectedYear;
+  EntryColorData? _selectedColor;
+
+  bool get _isBatchMode => _selectedIds.isNotEmpty;
+  bool _searching = false;
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -34,6 +42,60 @@ class _HomeScreenState extends State<HomeScreen> {
       context.read<EntriesProvider>().fetchEntries();
     });
   }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+  // ─────────────────────────────────────────────
+  // UNIFIED FILTER LOGIC
+  // ─────────────────────────────────────────────
+
+  void _applyAllFilters() {
+    final provider = context.read<EntriesProvider>();
+
+    DateTime? fromDate;
+    DateTime? toDate;
+
+    if (_selectedYear != null) {
+      final year = int.parse(_selectedYear!);
+      fromDate = DateTime(year);
+      toDate = DateTime(year + 1);
+    }
+
+    provider.setFilters(
+      query: _searchController.text.isNotEmpty ? _searchController.text : null,
+      fromDate: fromDate,
+      toDate: toDate,
+      colorTag: _selectedColor?.dbValue,
+    );
+  }
+
+  void _startSearch() {
+    setState(() => _searching = true);
+
+    Future.delayed(Duration(milliseconds: 50), () {
+      _searchFocusNode.requestFocus();
+    });
+  }
+
+  void _exitSearch() {
+    setState(() {
+      _searching = false;
+      _searchController.clear();
+    });
+
+    _searchFocusNode.unfocus();
+
+    _applyAllFilters(); // clears query but keeps year/color filters
+  }
+
+  // ─────────────────────────────────────────────
+  // ENTRY ACTIONS
+  // ─────────────────────────────────────────────
 
   void _onEntryTap(Entry entry) {
     if (_isBatchMode) {
@@ -65,6 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _deleteBatch() async {
     final t = context.poppyTheme;
     final count = _selectedIds.length;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -82,70 +145,135 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+
     if (confirmed != true) return;
+
     final provider = context.read<EntriesProvider>();
+
     for (final id in _selectedIds.toList()) {
       await provider.deleteEntry(id);
     }
+
     setState(() => _selectedIds.clear());
   }
+
+  // ─────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────
+
+  List<String> _extractYears(List<Entry> entries) {
+    final years = entries
+        .map((e) => DateFormat('yyyy').format(e.entryDate))
+        .toSet()
+        .toList();
+
+    years.sort((a, b) => b.compareTo(a));
+    return years;
+  }
+
+  // ─────────────────────────────────────────────
+  // UI
+  // ─────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
-    final entries = context.watch<EntriesProvider>();
+    final provider = context.watch<EntriesProvider>();
+    final entries = provider.filteredEntries;
 
     return Scaffold(
       backgroundColor: t.background,
-      appBar: _isBatchMode ? _buildBatchAppBar(t) : _buildNormalAppBar(t),
-      body: _buildBody(context, t, entries),
+      appBar: _isBatchMode ? _batchAppBar(t) : _normalAppBar(t, provider),
+      body: _body(context, t, provider, entries),
       floatingActionButton: _isBatchMode
           ? null
           : FloatingActionButton(
-              onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
-              tooltip: 'New entry',
-              child: const Icon(AppIcons.add, size: AppIconSize.sm),
-            ),
-    );
-  }
-
-  AppBar _buildNormalAppBar(PoppyThemeExtension t) {
-    return AppBar(
-      backgroundColor: t.surface,
-      title: Row(
-        children: [
-          const PoppyLogo(size: 30, prominent: false),
-          const SizedBox(width: AppSpacing.sm),
-          Text(kAppName, style: AppTextStyles.appBarTitle(t.textPrimary)),
-        ],
+        onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
+        tooltip: 'New entry',
+        child: const Icon(AppIcons.add, size: AppIconSize.sm),
       ),
-      actions: [
-        IconButton(
-          icon: Icon(AppIcons.search,
-              color: t.textSecondary, size: AppIconSize.sm),
-          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.search),
-          tooltip: 'Search',
-        ),
-        IconButton(
-          icon: Icon(AppIcons.settings,
-              color: t.textSecondary, size: AppIconSize.sm),
-          onPressed: () => Navigator.of(context).pushNamed(AppRoutes.settings),
-          tooltip: 'Settings',
-        ),
-        const SizedBox(width: AppSpacing.xs),
-      ],
     );
   }
 
-  AppBar _buildBatchAppBar(PoppyThemeExtension t) {
+  AppBar _normalAppBar(PoppyThemeExtension t, EntriesProvider provider) {
+    return AppBar(
+        actionsPadding: const EdgeInsets.all(AppSpacing.sm),
+        toolbarHeight: AppComponentSize.appBarHeight,
+        elevation: 0,
+        titleSpacing: 0,
+        backgroundColor: t.background,
+        title: Text(kAppName, style: AppTextStyles.appBarTitle(t.textPrimary)),
+        leading: const PoppyLogo(prominent: false),
+        actions: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: _searching
+                ? SizedBox(
+              key: const ValueKey('searchField'),
+              width: AppComponentSize.searchFieldWidth,
+              height: AppComponentSize.filterBarHeight,
+              child: TextField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                autofocus: true,
+                style: AppTextStyles.fieldText(t.textPrimary),
+                onChanged: (_) => _applyAllFilters(),
+                decoration: InputDecoration(
+                  fillColor: t.surface,
+                  filled: true,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      borderSide: BorderSide(
+                        color: _selectedColor != null
+                            ? (_selectedColor!.color as Color)
+                            : t.border,
+                        width: AppStroke.medium,
+                      )
+                  ),
+                  hintText: 'Search entries...',
+                  hintStyle: AppTextStyles.meta(t.textTertiary),
+                  suffixIcon: GestureDetector(
+                    onTap: _exitSearch,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: AppSpacing.xs),
+                      child: Icon(
+                        AppIcons.close,
+                        size: AppIconSize.xs,
+                        color: t.textSecondary,
+                      ),
+                    ),
+                  )
+                  ,
+                ),
+              ),
+            )
+                : IconButton(
+              key: const ValueKey('searchIcon'),
+              icon: Icon(AppIcons.search,
+                  color: t.textSecondary, size: AppIconSize.sm),
+              onPressed: _startSearch,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          IconButton(
+            icon: Icon(AppIcons.sandwich,
+                color: t.textSecondary, size: AppIconSize.sm),
+            onPressed: () =>
+                Navigator.of(context).pushNamed(AppRoutes.settings),
+          ),
+        ]);
+  }
+
+  AppBar _batchAppBar(PoppyThemeExtension t) {
     return AppBar(
       actionsPadding: const EdgeInsets.all(AppSpacing.sm),
-      toolbarHeight: AppSpacing.xxxl,
+      toolbarHeight: AppComponentSize.appBarHeight,
       elevation: 0,
+      titleSpacing: 0,
       backgroundColor: t.background,
       leading: IconButton(
         icon:
-            Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
+        Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
         onPressed: _cancelBatch,
       ),
       title: Text('${_selectedIds.length} selected',
@@ -171,30 +299,54 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBody(
+  Widget _body(
       BuildContext context,
       PoppyThemeExtension t,
-      EntriesProvider entries,
+      EntriesProvider provider,
+      List<Entry> entries,
       ) {
-    if (entries.isLoading) {
-      return ListView.separated(
-        itemCount: 8,
-        separatorBuilder: (_, __) => Divider(
-          height: AppStroke.hairline,
-          thickness: AppStroke.hairline,
-          color: t.border,
-        ),
-        itemBuilder: (_, __) => _SkeletonCard(),
+    if (provider.isLoading) {
+      return Column(
+        children: [
+          // ─────────────────────────────────────────
+          // FILTER TABS SKELETON
+          // ─────────────────────────────────────────
+          const _FiltersSkeleton(),
+
+          const SizedBox(height: AppSpacing.sm),
+
+          // ─────────────────────────────────────────
+          // ENTRIES LIST SKELETON
+          // ─────────────────────────────────────────
+
+          Divider(
+            height: AppStroke.hairline,
+            thickness: AppStroke.hairline,
+            color: t.border,
+            indent: AppSpacing.lg + AppStroke.colorStrip,
+          ),
+
+          Expanded(
+            child: ListView.separated(
+              itemCount: 8,
+              separatorBuilder: (_, __) => Divider(
+                height: AppStroke.hairline,
+                thickness: AppStroke.hairline,
+                color: t.border,
+                indent: AppSpacing.lg + AppStroke.colorStrip,
+              ),
+              itemBuilder: (_, __) => _SkeletonCard(),
+            ),
+          ),
+        ],
       );
     }
-
-    if (entries.status == EntriesStatus.error) {
+    if (provider.status == EntriesStatus.error) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(AppIcons.offline,
-                size: AppIconSize.xl, color: t.textTertiary),
+            Icon(AppIcons.offline, size: AppIconSize.xl, color: t.textTertiary),
             const SizedBox(height: AppSpacing.md),
             Text(
               'Could not load entries.',
@@ -202,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
             TextButton(
-              onPressed: () => entries.fetchEntries(),
+              onPressed: () => provider.fetchEntries(),
               child: Text('Try again', style: AppTextStyles.link(t.accent)),
             ),
           ],
@@ -210,68 +362,197 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    if (entries.entries.isEmpty) return _EmptyState();
+    if (provider.entries.isEmpty) return _EmptyState();
 
-    final grouped = _groupByYear(entries.entries);
-
-    List<Entry> visibleEntries;
-
-    if (_selectedYear == null) {
-      visibleEntries = entries.entries; // ALL entries
-    } else {
-      final selectedSection = grouped.firstWhere(
-            (section) => section['year'] == _selectedYear,
-      );
-      visibleEntries = selectedSection['entries'] as List<Entry>;
-    }
+    final years = _extractYears(provider.entries);
 
     return Column(
       children: [
-        // ─────────────────────────────────────────
-        // YEAR TABS (horizontal)
-        // ─────────────────────────────────────────
-        SizedBox(
-          height: AppSpacing.xxl,
-          child: ListView.builder(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            scrollDirection: Axis.horizontal,
-            itemCount: grouped.length,
-            itemBuilder: (context, index) {
-              final year = grouped[index]['year'] as String;
-              final isSelected = _selectedYear == year;
-
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    if (_selectedYear == year) {
-                      _selectedYear = null; // toggle OFF → ALL
-                    } else {
-                      _selectedYear = year; // filter
-                    }
-                  });
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(right: AppSpacing.sm),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected ? t.accentLight : t.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: t.border),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    year,
-                    style: AppTextStyles.sectionLabel(
-                      isSelected ? t.accent : t.textSecondary,
-                    ),
+        Row(
+          children: [
+            Flexible(
+              child: Container(
+                height: AppComponentSize.filterBarHeight,
+                margin: const EdgeInsets.only(
+                    left: AppSpacing.md, right: AppSpacing.sm),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: t.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(
+                    color: _selectedYear != null ? t.accent : t.border,
+                    width: AppStroke.medium,
                   ),
                 ),
-              );
-            },
-          ),
+                child: Row(
+                  children: [
+                    Icon(
+                      AppIcons.calendar,
+                      size: AppIconSize.sm,
+                      color: _selectedYear != null ? t.accent : t.textSecondary,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+
+                    /// Expanded dropdown
+                    Expanded(
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _selectedYear,
+                          hint: Text(
+                            '${years.last} - ${years.first}',
+                            style: AppTextStyles.sectionLabel(t.textSecondary),
+                          ),
+                          icon: Icon(
+                            AppIcons.chevronDown,
+                            size: AppIconSize.sm,
+                            color: t.textSecondary,
+                          ),
+                          dropdownColor: t.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          style: AppTextStyles.sectionLabel(
+                            _selectedYear != null
+                                ? t.textPrimary
+                                : t.textSecondary,
+                          ),
+                          items: years
+                              .map((y) =>
+                              DropdownMenuItem(value: y, child: Text(y)))
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() => _selectedYear = value);
+                            _applyAllFilters();
+                          },
+                        ),
+                      ),
+                    ),
+
+                    /// Clear button (nice UX touch)
+                    if (_selectedYear != null)
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => _selectedYear = null);
+                          _applyAllFilters();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: AppSpacing.sm),
+                          child: Icon(
+                            AppIcons.close,
+                            size: AppIconSize.xs,
+                            color: t.textSecondary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Flexible(
+              child: Container(
+                height: AppComponentSize.filterBarHeight,
+                margin: const EdgeInsets.only(right: AppSpacing.md),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: t.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  border: Border.all(
+                    color: _selectedColor != null
+                        ? (_selectedColor!.color as Color)
+                        : t.border,
+                    width: AppStroke.medium,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      AppIcons.color,
+                      size: AppIconSize.sm,
+                      color: _selectedColor != null
+                          ? (_selectedColor!.color as Color)
+                          : t.textSecondary,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+
+                    /// Scrollable color chips INSIDE container
+                    Expanded(
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: EntryColors.all.map((colorData) {
+                          final isSelected = _selectedColor?.id == colorData.id;
+
+                          return GestureDetector(
+                            onTap: () {
+                              final newColor = isSelected ? null : colorData;
+
+                              setState(() => _selectedColor = newColor);
+                              _applyAllFilters();
+                            },
+                            child: AnimatedContainer(
+                              duration: AppDuration.fast,
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.xs, vertical: 6),
+                              padding:
+                              const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? (colorData.color as Color)
+                                    .withOpacity(0.12)
+                                    : Colors.transparent,
+                                borderRadius:
+                                BorderRadius.circular(AppRadius.full),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? colorData.color as Color
+                                      : Colors.transparent,
+                                  width: AppStroke.thin,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  ColorDot(
+                                    colorData: colorData,
+                                    size: AppComponentSize.colorDotChip,
+                                    isSelected: false,
+                                  ),
+                                  if (isSelected) ...[
+                                    const SizedBox(width: AppSpacing.xs),
+                                    Text(
+                                      colorData.name,
+                                      style: AppTextStyles.searchFilterChip(
+                                        colorData.color as Color,
+                                        selected: true,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+
+                    /// Clear button
+                    if (_selectedColor != null)
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => _selectedColor = null);
+                          _applyAllFilters();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: AppSpacing.xs),
+                          child: Icon(
+                            AppIcons.close,
+                            size: AppIconSize.xs,
+                            color: t.textSecondary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
 
         const SizedBox(height: AppSpacing.sm),
@@ -282,7 +563,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.only(bottom: 100),
-            itemCount: visibleEntries.length,
+            itemCount: entries.length,
             separatorBuilder: (_, __) => Divider(
               height: AppStroke.hairline,
               thickness: AppStroke.hairline,
@@ -290,7 +571,7 @@ class _HomeScreenState extends State<HomeScreen> {
               indent: AppSpacing.lg + AppStroke.colorStrip,
             ),
             itemBuilder: (context, i) {
-              final entry = visibleEntries[i];
+              final entry = entries[i];
               final isSelected = _selectedIds.contains(entry.id);
 
               return Stack(
@@ -313,16 +594,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
-  }
-  List<Map<String, dynamic>> _groupByYear(List<Entry> entries) {
-    final Map<String, List<Entry>> map = {};
-    for (final e in entries) {
-      final label = DateFormat('yyyy').format(e.entryDate);
-      map.putIfAbsent(label, () => []).add(e);
-    }
-    return map.entries
-        .map((e) => {'year': e.key, 'entries': e.value})
-        .toList();
   }
 }
 
@@ -356,7 +627,7 @@ class _SkeletonCard extends StatelessWidget {
       child: Row(
         children: [
           Container(width: AppStroke.colorStrip, color: t.border),
-          Container(width: 48, color: t.surface),
+          Container(width: AppComponentSize.entryDateColWidth, color: t.surface),
           VerticalDivider(
               width: AppStroke.hairline,
               thickness: AppStroke.hairline,
@@ -385,6 +656,121 @@ class _SkeletonCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: t.border.withOpacity(0.6),
                       borderRadius: BorderRadius.circular(AppRadius.xs),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FiltersSkeleton extends StatelessWidget {
+  const _FiltersSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.poppyTheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: Row(
+        children: [
+          // ─────────────────────────────
+          // YEAR DROPDOWN SKELETON
+          // ─────────────────────────────
+          Expanded(
+            child: Container(
+              height: AppComponentSize.filterBarHeight,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              decoration: BoxDecoration(
+                color: t.surface,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: t.border),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: t.border,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+
+                  // fake dropdown text
+                  Container(
+                    height: 10,
+                    width: 80,
+                    decoration: BoxDecoration(
+                      color: t.border,
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: t.border,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(width: AppSpacing.sm),
+
+          // ─────────────────────────────
+          // COLOR FILTER SKELETON
+          // ─────────────────────────────
+          Expanded(
+            child: Container(
+              height: AppComponentSize.filterBarHeight,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: t.surface,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: t.border),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: t.border,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+
+                  // fake chips row
+                  Expanded(
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: 4,
+                      separatorBuilder: (_, __) =>
+                      const SizedBox(width: AppSpacing.xs),
+                      itemBuilder: (_, __) {
+                        return Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: t.border,
+                            shape: BoxShape.circle,
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],

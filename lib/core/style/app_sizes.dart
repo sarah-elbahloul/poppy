@@ -103,14 +103,26 @@ class AppComponentSize {
   /// Standard app bar height (Flutter default is 56)
   static const double appBarHeight = 60.0;
 
+  /// Standard input height (TextFields, Date pickers)
+  static const double inputHeight = 44.0;
+
+  /// Compact filter bar / search input height
+  static const double filterBarHeight = 40.0;
+
+  /// Search field width in app bar
+  static const double searchFieldWidth = 220.0;
+
   /// Height of a compact entry card row
   static const double entryCardHeight = 58.0;
 
+  /// Width of the date column on entry cards
+  static const double entryDateColWidth = 48.0;
+
   /// Height of the photo strip section
-  static const double photoStripHeight = 100.0;
+  static const double photoStripHeight = 96.0;
 
   /// Photo thumbnail size inside the strip
-  static const double photoThumbSize = 64.0;
+  static const double photoThumbSize = 80.0;
 
   /// Color dot — default size
   static const double colorDot = 20.0;

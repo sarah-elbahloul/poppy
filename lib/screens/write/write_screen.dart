@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:poppy/core/app_routes.dart';
@@ -14,7 +15,6 @@ import 'package:poppy/models/photo.dart';
 import 'package:poppy/providers/entries_provider.dart';
 import 'package:poppy/services/photos_service.dart';
 import 'package:provider/provider.dart';
-import 'dart:ui' as ui;
 
 // ─────────────────────────────────────────────────────────────
 // POPPY — Write Screen
@@ -23,18 +23,10 @@ import 'dart:ui' as ui;
 
 const int kWordLimit = 10000;
 
-class _PendingPhoto {
-  final XFile xFile;
-  final Uint8List? bytes;
-
-  const _PendingPhoto({required this.xFile, this.bytes});
-}
-
 class WriteScreen extends StatefulWidget {
   final String? entryId;
-  final bool saveOnPop; // true = save only when popping, false = auto-save
 
-  const WriteScreen({super.key, this.entryId, this.saveOnPop = false});
+  const WriteScreen({super.key, this.entryId});
 
   @override
   State<WriteScreen> createState() => _WriteScreenState();
@@ -56,37 +48,35 @@ class _WriteScreenState extends State<WriteScreen> {
 
   Timer? _debounce;
   bool _isSaving = false;
-  bool _hasUnsavedChanges = false;
 
-  String _lastSavedTitle = '';
-  String _lastSavedContent = '';
-  DateTime? _lastSavedDate;
-  EntryColorData? _lastSavedColor;
-  int _lastSavedPhotoCount = 0;
+  DateTime? _lastLimitSnackbarTime;
 
   bool get _isEditing => _existingEntry != null;
+
   int get _totalPhotos => _savedPhotos.length + _pendingPhotos.length;
+
   int get _liveWordCount => Entry.countWords(_contentController.text);
-  bool get _isOverLimit => _liveWordCount > kWordLimit;
 
   bool get _hasChanges {
-    final title = _titleController.text.trim();
-    final content = _contentController.text.trim();
-    return title != _lastSavedTitle ||
-        content != _lastSavedContent ||
-        _entryDate != _lastSavedDate ||
-        _selectedColor != _lastSavedColor ||
+    // Safely handle new entries where _existingEntry is null
+    if (_existingEntry == null) {
+      return _titleController.text.trim().isNotEmpty ||
+          _contentController.text.trim().isNotEmpty ||
+          _pendingPhotos.isNotEmpty;
+    }
+
+    // Compare against existing entry data
+    return _titleController.text.trim() != _existingEntry!.title ||
+        _contentController.text.trim() != _existingEntry!.content ||
+        _entryDate != _existingEntry!.entryDate ||
+        _selectedColor != _existingEntry!.colorTag ||
         _pendingPhotos.isNotEmpty ||
-        _savedPhotos.length != _lastSavedPhotoCount;
+        _savedPhotos.length != _existingEntry!.photoUrls.length;
   }
 
   @override
   void initState() {
     super.initState();
-
-    _titleController.addListener(_onChanged);
-    _contentController.addListener(_onChanged);
-
     if (widget.entryId != null) {
       _loadExistingEntry();
     }
@@ -110,12 +100,6 @@ class _WriteScreenState extends State<WriteScreen> {
       _contentController.text = entry.content;
       _selectedColor = entry.colorTag;
       _entryDate = entry.entryDate;
-
-      _lastSavedTitle = entry.title;
-      _lastSavedContent = entry.content;
-      _lastSavedDate = entry.entryDate;
-      _lastSavedColor = entry.colorTag;
-      _lastSavedPhotoCount = 0;
     });
 
     try {
@@ -123,39 +107,32 @@ class _WriteScreenState extends State<WriteScreen> {
       if (mounted) {
         setState(() {
           _savedPhotos = photos;
-          _lastSavedPhotoCount = photos.length;
           _photosExpanded = photos.isNotEmpty;
         });
       }
     } catch (_) {}
   }
 
-  void _onChanged() {
-    if (widget.saveOnPop) return; // Skip auto-save if saveOnPop is true
+  Future<bool> _save() async {
+    if (!_hasChanges || _isSaving) return true; // allow pop if nothing changed
 
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(seconds: 2), _autoSave);
-  }
-
-  Future<void> _autoSave() async {
-    if (_isSaving || !_hasChanges) return;
-
-    await _saveSilently();
-  }
-
-  Future<void> _saveSilently() async {
-    if (_isSaving) return;
-    _isSaving = true;
-
-    final provider = context.read<EntriesProvider>();
-    final title = _titleController.text.trim();
     final content = _contentController.text.trim();
     final wordCount = Entry.countWords(content);
 
+    // 🚫 BLOCK: over limit
+    if (wordCount > kWordLimit) {
+      _maybeShowLimitSnackBar();
+      return false; // do NOT save, do NOT allow pop
+    }
+
+    _isSaving = true;
+
     try {
+      final provider = context.read<EntriesProvider>();
+      final title = _titleController.text.trim();
+
       Entry? updatedEntry;
 
-      // 1. CREATE or UPDATE ENTRY
       if (_isEditing && _existingEntry != null) {
         updatedEntry = _existingEntry!.copyWith(
           title: title,
@@ -183,18 +160,14 @@ class _WriteScreenState extends State<WriteScreen> {
         );
       }
 
-      if (updatedEntry == null) return;
+      if (updatedEntry == null) return false;
 
       setState(() {
         _existingEntry = updatedEntry;
-        _lastSavedTitle = title;
-        _lastSavedContent = content;
-        _lastSavedDate = _entryDate;
-        _lastSavedColor = _selectedColor;
       });
 
-      // 2. UPLOAD PENDING PHOTOS
-      if (_pendingPhotos.isNotEmpty && _existingEntry != null) {
+      // Upload photos...
+      if (_pendingPhotos.isNotEmpty) {
         for (int i = 0; i < _pendingPhotos.length; i++) {
           final p = _pendingPhotos[i];
 
@@ -208,32 +181,26 @@ class _WriteScreenState extends State<WriteScreen> {
 
         _pendingPhotos.clear();
 
-        // 3. REFRESH SAVED PHOTOS
-        final photos = await _photosService.fetchForEntry(_existingEntry!.id);
+        final photos =
+        await _photosService.fetchForEntry(_existingEntry!.id);
 
         if (mounted) {
           setState(() {
             _savedPhotos = photos;
-            _lastSavedPhotoCount = photos.length;
           });
         }
       }
 
+      return true; // ✅ success → allow pop
+    } catch (e) {
+      return false;
+    } finally {
       if (mounted) {
         setState(() {
-          _hasUnsavedChanges = false;
+          _isSaving = false;
         });
       }
-    } catch (e) {
-      // Silent fail - you could add error handling toast here
-    } finally {
-      _isSaving = false;
     }
-  }
-
-  Future<void> _saveBeforePop() async {
-    if (!_hasChanges || _isSaving) return;
-    await _saveSilently();
   }
 
   Future<void> _pickDate() async {
@@ -252,7 +219,6 @@ class _WriteScreenState extends State<WriteScreen> {
     );
     if (picked != null) {
       setState(() => _entryDate = picked);
-      if (!widget.saveOnPop) _onChanged();
     }
   }
 
@@ -276,10 +242,7 @@ class _WriteScreenState extends State<WriteScreen> {
     setState(() {
       _pendingPhotos.add(_PendingPhoto(xFile: xFile, bytes: bytes));
       _photosExpanded = true;
-      _hasUnsavedChanges = true;
     });
-
-    if (!widget.saveOnPop) _onChanged();
   }
 
   Future _showSourceSheet() {
@@ -300,7 +263,7 @@ class _WriteScreenState extends State<WriteScreen> {
               height: AppComponentSize.sheetHandleHeight,
               decoration: BoxDecoration(
                 color: t.border,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(AppRadius.xs),
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -326,15 +289,12 @@ class _WriteScreenState extends State<WriteScreen> {
   Future<void> _onDeleteSavedPhoto(Photo photo) async {
     await _photosService.delete(photo);
     setState(() => _savedPhotos.remove(photo));
-    if (!widget.saveOnPop) _onChanged();
   }
 
   void _onDeletePendingPhoto(_PendingPhoto p) {
     setState(() {
       _pendingPhotos.remove(p);
-      _hasUnsavedChanges = true;
     });
-    if (!widget.saveOnPop) _onChanged();
   }
 
   Future<void> _onDelete() async {
@@ -367,16 +327,37 @@ class _WriteScreenState extends State<WriteScreen> {
     }
   }
 
+  void _maybeShowLimitSnackBar() {
+    final now = DateTime.now();
+    // Throttle to prevent spamming the UI when holding down a key
+    if (_lastLimitSnackbarTime != null &&
+        now.difference(_lastLimitSnackbarTime!).inSeconds < 3) {
+      return;
+    }
+    _lastLimitSnackbarTime = now;
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content:
+        Text('You’ve hit the word limit. Try shortening your entry to save.'),
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
 
     return WillPopScope(
       onWillPop: () async {
-        if (widget.saveOnPop && _hasChanges) {
-          await _saveBeforePop();
-        }
-        return true;
+        if (!_hasChanges) return true;
+
+        final result = await _save();
+        return result ?? false; // 🚫 block pop if save failed
       },
       child: Scaffold(
         backgroundColor: t.accent,
@@ -388,12 +369,25 @@ class _WriteScreenState extends State<WriteScreen> {
           backgroundColor: t.accent,
           leading: IconButton(
             onPressed: () async {
-              if (widget.saveOnPop && _hasChanges) {
-                await _saveBeforePop();
+              if (!_hasChanges) {
+                Navigator.of(context).pop();
+                return;
               }
-              Navigator.of(context).pop();
+
+              final success = await _save();
+
+              if (success && mounted) {
+                Navigator.of(context).pop();
+              }
             },
-            icon: Icon(AppIcons.back, color: t.background, size: AppIconSize.sm),
+            icon: _isSaving
+                ? SizedBox(
+                height: AppIconSize.sm,
+                width: AppIconSize.sm,
+                child: CircularProgressIndicator(
+                    color: t.surface, strokeWidth: AppStroke.thin))
+                : Icon(AppIcons.back,
+                color: t.background, size: AppIconSize.sm),
           ),
           title: Row(
             mainAxisSize: MainAxisSize.max,
@@ -403,13 +397,14 @@ class _WriteScreenState extends State<WriteScreen> {
                 onTap: _pickDate,
                 borderRadius: BorderRadius.circular(AppRadius.sm),
                 child: Container(
-                  height: 44,
-                  width: 44,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  height: AppComponentSize.inputHeight,
+                  width: AppComponentSize.inputHeight,
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                   decoration: BoxDecoration(
                     color: t.surface,
                     borderRadius: BorderRadius.circular(AppRadius.sm),
-                    border: Border.all(color: t.accentMuted, width: 2),
+                    border: Border.all(color: t.accentMuted, width: AppStroke.thick),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -437,12 +432,10 @@ class _WriteScreenState extends State<WriteScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(width: AppSpacing.sm),
-
               Expanded(
                 child: SizedBox(
-                  height: 44,
+                  height: AppComponentSize.inputHeight,
                   child: TextField(
                     controller: _titleController,
                     textAlign: TextAlign.center,
@@ -468,7 +461,8 @@ class _WriteScreenState extends State<WriteScreen> {
                         borderSide: BorderSide.none,
                       ),
                       isDense: false,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                      contentPadding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                     ),
                   ),
                 ),
@@ -476,13 +470,15 @@ class _WriteScreenState extends State<WriteScreen> {
             ],
           ),
           actions: [
+            // Unsaved changes dot indicator
             AnimatedBuilder(
-              animation: Listenable.merge([_titleController, _contentController]),
+              animation:
+              Listenable.merge([_titleController, _contentController]),
               builder: (context, _) {
-                return _hasUnsavedChanges && widget.saveOnPop
+                return _hasChanges
                     ? Container(
-                  width: 8,
-                  height: 8,
+                  width: AppSpacing.sm,
+                  height: AppSpacing.sm,
                   margin: const EdgeInsets.only(right: AppSpacing.sm),
                   decoration: BoxDecoration(
                     color: t.accent,
@@ -505,7 +501,7 @@ class _WriteScreenState extends State<WriteScreen> {
               elevation: 8,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.sm),
-                side: BorderSide(color: t.border, width: 0.5),
+                side: BorderSide(color: t.border, width: AppStroke.hairline),
               ),
               position: PopupMenuPosition.under,
               onSelected: (value) {
@@ -514,7 +510,7 @@ class _WriteScreenState extends State<WriteScreen> {
               itemBuilder: (context) => [
                 PopupMenuItem(
                   value: 'delete',
-                  height: 44,
+                  height: AppComponentSize.inputHeight,
                   child: Row(
                     children: [
                       Icon(
@@ -538,7 +534,8 @@ class _WriteScreenState extends State<WriteScreen> {
         ),
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 0, AppSpacing.sm, AppSpacing.sm),
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.sm, 0, AppSpacing.sm, AppSpacing.sm),
             child: Column(
               children: [
                 // Page
@@ -554,7 +551,8 @@ class _WriteScreenState extends State<WriteScreen> {
                       children: [
                         // Meta row
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+                          padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
                           child: Row(
                             children: [
                               Icon(
@@ -563,29 +561,43 @@ class _WriteScreenState extends State<WriteScreen> {
                                 color: t.textTertiary,
                               ),
                               const SizedBox(width: AppSpacing.sm),
-                              AnimatedBuilder(
-                                animation: _contentController,
-                                builder: (_, __) {
-                                  final count = _liveWordCount;
-                                  final over = count > kWordLimit;
-                                  final near = count > kWordLimit * 0.9;
-                                  final color = over
-                                      ? AppColors.error
-                                      : near
-                                      ? AppColors.warning
-                                      : t.textTertiary;
-                                  return Text(
-                                    '$count / $kWordLimit words',
-                                    style: AppTextStyles.meta(color),
-                                  );
-                                },
+                              Expanded(
+                                child: AnimatedBuilder(
+                                  animation: _contentController,
+                                  builder: (_, __) {
+                                    final count = _liveWordCount;
+                                    final over = count >= kWordLimit;
+                                    final near = count > kWordLimit * 0.8;
+                                    final color = over
+                                        ? AppColors.error
+                                        : near
+                                        ? AppColors.warning
+                                        : t.textTertiary;
+
+                                    return Row(
+                                      children: [
+                                        Text(
+                                          '$count / $kWordLimit words',
+                                          style: AppTextStyles.meta(color),
+                                        ),
+                                        if (over) ...[
+                                          SizedBox(width: AppSpacing.sm,),
+                                          const Icon(
+                                            AppIcons.info,
+                                            color: AppColors.error,
+                                            size: AppIconSize.xs,
+                                          )
+                                        ],
+                                      ],
+                                    );
+                                  },
+                                ),
                               ),
-                              const Spacer(),
+                              const SizedBox(width: AppSpacing.sm),
                               ColorTagPicker(
                                 selected: _selectedColor,
                                 onSelected: (c) {
                                   setState(() => _selectedColor = c);
-                                  if (!widget.saveOnPop) _onChanged();
                                 },
                               ),
                             ],
@@ -595,11 +607,15 @@ class _WriteScreenState extends State<WriteScreen> {
                         // Writing area
                         Expanded(
                           child: TextField(
+                            /*
+                            inputFormatters: [WordLimitFormatter(kWordLimit,onBlocked: _maybeShowLimitSnackBar,),],
+                            */
                             controller: _contentController,
                             style: AppTextStyles.writeBody(t.textPrimary),
                             decoration: InputDecoration(
                               hintText: 'Write anything…',
-                              hintStyle: AppTextStyles.writeBody(t.textTertiary),
+                              hintStyle:
+                              AppTextStyles.writeBody(t.textTertiary),
                               border: InputBorder.none,
                             ),
                             keyboardType: TextInputType.multiline,
@@ -634,9 +650,47 @@ class _WriteScreenState extends State<WriteScreen> {
   }
 }
 
+/// Safely blocks typing AND pasting when the word limit is exceeded.
+/// Prevents destructive truncation of pasted text to avoid bad UX.
+class WordLimitFormatter extends TextInputFormatter {
+  final int maxWords;
+  final VoidCallback? onBlocked;
+
+  WordLimitFormatter(
+      this.maxWords, {
+        this.onBlocked,
+      });
+
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue,
+      TextEditingValue newValue,
+      ) {
+    final newCount = Entry.countWords(newValue.text);
+    final oldCount = Entry.countWords(oldValue.text);
+
+    // Allow if at or under limit
+    if (newCount <= maxWords) return newValue;
+
+    // Allow if word count decreased (deleting/editing down)
+    if (newCount <= oldCount) return newValue;
+
+    // Block: adding words beyond limit (handles both typing & pasting safely)
+    onBlocked?.call();
+    return oldValue;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // Photo Section
 // ─────────────────────────────────────────────────────────────
+
+class _PendingPhoto {
+  final XFile xFile;
+  final Uint8List? bytes;
+
+  const _PendingPhoto({required this.xFile, this.bytes});
+}
 
 class _PhotoSection extends StatelessWidget {
   final List<Photo> savedPhotos;
@@ -680,7 +734,8 @@ class _PhotoSection extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(AppIcons.photo, size: AppIconSize.xs, color: t.textTertiary),
+                Icon(AppIcons.photo,
+                    size: AppIconSize.xs, color: t.textTertiary),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   totalCount == 0
@@ -690,9 +745,7 @@ class _PhotoSection extends StatelessWidget {
                 ),
                 const Spacer(),
                 Icon(
-                  isExpanded
-                      ? AppIcons.chevronDown
-                      : AppIcons.chevronRight,
+                  isExpanded ? AppIcons.chevronDown : AppIcons.chevronRight,
                   size: AppIconSize.xs,
                   color: t.textTertiary,
                 ),
@@ -704,12 +757,11 @@ class _PhotoSection extends StatelessWidget {
         /// CONTENT
         AnimatedCrossFade(
           duration: AppDuration.normal,
-          crossFadeState: isExpanded
-              ? CrossFadeState.showSecond
-              : CrossFadeState.showFirst,
+          crossFadeState:
+          isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           firstChild: const SizedBox(height: 0),
           secondChild: SizedBox(
-            height: 88,
+            height: AppComponentSize.photoStripHeight,
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(
@@ -736,8 +788,7 @@ class _PhotoSection extends StatelessWidget {
                 ),
 
                 /// Add button
-                if (totalCount < maxPhotos)
-                  _AddPhotoButton(onTap: onAdd),
+                if (totalCount < maxPhotos) _AddPhotoButton(onTap: onAdd),
               ],
             ),
           ),
@@ -767,8 +818,8 @@ class _PhotoPendingThumb extends StatelessWidget {
     return Stack(
       children: [
         Container(
-          width: 74,
-          height: 80,
+          width: AppComponentSize.photoThumbSize,
+          height: AppComponentSize.photoThumbSize,
           margin: const EdgeInsets.only(right: AppSpacing.sm),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -783,11 +834,11 @@ class _PhotoPendingThumb extends StatelessWidget {
 
         /// Upload indicator dot
         Positioned(
-          top: 4,
-          left: 4,
+          top: AppSpacing.xs,
+          left: AppSpacing.xs,
           child: Container(
-            width: 8,
-            height: 8,
+            width: AppSpacing.sm,
+            height: AppSpacing.sm,
             decoration: BoxDecoration(
               color: t.accent,
               shape: BoxShape.circle,
@@ -797,8 +848,8 @@ class _PhotoPendingThumb extends StatelessWidget {
 
         /// Delete button
         Positioned(
-          top: 3,
-          right:13,
+          top: AppSpacing.xs,
+          right: AppSpacing.xs,
           child: _DeletePhotoButton(onTap: onDelete),
         ),
       ],
@@ -823,15 +874,14 @@ class _PhotoSavedThumb extends StatelessWidget {
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
           fullscreenDialog: true,
-          builder: (_) =>
-              _FullscreenViewer(url: photo.signedUrl ?? ''),
+          builder: (_) => _FullscreenViewer(url: photo.signedUrl ?? ''),
         ),
       ),
       child: Stack(
         children: [
           Container(
-            width: 74,
-            height: 80,
+            width: AppComponentSize.photoThumbSize,
+            height: AppComponentSize.photoThumbSize,
             margin: const EdgeInsets.only(right: AppSpacing.sm),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -852,8 +902,8 @@ class _PhotoSavedThumb extends StatelessWidget {
 
           /// Delete button
           Positioned(
-            top: 3,
-            right:13,
+            top: AppSpacing.xs,
+            right: AppSpacing.xs,
             child: _DeletePhotoButton(onTap: onDelete),
           ),
         ],
@@ -875,14 +925,17 @@ class _DeletePhotoButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(50),
+        borderRadius: BorderRadius.circular(AppRadius.full),
         child: Container(
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             color: t.accentMuted.withOpacity(0.9),
-            borderRadius: BorderRadius.circular(50),
+            borderRadius: BorderRadius.circular(AppRadius.full),
           ),
-          child: Icon(AppIcons.close, size: AppIconSize.xs, color: t.textPrimary,
+          child: Icon(
+            AppIcons.close,
+            size: AppIconSize.xs,
+            color: t.textPrimary,
           ),
         ),
       ),
@@ -902,8 +955,8 @@ class _AddPhotoButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 74,
-        height: 80,
+        width: AppComponentSize.photoThumbSize,
+        height: AppComponentSize.photoThumbSize,
         margin: const EdgeInsets.only(right: AppSpacing.sm),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.sm),

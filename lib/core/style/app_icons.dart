@@ -20,6 +20,7 @@ class AppIcons {
   static const IconData settings   = Iconsax.setting_2;
   static const IconData selectAll   = Iconsax.task;
   static const IconData more       = Iconsax.more_circle;
+  static const IconData sandwich       = Iconsax.menu_1;
   static const IconData check      = Icons.check;
   static const IconData checkCircle = Iconsax.tick_circle;
   static const IconData add        = Iconsax.add;
@@ -35,6 +36,7 @@ class AppIcons {
   static const IconData title      = Iconsax.text;
   static const IconData wordCount  = Iconsax.text_block;
   static const IconData tag        = Iconsax.tag;
+  static const IconData color        = Iconsax.colorfilter;
 
   // ── Photos ─────────────────────────────────────────────
   static const IconData photo      = Iconsax.gallery;

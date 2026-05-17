@@ -72,6 +72,7 @@ create table public.entries (
   constraint valid_color_tag check (color_tag in (
     'poppy', 'iris', 'lily', 'marigold', 'lavender', 'stone'
   ))
+
 );
 
 
