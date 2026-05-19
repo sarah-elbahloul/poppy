@@ -98,22 +98,22 @@ class _LoginScreenState extends State<LoginScreen> {
               Center(child: const PoppyLogo(size: AppIconSize.logo)),
               const SizedBox(height: AppSpacing.md),
               Center(child: Text(kAppName,
-                  style: AppTextStyles.appName(t.textPrimary))),
+                  style: AppTextStyles.displayLarge(t.textPrimary))),
               Center(child: Text(kAppTagline,
-                  style: AppTextStyles.tagline(t.textTertiary))),
+                  style: AppTextStyles.bodySmallSerif(t.textTertiary))),
               SizedBox(height: AppSpacing.xl * 1.5),
               Text(
                 _forgotPasswordMode
                     ? 'Reset password'
                     : 'Welcome back',
-                style: AppTextStyles.authHeading(t.textPrimary),
+                style: AppTextStyles.headlineSmall(t.textPrimary),
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 _forgotPasswordMode
                     ? 'Enter your email and we\'ll send a reset link.'
                     : 'Sign in to your diary.',
-                style: AppTextStyles.authSubtitle(t.textTertiary),
+                style: AppTextStyles.bodySmallSans(t.textTertiary),
               ),
               const SizedBox(height: AppSpacing.lg),
               _Field(
@@ -190,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       _forgotPasswordMode
                           ? 'Back to sign in'
                           : 'Forgot password?',
-                      style: AppTextStyles.link(t.textTertiary),
+                      style: AppTextStyles.bodySmallSans(t.textTertiary),
                     ),
                   ),
                   if (!_forgotPasswordMode)
@@ -198,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: () => Navigator.of(context)
                           .pushNamed(AppRoutes.register),
                       child: Text('Create account',
-                          style: AppTextStyles.link(t.accent)),
+                          style: AppTextStyles.bodySmallSans(t.accent)),
                     ),
                 ],
               ),
@@ -235,10 +235,10 @@ class _Field extends StatelessWidget {
       child: TextField(
         controller: controller, obscureText: obscureText,
         keyboardType: keyboardType,
-        style: AppTextStyles.fieldText(t.textPrimary),
+        style: AppTextStyles.bodyMedium(t.textPrimary),
         decoration: InputDecoration(
           labelText:  label,
-          labelStyle: AppTextStyles.fieldLabel(t.textTertiary),
+          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -271,7 +271,7 @@ class _ErrorBanner extends StatelessWidget {
           Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
           const SizedBox(width: AppSpacing.sm),
           Expanded(child: Text(message,
-              style: AppTextStyles.errorText(t.accent))),
+              style: AppTextStyles.bodySmallSans(t.accent))),
         ],
       ),
     );

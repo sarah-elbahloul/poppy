@@ -19,12 +19,12 @@ class AppearanceScreen extends StatelessWidget {
           icon: Icon(AppIcons.back, size: AppIconSize.xs, color: t.textSecondary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Appearance', style: AppTextStyles.appBarTitle(t.textPrimary)),
+        title: Text('Appearance', style: AppTextStyles.titleLarge(t.textPrimary)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          Text('Theme', style: AppTextStyles.sectionLabel(t.textTertiary)),
+          Text('Theme', style: AppTextStyles.labelLargeSans(t.textTertiary)),
           const SizedBox(height: AppSpacing.sm),
           ...PoppyThemes.all.map((themeData) {
             final isSelected = themeProvider.currentTheme == themeData.id;
@@ -66,7 +66,7 @@ class AppearanceScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(themeData.name,
-                                style: AppTextStyles.themeName(themeData.textPrimary)),
+                                style: AppTextStyles.titleMedium(themeData.textPrimary)),
                             const SizedBox(height: 4),
                             Row(
                               children: [
@@ -102,7 +102,7 @@ class AppearanceScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           Text(
             'All themes use soft pastel tones.\nBackgrounds stay near-white in every theme.',
-            style: AppTextStyles.themeNote(t.textTertiary),
+            style: AppTextStyles.labelLargeSans(t.textTertiary),
           ),
         ],
       ),

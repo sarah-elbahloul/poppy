@@ -64,13 +64,13 @@ class EntryCard extends StatelessWidget {
                     children: [
                       Text(
                         entry.entryDate.day.toString(),
-                        style: AppTextStyles.entryDayNumber(monthColor),
+                        style: AppTextStyles.calendarDay(monthColor),
                       ),
                       Text(
                         DateFormat('MMM')
                             .format(entry.entryDate)
                             .toUpperCase(),
-                        style: AppTextStyles.entryMonthAbbr(monthColor),
+                        style: AppTextStyles.labelSmall(monthColor),
                       ),
                     ],
                   ),
@@ -98,7 +98,7 @@ class EntryCard extends StatelessWidget {
                     Flexible(
                       child: Text(
                         entry.title.isEmpty ? 'Untitled' : entry.title,
-                        style: AppTextStyles.entryTitle(
+                        style: AppTextStyles.titleSmallSerif(
                           entry.title.isEmpty
                               ? t.textTertiary
                               : t.textPrimary,
@@ -113,7 +113,7 @@ class EntryCard extends StatelessWidget {
                       Flexible(
                         child: Text(
                           entry.contentPreview,
-                          style: AppTextStyles.entryPreview(t.textTertiary),
+                          style: AppTextStyles.labelLargeSerif(t.textTertiary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -159,7 +159,7 @@ class EntryCard extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     child: Text(
                       '${entry.wordCount}w',
-                      style: AppTextStyles.wordCount(
+                      style: AppTextStyles.labelSmall(
                           t.textTertiary),
                     ),
                   ),

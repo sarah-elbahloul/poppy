@@ -10,6 +10,7 @@ import 'package:poppy/screens/settings/account_screen.dart';
 import 'package:poppy/screens/settings/appearance_screen.dart';
 import 'package:poppy/screens/settings/legal_screen.dart';
 import 'package:poppy/screens/settings/security_screen.dart';
+import 'package:poppy/screens/settings/settings_drawer.dart';
 import 'package:poppy/screens/settings/settings_screen.dart';
 import 'package:poppy/screens/write/write_screen.dart';
 import 'package:provider/provider.dart';
@@ -80,6 +81,7 @@ class PoppyApp extends StatelessWidget {
             AppRoutes.lock:       (_) => const LockScreen(),
             AppRoutes.home:       (_) => const _AuthListener(child: HomeScreen()),
             AppRoutes.settings:   (_) => const SettingsScreen(),
+            AppRoutes.settingsDrawer: (_) => const SettingsDrawer(),
             AppRoutes.appearance: (_) => const AppearanceScreen(),
             AppRoutes.account:    (_) => const AccountScreen(),
             AppRoutes.security:   (_) => const SecurityScreen(),

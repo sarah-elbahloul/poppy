@@ -111,7 +111,7 @@ class _PinPadState extends State<PinPad>
       mainAxisSize: MainAxisSize.min,
       children: [
         // Label
-        Text(widget.label, style: AppTextStyles.pinLabel(t.textSecondary)),
+        Text(widget.label, style: AppTextStyles.titleSmallSans(t.textSecondary)),
 
         const SizedBox(height: AppSpacing.lg),
 
@@ -188,7 +188,7 @@ class _PinPadState extends State<PinPad>
                 ),
                 child: Text(
                   'Confirm',
-                  style: AppTextStyles.settingsRowLabel(AppColors.white),
+                  style: AppTextStyles.titleSmallSans(AppColors.white),
                 ),
               ),
             ),

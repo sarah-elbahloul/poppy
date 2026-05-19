@@ -10,6 +10,7 @@ import 'package:poppy/providers/entries_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/color_dot.dart';
+import '../settings/settings_drawer.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Home Screen
@@ -34,6 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool get _isBatchMode => _selectedIds.isNotEmpty;
   bool _searching = false;
   final FocusNode _searchFocusNode = FocusNode();
+
+  bool _sortDesc = false;
 
   @override
   void initState() {
@@ -83,14 +86,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _exitSearch() {
+    final provider = context.read<EntriesProvider>();
     setState(() {
       _searching = false;
       _searchController.clear();
     });
-
-    _searchFocusNode.unfocus();
-
+    provider.clearFilters();
     _applyAllFilters(); // clears query but keeps year/color filters
+    _searchFocusNode.unfocus();
   }
 
   // ─────────────────────────────────────────────
@@ -124,6 +127,64 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _cancelBatch() => setState(() => _selectedIds.clear());
 
+  Future<void> _openColorPicker() async {
+    final t = context.poppyTheme;
+
+    final selected = await showModalBottomSheet<EntryColorData>(
+      context: context,
+      backgroundColor: t.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.lg),
+        ),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Choose color',
+                style: AppTextStyles.labelLargeSans(t.textPrimary),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: EntryColors.all.map((colorData) {
+                  return GestureDetector(
+                    onTap: () => Navigator.pop(context, colorData),
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: (colorData.color as Color),
+                          width: AppStroke.medium,
+                        ),
+                      ),
+                      child: ColorDot(
+                        colorData: colorData,
+                        size: 28,
+                        isSelected: false,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected != null) {
+      await _changeColorBatch(selected);
+    }
+  }
+
   Future<void> _deleteBatch() async {
     final t = context.poppyTheme;
     final count = _selectedIds.length;
@@ -131,16 +192,32 @@ class _HomeScreenState extends State<HomeScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Delete $count ${count == 1 ? 'entry' : 'entries'}?'),
-        content: const Text('This cannot be undone.'),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(
+            Radius.circular(AppRadius.lg),
+          ),
+        ),
+        title: Text(
+          'Delete $count ${count == 1 ? 'entry' : 'entries'}?',
+          style: AppTextStyles.labelLargeSans(t.textPrimary),
+        ),
+        content: Text('This cannot be undone.',
+            style: AppTextStyles.bodyLarge(t.textPrimary),
+      ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: t.textSecondary)),
+            child: Text(
+              'Cancel',
+              style: AppTextStyles.labelLargeSans(t.textPrimary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Delete', style: TextStyle(color: t.accent)),
+            child: Text(
+              'Delete',
+              style: AppTextStyles.labelLargeSans(AppColors.error),
+            ),
           ),
         ],
       ),
@@ -152,6 +229,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
     for (final id in _selectedIds.toList()) {
       await provider.deleteEntry(id);
+    }
+
+    setState(() => _selectedIds.clear());
+  }
+
+  Future<void> _changeColorBatch(EntryColorData color) async {
+    final provider = context.read<EntriesProvider>();
+
+    for (final id in _selectedIds.toList()) {
+      final entry = provider.getById(id);
+      if (entry == null) continue;
+
+      await provider.updateEntry(
+        entry.copyWith(colorTag: color),
+      );
     }
 
     setState(() => _selectedIds.clear());
@@ -183,15 +275,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: t.background,
+      drawer: const SettingsDrawer(),
       appBar: _isBatchMode ? _batchAppBar(t) : _normalAppBar(t, provider),
       body: _body(context, t, provider, entries),
       floatingActionButton: _isBatchMode
           ? null
           : FloatingActionButton(
-        onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
-        tooltip: 'New entry',
-        child: const Icon(AppIcons.add, size: AppIconSize.sm),
-      ),
+              onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
+              tooltip: 'New entry',
+              child: const Icon(AppIcons.add, size: AppIconSize.sm),
+            ),
     );
   }
 
@@ -202,64 +295,73 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         titleSpacing: 0,
         backgroundColor: t.background,
-        title: Text(kAppName, style: AppTextStyles.appBarTitle(t.textPrimary)),
-        leading: const PoppyLogo(prominent: false),
-        actions: [
+        title: Text(kAppName, style: AppTextStyles.titleLarge(t.textPrimary)),
+        leading: Padding(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: Builder(
+            builder: (context) => IconButton(
+              icon: Icon(
+                AppIcons.sandwich,
+                color: t.textSecondary,
+                size: AppIconSize.sm,
+              ),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
+        ),        actions: [
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             child: _searching
                 ? SizedBox(
-              key: const ValueKey('searchField'),
-              width: AppComponentSize.searchFieldWidth,
-              height: AppComponentSize.filterBarHeight,
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                autofocus: true,
-                style: AppTextStyles.fieldText(t.textPrimary),
-                onChanged: (_) => _applyAllFilters(),
-                decoration: InputDecoration(
-                  fillColor: t.surface,
-                  filled: true,
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      borderSide: BorderSide(
-                        color: _selectedColor != null
-                            ? (_selectedColor!.color as Color)
-                            : t.border,
-                        width: AppStroke.medium,
-                      )
-                  ),
-                  hintText: 'Search entries...',
-                  hintStyle: AppTextStyles.meta(t.textTertiary),
-                  suffixIcon: GestureDetector(
-                    onTap: _exitSearch,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: AppSpacing.xs),
-                      child: Icon(
-                        AppIcons.close,
-                        size: AppIconSize.xs,
-                        color: t.textSecondary,
+                    key: const ValueKey('searchField'),
+                    width: AppComponentSize.searchFieldWidth,
+                    height: AppComponentSize.filterBarHeight,
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      autofocus: true,
+                      style: AppTextStyles.bodyMedium(t.textPrimary),
+                      textAlignVertical: TextAlignVertical.center,
+                      onChanged: (_) => _applyAllFilters(),
+                      decoration: InputDecoration(
+                        fillColor: t.surface,
+                        filled: true,
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                            borderSide: BorderSide(
+                              color: _selectedColor != null
+                                  ? (_selectedColor!.color as Color)
+                                  : t.border,
+                              width: AppStroke.medium,
+                            )
+                        ),
+                        hintText: 'Search entries...',
+                        hintStyle: AppTextStyles.labelLargeSerif(t.textTertiary),
+                        suffixIcon: GestureDetector(
+                          onTap: _exitSearch,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: AppSpacing.xs),
+                            child: Icon(
+                              AppIcons.close,
+                              size: AppIconSize.xs,
+                              color: t.textSecondary,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   )
-                  ,
-                ),
-              ),
-            )
                 : IconButton(
-              key: const ValueKey('searchIcon'),
-              icon: Icon(AppIcons.search,
-                  color: t.textSecondary, size: AppIconSize.sm),
-              onPressed: _startSearch,
-            ),
+                    key: const ValueKey('searchIcon'),
+                    icon: Icon(AppIcons.search,
+                        color: t.textSecondary, size: AppIconSize.sm),
+                    onPressed: _startSearch,
+                  ),
           ),
-          const SizedBox(width: AppSpacing.xs),
           IconButton(
-            icon: Icon(AppIcons.sandwich,
-                color: t.textSecondary, size: AppIconSize.sm),
-            onPressed: () =>
-                Navigator.of(context).pushNamed(AppRoutes.settings),
+            icon: Icon(AppIcons.sort, color: t.textSecondary, size: AppIconSize.sm),
+            tooltip: 'Sort ${_sortDesc ?  'descending': 'ascending'}',
+            onPressed: ()=> setState(() => _sortDesc = !_sortDesc),
           ),
         ]);
   }
@@ -273,26 +375,34 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: t.background,
       leading: IconButton(
         icon:
-        Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
+            Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
         onPressed: _cancelBatch,
       ),
       title: Text('${_selectedIds.length} selected',
-          style: AppTextStyles.appBarTitle(t.textPrimary)),
+          style: AppTextStyles.titleLarge(t.textPrimary)),
       actions: [
         IconButton(
+          tooltip: 'Select All',
           onPressed: () {
             final provider = context.read<EntriesProvider>();
             setState(() {
               _selectedIds
                 ..clear()
-                ..addAll(provider.entries.map((e) => e.id));
+                ..addAll(provider.filteredEntries.map((e) => e.id));
             });
           },
           icon: Icon(AppIcons.selectAll, color: t.accent, size: AppIconSize.sm),
         ),
         IconButton(
+          tooltip: 'Set Color Tag',
+          onPressed: _selectedIds.isEmpty ? null : _openColorPicker,
+          icon: Icon(AppIcons.color, color: t.accent, size: AppIconSize.sm),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        IconButton(
           icon: Icon(AppIcons.delete, color: t.accent, size: AppIconSize.sm),
           onPressed: _selectedIds.isEmpty ? null : _deleteBatch,
+          tooltip: 'Delete Selected Entries',
         ),
         const SizedBox(width: AppSpacing.xs),
       ],
@@ -300,11 +410,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _body(
-      BuildContext context,
-      PoppyThemeExtension t,
-      EntriesProvider provider,
-      List<Entry> entries,
-      ) {
+    BuildContext context,
+    PoppyThemeExtension t,
+    EntriesProvider provider,
+    List<Entry> entries,
+  ) {
     if (provider.isLoading) {
       return Column(
         children: [
@@ -350,12 +460,12 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: AppSpacing.md),
             Text(
               'Could not load entries.',
-              style: AppTextStyles.emptySubtitle(t.textSecondary),
+              style: AppTextStyles.bodySmallSans(t.textSecondary),
             ),
             const SizedBox(height: AppSpacing.sm),
             TextButton(
               onPressed: () => provider.fetchEntries(),
-              child: Text('Try again', style: AppTextStyles.link(t.accent)),
+              child: Text('Try again', style: AppTextStyles.bodySmallSans(t.accent)),
             ),
           ],
         ),
@@ -365,14 +475,19 @@ class _HomeScreenState extends State<HomeScreen> {
     if (provider.entries.isEmpty) return _EmptyState();
 
     final years = _extractYears(provider.entries);
+    final displayedEntries = _sortDesc
+        ? entries.reversed.toList()
+        : entries;
 
     return Column(
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Flexible(
               child: Container(
                 height: AppComponentSize.filterBarHeight,
+                width: AppComponentSize.searchFieldWidth,
                 margin: const EdgeInsets.only(
                     left: AppSpacing.md, right: AppSpacing.sm),
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
@@ -398,26 +513,27 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           isExpanded: true,
-                          value: _selectedYear,
-                          hint: Text(
-                            '${years.last} - ${years.first}',
-                            style: AppTextStyles.sectionLabel(t.textSecondary),
+                          dropdownColor: t.surface,
+                          menuMaxHeight: 400,
+                          menuWidth: AppComponentSize.searchFieldWidth/2,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          style: AppTextStyles.labelLargeSans(
+                            _selectedYear != null
+                                ? t.textPrimary
+                                : t.textSecondary,
                           ),
                           icon: Icon(
                             AppIcons.chevronDown,
                             size: AppIconSize.sm,
                             color: t.textSecondary,
                           ),
-                          dropdownColor: t.surface,
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          style: AppTextStyles.sectionLabel(
-                            _selectedYear != null
-                                ? t.textPrimary
-                                : t.textSecondary,
+                          hint: Text(
+                            '${years.last} - ${years.first}',
+                            style: AppTextStyles.labelLargeSans(t.textSecondary),
                           ),
+                          value: _selectedYear,
                           items: years
-                              .map((y) =>
-                              DropdownMenuItem(value: y, child: Text(y)))
+                              .map((y) => DropdownMenuItem(value: y, child: Text(y)),)
                               .toList(),
                           onChanged: (value) {
                             setState(() => _selectedYear = value);
@@ -450,6 +566,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Flexible(
               child: Container(
                 height: AppComponentSize.filterBarHeight,
+                width: AppComponentSize.searchFieldWidth,
                 margin: const EdgeInsets.only(right: AppSpacing.md),
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                 decoration: BoxDecoration(
@@ -479,7 +596,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         scrollDirection: Axis.horizontal,
                         children: EntryColors.all.map((colorData) {
                           final isSelected = _selectedColor?.id == colorData.id;
-
                           return GestureDetector(
                             onTap: () {
                               final newColor = isSelected ? null : colorData;
@@ -489,17 +605,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                             child: AnimatedContainer(
                               duration: AppDuration.fast,
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.xs, vertical: 6),
-                              padding:
-                              const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs/2, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? (colorData.color as Color)
-                                    .withOpacity(0.12)
+                                        .withOpacity(0.12)
                                     : Colors.transparent,
                                 borderRadius:
-                                BorderRadius.circular(AppRadius.full),
+                                    BorderRadius.circular(AppRadius.full),
                                 border: Border.all(
                                   color: isSelected
                                       ? colorData.color as Color
@@ -518,9 +632,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     const SizedBox(width: AppSpacing.xs),
                                     Text(
                                       colorData.name,
-                                      style: AppTextStyles.searchFilterChip(
+                                      style: AppTextStyles.labelLargeSans(
                                         colorData.color as Color,
-                                        selected: true,
                                       ),
                                     ),
                                   ],
@@ -560,18 +673,22 @@ class _HomeScreenState extends State<HomeScreen> {
         // ─────────────────────────────────────────
         // ENTRIES LIST (filtered or all)
         // ─────────────────────────────────────────
+        Divider(
+          height: AppStroke.hairline,
+          thickness: AppStroke.hairline,
+          color: t.border,
+        ),
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.only(bottom: 100),
-            itemCount: entries.length,
+            itemCount: displayedEntries.length,
             separatorBuilder: (_, __) => Divider(
               height: AppStroke.hairline,
               thickness: AppStroke.hairline,
               color: t.border,
-              indent: AppSpacing.lg + AppStroke.colorStrip,
             ),
             itemBuilder: (context, i) {
-              final entry = entries[i];
+              final entry = displayedEntries[i];
               final isSelected = _selectedIds.contains(entry.id);
 
               return Stack(
@@ -608,10 +725,10 @@ class _EmptyState extends StatelessWidget {
           const PoppyLogo(size: AppIconSize.logo, prominent: false),
           const SizedBox(height: AppSpacing.lg),
           Text('Your diary is empty.',
-              style: AppTextStyles.emptyTitle(t.textPrimary)),
+              style: AppTextStyles.bodyLarge(t.textPrimary)),
           const SizedBox(height: AppSpacing.xs),
           Text('Tap + to write your first entry.',
-              style: AppTextStyles.emptySubtitle(t.textTertiary)),
+              style: AppTextStyles.bodySmallSans(t.textTertiary)),
         ],
       ),
     );
@@ -627,7 +744,8 @@ class _SkeletonCard extends StatelessWidget {
       child: Row(
         children: [
           Container(width: AppStroke.colorStrip, color: t.border),
-          Container(width: AppComponentSize.entryDateColWidth, color: t.surface),
+          Container(
+              width: AppComponentSize.entryDateColWidth, color: t.surface),
           VerticalDivider(
               width: AppStroke.hairline,
               thickness: AppStroke.hairline,
@@ -752,19 +870,17 @@ class _FiltersSkeleton extends StatelessWidget {
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-
+                  const SizedBox(width: AppSpacing.md),
                   // fake chips row
                   Expanded(
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: 4,
-                      separatorBuilder: (_, __) =>
-                      const SizedBox(width: AppSpacing.xs),
+                      itemCount: EntryColors.all.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm*1.5),
                       itemBuilder: (_, __) {
                         return Container(
-                          width: 24,
-                          height: 24,
+                          width: AppComponentSize.colorDotChip,
+                          height: AppComponentSize.colorDotChip,
                           decoration: BoxDecoration(
                             color: t.border,
                             shape: BoxShape.circle,

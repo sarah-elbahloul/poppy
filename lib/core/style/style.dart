@@ -15,7 +15,7 @@
 //    AppDuration.normal
 //    AppCurve.standard
 //    AppShadows.card
-//    AppTextStyles.entryTitle(color)
+//    AppTextStyles.titleSmallSerif(color)
 //    PoppyThemes.poppy
 //    context.poppyTheme.accent
 // ─────────────────────────────────────────────────────────────

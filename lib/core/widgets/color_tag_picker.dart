@@ -26,7 +26,7 @@ class ColorTagPicker extends StatelessWidget {
       children: [
         Text(
           'Tag',
-          style: AppTextStyles.meta(t.textTertiary),
+          style: AppTextStyles.labelLargeSerif(t.textTertiary),
         ),
         ...EntryColors.all.map((colorData) => ColorDot(
           colorData:  colorData,

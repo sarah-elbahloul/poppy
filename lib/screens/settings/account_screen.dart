@@ -102,17 +102,17 @@ class _AccountScreenState extends State<AccountScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text('Account',
-            style: AppTextStyles.appBarTitle(t.textPrimary)),
+            style: AppTextStyles.titleLarge(t.textPrimary)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           Text('Signed in as',
-              style: AppTextStyles.sectionLabel(t.textTertiary)),
+              style: AppTextStyles.labelLargeSans(t.textTertiary)),
           const SizedBox(height: AppSpacing.xs),
           Text(
             auth.user?.email ?? '—',
-            style: AppTextStyles.authHeading(t.textPrimary)
+            style: AppTextStyles.headlineSmall(t.textPrimary)
                 .copyWith(fontSize: 15),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -137,7 +137,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     _openPanel == 'email') ...[
                   const SizedBox(height: AppSpacing.sm),
                   Text(auth.errorMessage!,
-                      style: AppTextStyles.errorText(t.accent)),
+                      style: AppTextStyles.bodySmallSans(t.accent)),
                 ],
                 const SizedBox(height: AppSpacing.md),
                 _SubmitButton(
@@ -187,7 +187,7 @@ class _AccountScreenState extends State<AccountScreen> {
                     _openPanel == 'password') ...[
                   const SizedBox(height: AppSpacing.sm),
                   Text(auth.errorMessage!,
-                      style: AppTextStyles.errorText(t.accent)),
+                      style: AppTextStyles.bodySmallSans(t.accent)),
                 ],
                 const SizedBox(height: AppSpacing.md),
                 _SubmitButton(
@@ -244,7 +244,7 @@ class _ExpandablePanel extends StatelessWidget {
                   Icon(icon, size: AppIconSize.sm, color: t.textTertiary),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(child: Text(title,
-                      style: AppTextStyles.settingsRowLabel(t.textPrimary))),
+                      style: AppTextStyles.titleSmallSans(t.textPrimary))),
                   Icon(
                     isOpen ? AppIcons.chevronUp : AppIcons.chevronDown,
                     size: AppIconSize.sm, color: t.textTertiary,
@@ -301,10 +301,10 @@ class _Field extends StatelessWidget {
       child: TextField(
         controller: controller, obscureText: obscureText,
         keyboardType: keyboardType,
-        style: AppTextStyles.fieldText(t.textPrimary),
+        style: AppTextStyles.bodyMedium(t.textPrimary),
         decoration: InputDecoration(
           labelText:  label,
-          labelStyle: AppTextStyles.fieldLabel(t.textTertiary),
+          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(

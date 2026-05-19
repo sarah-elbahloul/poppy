@@ -153,6 +153,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.1"
+  dropdown_button2:
+    dependency: "direct main"
+    description:
+      name: dropdown_button2
+      sha256: "24f5b775483a9b3c508092766798c10e3f23127e66b3f4a305b5bfb59ff1debc"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.0"
   fake_async:
     dependency: transitive
     description:
@@ -230,6 +238,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_bidi_text:
+    dependency: "direct main"
+    description:
+      name: flutter_bidi_text
+      sha256: "05e74f808d1a0288bf8809e33d6ee2efea77ead19e9083f174fe76ab6a9c362d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.1"
   flutter_cache_manager:
     dependency: transitive
     description:

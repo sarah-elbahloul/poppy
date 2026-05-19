@@ -187,7 +187,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
           }),
         ),
         title: Text('Security',
-            style: AppTextStyles.appBarTitle(t.textPrimary)),
+            style: AppTextStyles.titleLarge(t.textPrimary)),
       ),
       body: _step == _PinStep.idle
           ? _buildIdleView(context, t, auth)
@@ -214,10 +214,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
           ),
           child: SwitchListTile(
             title: Text('PIN lock',
-                style: AppTextStyles.settingsRowLabel(t.textPrimary)),
+                style: AppTextStyles.titleSmallSans(t.textPrimary)),
             subtitle: Text(
               'Require a 4-digit PIN when opening Poppy.',
-              style: AppTextStyles.settingsRowSublabel(t.textTertiary),
+              style: AppTextStyles.labelLargeSans(t.textTertiary),
             ),
             value:       auth.pinEnabled,
             activeColor: t.accent,
@@ -250,7 +250,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Text('Change PIN',
-                          style: AppTextStyles.settingsRowLabel(
+                          style: AppTextStyles.titleSmallSans(
                               t.textPrimary)),
                     ),
                     Icon(AppIcons.chevronRight,
@@ -284,7 +284,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 child: Text(
                   'The PIN protects access to the app on this device. '
                       'Your entries are encrypted separately with your account password.',
-                  style: AppTextStyles.settingsRowSublabel(t.accent),
+                  style: AppTextStyles.labelLargeSans(t.accent),
                 ),
               ),
             ],
@@ -308,7 +308,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
               Text(
                 _stepSubtitle,
                 textAlign: TextAlign.center,
-                style: AppTextStyles.authSubtitle(t.textTertiary),
+                style: AppTextStyles.bodySmallSans(t.textTertiary),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],

@@ -110,7 +110,7 @@ class AppComponentSize {
   static const double filterBarHeight = 40.0;
 
   /// Search field width in app bar
-  static const double searchFieldWidth = 220.0;
+  static const double searchFieldWidth = 240.0;
 
   /// Height of a compact entry card row
   static const double entryCardHeight = 58.0;
@@ -131,7 +131,7 @@ class AppComponentSize {
   static const double colorDotPicker = 18.0;
 
   /// Color dot — inside search filter chips
-  static const double colorDotChip = 10.0;
+  static const double colorDotChip = 15.0;
 
   /// PIN pad digit key diameter
   static const double pinKey = 64.0;

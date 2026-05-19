@@ -91,15 +91,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Center(child: const PoppyLogo(size: AppIconSize.logo)),
               const SizedBox(height: AppSpacing.md),
               Center(child: Text(kAppName,
-                  style: AppTextStyles.appName(t.textPrimary))),
+                  style: AppTextStyles.displayLarge(t.textPrimary))),
               Center(child: Text(kAppTagline,
-                  style: AppTextStyles.tagline(t.textTertiary))),
+                  style: AppTextStyles.bodySmallSerif(t.textTertiary))),
               SizedBox(height: AppSpacing.xl * 1.5),
               Text('Create your diary',
-                  style: AppTextStyles.authHeading(t.textPrimary)),
+                  style: AppTextStyles.headlineSmall(t.textPrimary)),
               const SizedBox(height: AppSpacing.xs),
               Text('Your entries are private and belong only to you.',
-                  style: AppTextStyles.authSubtitle(t.textTertiary)),
+                  style: AppTextStyles.bodySmallSans(t.textTertiary)),
               const SizedBox(height: AppSpacing.lg),
               _Field(
                 controller:   _emailController,
@@ -160,7 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text('Already have an account? Sign in',
-                      style: AppTextStyles.link(t.textTertiary)),
+                      style: AppTextStyles.bodySmallSans(t.textTertiary)),
                 ),
               ),
             ],
@@ -198,21 +198,21 @@ class _ConfirmationScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text('Check your inbox',
-                  style: AppTextStyles.screenTitle(t.textPrimary)),
+                  style: AppTextStyles.headlineLarge(t.textPrimary)),
               const SizedBox(height: AppSpacing.sm),
               Text('We sent a confirmation link to',
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.authSubtitle(t.textSecondary)),
+                  style: AppTextStyles.bodySmallSans(t.textSecondary)),
               const SizedBox(height: AppSpacing.xs),
               Text(email,
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.authHeading(t.textPrimary)
+                  style: AppTextStyles.headlineSmall(t.textPrimary)
                       .copyWith(fontSize: 14)),
               const SizedBox(height: AppSpacing.md),
               Text(
                 'Tap the link in the email to activate your account,\nthen come back and sign in.',
                 textAlign: TextAlign.center,
-                style: AppTextStyles.authSubtitle(t.textTertiary)
+                style: AppTextStyles.bodySmallSans(t.textTertiary)
                     .copyWith(height: 1.6),
               ),
               const Spacer(flex: 3),
@@ -235,7 +235,7 @@ class _ConfirmationScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               Text("Didn't get the email? Check your spam folder.",
-                  style: AppTextStyles.version(t.textTertiary),
+                  style: AppTextStyles.labelMedium(t.textTertiary),
                   textAlign: TextAlign.center),
               const SizedBox(height: AppSpacing.lg),
             ],
@@ -269,10 +269,10 @@ class _Field extends StatelessWidget {
       child: TextField(
         controller: controller, obscureText: obscureText,
         keyboardType: keyboardType,
-        style: AppTextStyles.fieldText(t.textPrimary),
+        style: AppTextStyles.bodyMedium(t.textPrimary),
         decoration: InputDecoration(
           labelText:  label,
-          labelStyle: AppTextStyles.fieldLabel(t.textTertiary),
+          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -323,7 +323,7 @@ class _ErrorBanner extends StatelessWidget {
           Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
           const SizedBox(width: AppSpacing.sm),
           Expanded(child: Text(message,
-              style: AppTextStyles.errorText(t.accent))),
+              style: AppTextStyles.bodySmallSans(t.accent))),
         ],
       ),
     );

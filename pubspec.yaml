@@ -45,6 +45,8 @@ dependencies:
   gap: ^3.0.1                  # clean spacing widget
   modal_bottom_sheet: ^3.0.0   # smooth bottom sheets
   shimmer: ^3.0.0              # loading skeleton effect
+  dropdown_button2: ^3.1.0
+  flutter_bidi_text: ^1.1.1
 
 
 dev_dependencies:

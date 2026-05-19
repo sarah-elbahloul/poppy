@@ -32,7 +32,7 @@ class LegalScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(title,
-            style: AppTextStyles.appBarTitle(t.textPrimary)),
+            style: AppTextStyles.titleLarge(t.textPrimary)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -55,10 +55,10 @@ class _PrivacyContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Privacy Policy', style: AppTextStyles.legalHeading(t.textPrimary)),
+        Text('Privacy Policy', style: AppTextStyles.headlineLarge(t.textPrimary)),
         const SizedBox(height: AppSpacing.xs),
         Text('Last updated: January 2025',
-            style: AppTextStyles.meta(t.textTertiary)),
+            style: AppTextStyles.labelLargeSerif(t.textTertiary)),
         const SizedBox(height: AppSpacing.lg),
 
         _Section(title: 'What we collect', body:
@@ -114,10 +114,10 @@ class _TermsContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Terms of Use', style: AppTextStyles.legalHeading(t.textPrimary)),
+        Text('Terms of Use', style: AppTextStyles.headlineLarge(t.textPrimary)),
         const SizedBox(height: AppSpacing.xs),
         Text('Last updated: January 2025',
-            style: AppTextStyles.meta(t.textTertiary)),
+            style: AppTextStyles.labelLargeSerif(t.textTertiary)),
         const SizedBox(height: AppSpacing.lg),
 
         _Section(title: 'Acceptance', body:
@@ -192,11 +192,11 @@ class _OpenSourceContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Open Source Licenses',
-            style: AppTextStyles.legalHeading(t.textPrimary)),
+            style: AppTextStyles.headlineLarge(t.textPrimary)),
         const SizedBox(height: AppSpacing.sm),
         Text(
           'Poppy is built on the shoulders of these open source projects.',
-          style: AppTextStyles.legalBody(t.textSecondary),
+          style: AppTextStyles.bodyMedium(t.textSecondary),
         ),
         const SizedBox(height: AppSpacing.lg),
         ...packages.map((p) => Padding(
@@ -218,9 +218,9 @@ class _OpenSourceContent extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(p.$1,
-                        style: AppTextStyles.legalSectionTitle(t.textPrimary)),
+                        style: AppTextStyles.bodySmallSans(t.textPrimary)),
                     Text('${p.$3} · ${p.$2}',
-                        style: AppTextStyles.meta(t.textTertiary)),
+                        style: AppTextStyles.labelLargeSerif(t.textTertiary)),
                   ],
                 ),
               ),
@@ -232,7 +232,7 @@ class _OpenSourceContent extends StatelessWidget {
           onPressed: () => showLicensePage(context: context),
           icon: Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
           label: Text('View all Flutter licenses',
-              style: AppTextStyles.link(t.accent)),
+              style: AppTextStyles.bodySmallSans(t.accent)),
         ),
       ],
     );
@@ -254,9 +254,9 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.legalSectionTitle(t.textPrimary)),
+          Text(title, style: AppTextStyles.bodySmallSans(t.textPrimary)),
           const SizedBox(height: AppSpacing.xs),
-          Text(body, style: AppTextStyles.legalBody(t.textSecondary)),
+          Text(body, style: AppTextStyles.bodyMedium(t.textSecondary)),
         ],
       ),
     );

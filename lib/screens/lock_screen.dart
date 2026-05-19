@@ -65,7 +65,7 @@ class _LockScreenState extends State<LockScreen> {
                   const PoppyLogo(size: AppIconSize.logoLg),
                   const SizedBox(height: AppSpacing.md),
                   Text(kAppName,
-                      style: AppTextStyles.appName(t.textPrimary)),
+                      style: AppTextStyles.displayLarge(t.textPrimary)),
                 ],
               ),
               const Spacer(flex: 2),
@@ -78,7 +78,7 @@ class _LockScreenState extends State<LockScreen> {
               TextButton(
                 onPressed: _onSignOut,
                 child: Text('Sign out instead',
-                    style: AppTextStyles.link(t.textTertiary)),
+                    style: AppTextStyles.bodySmallSans(t.textTertiary)),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],

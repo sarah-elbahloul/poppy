@@ -31,7 +31,7 @@ class SettingsScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text('Settings',
-            style: AppTextStyles.appBarTitle(t.textPrimary)),
+            style: AppTextStyles.titleLarge(t.textPrimary)),
       ),
       body: ListView(
         children: [
@@ -43,7 +43,7 @@ class SettingsScreen extends StatelessWidget {
             ),
             child: Text(
               auth.user?.email ?? '',
-              style: AppTextStyles.settingsEmail(t.textTertiary),
+              style: AppTextStyles.bodySmallSans(t.textTertiary),
             ),
           ),
 
@@ -142,7 +142,7 @@ class SettingsScreen extends StatelessWidget {
 
           Center(
             child: Text('Poppy · v1.0.0',
-                style: AppTextStyles.version(t.textTertiary)),
+                style: AppTextStyles.labelMedium(t.textTertiary)),
           ),
           const SizedBox(height: AppSpacing.lg),
         ],
@@ -348,11 +348,11 @@ class _Row extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(label,
-                      style: AppTextStyles.settingsRowLabel(color)),
+                      style: AppTextStyles.titleSmallSans(color)),
                   if (sublabel != null) ...[
                     const SizedBox(height: 2),
                     Text(sublabel!,
-                        style: AppTextStyles.settingsRowSublabel(
+                        style: AppTextStyles.labelLargeSans(
                             t.textTertiary)),
                   ],
                 ],

@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bidi_text/bidi_text_field.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:poppy/core/app_routes.dart';
@@ -352,12 +354,16 @@ class _WriteScreenState extends State<WriteScreen> {
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
 
-    return WillPopScope(
-      onWillPop: () async {
-        if (!_hasChanges) return true;
-
-        final result = await _save();
-        return result ?? false; // 🚫 block pop if save failed
+    return PopScope(
+      canPop: !_hasChanges, // allow pop only if no changes
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        if (_hasChanges) {
+          final result = await _save();
+          if (result == true) {
+            Navigator.of(context).pop(); // manually pop after saving
+          }
+        }
       },
       child: Scaffold(
         backgroundColor: t.accent,
@@ -421,12 +427,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       const SizedBox(height: 2),
                       Text(
                         DateFormat('MMM').format(_entryDate).toUpperCase(),
-                        style: TextStyle(
-                          color: t.textTertiary,
-                          fontSize: 10,
-                          letterSpacing: 1,
-                          height: 1,
-                        ),
+                        style: AppTextStyles.labelSmall(t.textTertiary,),
                       ),
                     ],
                   ),
@@ -441,12 +442,12 @@ class _WriteScreenState extends State<WriteScreen> {
                     textAlign: TextAlign.center,
                     textAlignVertical: TextAlignVertical.center,
                     textCapitalization: TextCapitalization.words,
-                    style: AppTextStyles.writeTitle(t.textPrimary),
+                    style: AppTextStyles.headlineMedium(t.textPrimary),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: t.surface,
                       hintText: 'Title',
-                      hintStyle: AppTextStyles.writeTitle(t.textTertiary)
+                      hintStyle: AppTextStyles.headlineMedium(t.textTertiary)
                           .copyWith(fontSize: 15),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -521,7 +522,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       const SizedBox(width: AppSpacing.sm),
                       Text(
                         'Delete entry',
-                        style: AppTextStyles.writeBody(
+                        style: AppTextStyles.bodyLarge(
                           Theme.of(context).colorScheme.error,
                         ),
                       ),
@@ -578,7 +579,7 @@ class _WriteScreenState extends State<WriteScreen> {
                                       children: [
                                         Text(
                                           '$count / $kWordLimit words',
-                                          style: AppTextStyles.meta(color),
+                                          style: AppTextStyles.labelLargeSerif(color),
                                         ),
                                         if (over) ...[
                                           SizedBox(width: AppSpacing.sm,),
@@ -606,22 +607,23 @@ class _WriteScreenState extends State<WriteScreen> {
 
                         // Writing area
                         Expanded(
-                          child: TextField(
+                          child: BidiTextField(
                             /*
                             inputFormatters: [WordLimitFormatter(kWordLimit,onBlocked: _maybeShowLimitSnackBar,),],
                             */
                             controller: _contentController,
-                            style: AppTextStyles.writeBody(t.textPrimary),
+                            style: AppTextStyles.bodyLarge(t.textPrimary),
                             decoration: InputDecoration(
                               hintText: 'Write anything…',
                               hintStyle:
-                              AppTextStyles.writeBody(t.textTertiary),
+                              AppTextStyles.bodyLarge(t.textTertiary),
                               border: InputBorder.none,
                             ),
                             keyboardType: TextInputType.multiline,
                             maxLines: null,
                             expands: true,
                             textAlignVertical: TextAlignVertical.top,
+                            textAlign: TextAlign.start,
                           ),
                         ),
 
@@ -741,7 +743,7 @@ class _PhotoSection extends StatelessWidget {
                   totalCount == 0
                       ? 'Photos'
                       : 'Photos ($totalCount/$maxPhotos)',
-                  style: AppTextStyles.meta(t.textTertiary),
+                  style: AppTextStyles.labelLargeSerif(t.textTertiary),
                 ),
                 const Spacer(),
                 Icon(
@@ -849,7 +851,7 @@ class _PhotoPendingThumb extends StatelessWidget {
         /// Delete button
         Positioned(
           top: AppSpacing.xs,
-          right: AppSpacing.xs,
+          right: AppSpacing.md,
           child: _DeletePhotoButton(onTap: onDelete),
         ),
       ],
@@ -903,7 +905,7 @@ class _PhotoSavedThumb extends StatelessWidget {
           /// Delete button
           Positioned(
             top: AppSpacing.xs,
-            right: AppSpacing.xs,
+            right: AppSpacing.md,
             child: _DeletePhotoButton(onTap: onDelete),
           ),
         ],
