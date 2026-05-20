@@ -15,9 +15,9 @@ import 'dart:io';
 //  Location: lib/services/export_service.dart
 //
 //  Export modes:
-//    Plain    → entries decrypted in file, anyone can read it
+//    Plain     → entries decrypted in file, anyone can read it
 //    Encrypted → entire entries array encrypted as one blob,
-//                requires the same password to import
+//                requires the SAME account password to import
 //
 //  File header always readable (not encrypted):
 //  {
@@ -29,10 +29,11 @@ import 'dart:io';
 //    "entries":    [ ... ] | "<encrypted blob>"
 //  }
 //
-//  Import:
-//  - Detects encrypted flag
-//  - If encrypted, decrypts blob using current key before parsing
-//  - After import, caller must call fetchEntries() to refresh
+//  Import — cross-account safety:
+//    Encrypted exports can only be imported by the account whose
+//    key encrypted them.  Attempting to import with a different
+//    account produces a clear, actionable error rather than a
+//    generic decryption failure.  Plain exports work with any account.
 // ─────────────────────────────────────────────────────────────
 
 class ExportService {
@@ -54,7 +55,7 @@ class ExportService {
 
     if (encrypted) {
       // Encrypt the entire entries array as one blob
-      final plainText  = jsonEncode(entriesJson);
+      final plainText     = jsonEncode(entriesJson);
       final encryptedBlob = await _enc.encryptToJson(plainText);
 
       payload = {
@@ -63,6 +64,9 @@ class ExportService {
         'exported_at': DateTime.now().toIso8601String(),
         'entry_count': entries.length,
         'encrypted':   true,
+        // user_id is stored in plain so the importer can detect a
+        // cross-account mismatch without attempting decryption first.
+        'user_id':     SupabaseConfig.userId,
         'entries':     encryptedBlob, // single encrypted string
       };
     } else {
@@ -104,6 +108,16 @@ class ExportService {
   // ── Import ────────────────────────────────────────────────
   // Returns the number of entries successfully imported.
   // Caller MUST call entriesProvider.fetchEntries() after this.
+  //
+  // Cross-account detection:
+  //   If the file is an encrypted export AND it contains a user_id
+  //   that differs from the signed-in user, we throw a FormatException
+  //   with the importWrongAccount message before attempting decryption.
+  //   This gives users a clear, actionable error rather than a cryptic
+  //   "could not decrypt" message.
+  //
+  //   If user_id is absent (older exports) we attempt decryption and
+  //   fall back to the generic "wrong account" error on failure.
 
   Future<int> importEntries() async {
     final result = await FilePicker.platform.pickFiles(
@@ -147,18 +161,34 @@ class ExportService {
     late List rawEntries;
 
     if (isEncrypted) {
+      // Cross-account check: if user_id is present and doesn't match,
+      // reject immediately with a clear message.
+      final exportedBy = payload['user_id'] as String?;
+      if (exportedBy != null && exportedBy != SupabaseConfig.userId) {
+        throw const FormatException(
+          'This export is encrypted with a different account\'s password. '
+              'You can only import it if you sign in with the original account. '
+              'Ask the exporter to share a plain (unencrypted) copy instead.',
+        );
+      }
+
       final encryptedBlob = payload['entries'] as String?;
       if (encryptedBlob == null) {
         throw const FormatException('Encrypted export is missing data.');
       }
-      // Decrypt blob using the current user's key
+
+      // Attempt decryption with current key
       final plainText = await _enc.decryptFromJson(encryptedBlob);
       if (plainText.isEmpty) {
+        // user_id was absent (old export) — give a cross-account hint
         throw const FormatException(
             'Could not decrypt this export. '
                 'Make sure you are signed in with the same account '
-                'that created this export.');
+                'and password that created this export. '
+                'If you changed your password since exporting, '
+                'the file can no longer be decrypted.');
       }
+
       try {
         rawEntries = jsonDecode(plainText) as List;
       } catch (_) {
@@ -196,7 +226,7 @@ class ExportService {
         final updatedAt = map['updated_at'] as String?
             ?? DateTime.now().toIso8601String();
 
-        // Encrypt before storing
+        // Encrypt before storing (always re-encrypt with current user's key)
         final encrypted = await _enc.encryptEntry(
           title:   title,
           content: content,

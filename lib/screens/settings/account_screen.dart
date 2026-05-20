@@ -7,6 +7,12 @@ import 'package:provider/provider.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Account Screen
 //  Location: lib/screens/settings/account_screen.dart
+//
+//  Password change (Option D):
+//    Requires current password + new password + confirm.
+//    KeyService.rewrapForPasswordChange() unwraps the data key
+//    with the old password and re-wraps it with the new one.
+//    ONE DB row update. No entry re-encryption. Instant.
 // ─────────────────────────────────────────────────────────────
 
 class AccountScreen extends StatefulWidget {
@@ -18,74 +24,68 @@ class AccountScreen extends StatefulWidget {
 
 class _AccountScreenState extends State<AccountScreen> {
   String? _openPanel;
-  final _emailController           = TextEditingController();
-  final _newPasswordController     = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+
+  final _emailController       = TextEditingController();
+  final _currentPassController = TextEditingController();
+  final _newPassController     = TextEditingController();
+  final _confirmPassController = TextEditingController();
+
+  bool _obscureCurrent = true;
   bool _obscureNew     = true;
   bool _obscureConfirm = true;
 
   @override
   void dispose() {
     _emailController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
+    _currentPassController.dispose();
+    _newPassController.dispose();
+    _confirmPassController.dispose();
     super.dispose();
   }
 
   Future<void> _onUpdateEmail() async {
-    // Validate before network call
-    final emailErr = AppErrors.validateEmail(_emailController.text);
-    if (emailErr != null) {
-      _showSnack(emailErr);
-      return;
-    }
-
+    final err = AppErrors.validateEmail(_emailController.text);
+    if (err != null) { _showSnack(err); return; }
     final auth = context.read<AuthProvider>();
     auth.clearError();
-    final success = await auth.updateEmail(_emailController.text);
+    final ok = await auth.updateEmail(_emailController.text);
     if (!mounted) return;
-    if (success) {
+    if (ok) {
       setState(() => _openPanel = null);
       _emailController.clear();
       _showSnack('Check your new email for a confirmation link.');
     }
-    // Error already translated in auth_provider via AppErrors.updateEmail()
   }
 
   Future<void> _onUpdatePassword() async {
-    // Validate before network call
-    final passwordErr =
-    AppErrors.validatePassword(_newPasswordController.text);
-    if (passwordErr != null) {
-      _showSnack(passwordErr);
-      return;
+    if (_currentPassController.text.isEmpty) {
+      _showSnack('Please enter your current password.'); return;
     }
+    final passErr = AppErrors.validatePassword(_newPassController.text);
+    if (passErr != null) { _showSnack(passErr); return; }
     final confirmErr = AppErrors.validateConfirm(
-      _newPasswordController.text,
-      _confirmPasswordController.text,
+      _newPassController.text, _confirmPassController.text,
     );
-    if (confirmErr != null) {
-      _showSnack(confirmErr);
-      return;
-    }
+    if (confirmErr != null) { _showSnack(confirmErr); return; }
 
     final auth = context.read<AuthProvider>();
     auth.clearError();
-    final success =
-    await auth.updatePassword(_newPasswordController.text);
+    final ok = await auth.updatePassword(
+      oldPassword: _currentPassController.text,
+      newPassword: _newPassController.text,
+    );
     if (!mounted) return;
-    if (success) {
+    if (ok) {
       setState(() => _openPanel = null);
-      _newPasswordController.clear();
-      _confirmPasswordController.clear();
+      _currentPassController.clear();
+      _newPassController.clear();
+      _confirmPassController.clear();
       _showSnack('Password updated successfully.');
     }
   }
 
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _showSnack(String msg) => ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(msg)));
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +117,7 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // Change email
+          // ── Change email ──────────────────────────────────
           _ExpandablePanel(
             icon:  AppIcons.email,
             title: 'Change email',
@@ -125,19 +125,15 @@ class _AccountScreenState extends State<AccountScreen> {
             onToggle: () => setState(() =>
             _openPanel = _openPanel == 'email' ? null : 'email'),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _Field(
                   controller:   _emailController,
                   label:        'New email address',
                   keyboardType: TextInputType.emailAddress,
                 ),
-                // Error already friendly from auth_provider
-                if (auth.errorMessage != null &&
-                    _openPanel == 'email') ...[
+                if (auth.errorMessage != null && _openPanel == 'email') ...[
                   const SizedBox(height: AppSpacing.sm),
-                  Text(auth.errorMessage!,
-                      style: AppTextStyles.bodySmallSans(t.accent)),
+                  _ErrorText(message: auth.errorMessage!),
                 ],
                 const SizedBox(height: AppSpacing.md),
                 _SubmitButton(
@@ -151,7 +147,7 @@ class _AccountScreenState extends State<AccountScreen> {
 
           const SizedBox(height: AppSpacing.sm),
 
-          // Change password
+          // ── Change password ───────────────────────────────
           _ExpandablePanel(
             icon:  AppIcons.password,
             title: 'Change password',
@@ -160,10 +156,20 @@ class _AccountScreenState extends State<AccountScreen> {
             _openPanel =
             _openPanel == 'password' ? null : 'password'),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _Field(
-                  controller:  _newPasswordController,
+                  controller:  _currentPassController,
+                  label:       'Current password',
+                  obscureText: _obscureCurrent,
+                  suffixIcon: _VisToggle(
+                    obscure:  _obscureCurrent,
+                    onToggle: () => setState(
+                            () => _obscureCurrent = !_obscureCurrent),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _Field(
+                  controller:  _newPassController,
                   label:       'New password',
                   obscureText: _obscureNew,
                   suffixIcon: _VisToggle(
@@ -174,7 +180,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 _Field(
-                  controller:  _confirmPasswordController,
+                  controller:  _confirmPassController,
                   label:       'Confirm new password',
                   obscureText: _obscureConfirm,
                   suffixIcon: _VisToggle(
@@ -186,8 +192,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 if (auth.errorMessage != null &&
                     _openPanel == 'password') ...[
                   const SizedBox(height: AppSpacing.sm),
-                  Text(auth.errorMessage!,
-                      style: AppTextStyles.bodySmallSans(t.accent)),
+                  _ErrorText(message: auth.errorMessage!),
                 ],
                 const SizedBox(height: AppSpacing.md),
                 _SubmitButton(
@@ -274,6 +279,20 @@ class _ExpandablePanel extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ErrorText extends StatelessWidget {
+  final String message;
+  const _ErrorText({required this.message});
+  @override
+  Widget build(BuildContext context) {
+    final t = context.poppyTheme;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Text(message,
+          style: AppTextStyles.bodySmallSans(t.accent)),
     );
   }
 }

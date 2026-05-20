@@ -8,9 +8,14 @@ import 'package:poppy/services/encryption_service.dart';
 //  POPPY — Entries Service
 //  Location: lib/services/entries_service.dart
 //
-//  Write path: plaintext → encrypt → store title_enc/content_enc
-//  Read path:  fetch title_enc/content_enc → decrypt → Entry
-//  Search:     client-side after decryption (content is encrypted)
+//  Write path: plaintext → encrypt with data key → store
+//  Read path:  fetch → decrypt with data key → Entry
+//  Search:     client-side after decryption
+//
+//  With Option D key architecture, the data key NEVER changes,
+//  so there is NO key rotation here. Password changes only
+//  re-wrap the key in user_keys — entries are never touched
+//  as part of a password change.
 // ─────────────────────────────────────────────────────────────
 
 class EntriesService {
@@ -98,60 +103,14 @@ class EntriesService {
     }
     if (query != null && query.trim().isNotEmpty) {
       final q = query.trim().toLowerCase();
-      entries = entries.where((e) =>
+      entries = entries
+          .where((e) =>
       e.title.toLowerCase().contains(q) ||
-          e.content.toLowerCase().contains(q)).toList();
+          e.content.toLowerCase().contains(q))
+          .toList();
     }
 
     return entries;
-  }
-
-  // ── Key rotation (called on password change) ──────────────
-  // Decrypts every entry with the current (old) key, then
-  // re-encrypts with the new key and updates the row.
-  // Called BEFORE the password is changed in Supabase so the
-  // old key is still active during re-encryption.
-
-  Future<void> rotateEncryptionKey({
-    required EncryptionService oldKeyService,
-    required EncryptionService newKeyService,
-  }) async {
-    final response = await _client
-        .from(DBTable.entries)
-        .select()
-        .eq(DBColumn.userId, SupabaseConfig.userId);
-
-    final rows = response as List;
-
-    for (final row in rows) {
-      final r = row as Map<String, dynamic>;
-
-      // Decrypt with old key
-      final titleJson   = _toJsonString(r[DBColumn.titleEnc]);
-      final contentJson = _toJsonString(r[DBColumn.contentEnc]);
-
-      final decrypted = await oldKeyService.decryptEntry(
-        titleJson:   titleJson,
-        contentJson: contentJson,
-      );
-
-      // Re-encrypt with new key
-      final reEncrypted = await newKeyService.encryptEntry(
-        title:   decrypted.title,
-        content: decrypted.content,
-      );
-
-      // Update row in DB
-      await _client
-          .from(DBTable.entries)
-          .update({
-        DBColumn.titleEnc:   reEncrypted.titleJson,
-        DBColumn.contentEnc: reEncrypted.contentJson,
-        DBColumn.updatedAt:  DateTime.now().toIso8601String(),
-      })
-          .eq(DBColumn.id,     r[DBColumn.id] as String)
-          .eq(DBColumn.userId, SupabaseConfig.userId);
-    }
   }
 
   // ── Encryption helpers ────────────────────────────────────
@@ -181,7 +140,7 @@ class EntriesService {
       contentJson: contentJson,
     );
 
-    final mutable = Map<String, dynamic>.from(row);
+    final mutable      = Map<String, dynamic>.from(row);
     mutable['title']   = decrypted.title;
     mutable['content'] = decrypted.content;
 
@@ -194,8 +153,6 @@ class EntriesService {
     );
   }
 
-  // Supabase returns JSONB columns as Map<dynamic,dynamic>.
-  // Convert back to JSON string for EncryptionService.
   String? _toJsonString(dynamic value) {
     if (value == null) return null;
     if (value is String) return value;

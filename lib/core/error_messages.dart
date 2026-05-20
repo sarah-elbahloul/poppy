@@ -1,24 +1,12 @@
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Centralized Error Messages
 //  Location: lib/core/error_messages.dart
-//
-//  Single source of truth for converting raw Supabase /
-//  system error strings into friendly user-facing messages.
-//
-//  Usage:
-//    final msg = AppErrors.auth(raw);
-//    final msg = AppErrors.network(raw);
-//    final msg = AppErrors.db(raw);
-//    final msg = AppErrors.fromException(e); // generic fallback
-//
-//  All screens import this and call these instead of having
-//  their own _friendlyError() methods.
 // ─────────────────────────────────────────────────────────────
 
 class AppErrors {
   AppErrors._();
 
-  // ── Auth errors (sign in / sign up) ──────────────────────
+  // ── Auth ──────────────────────────────────────────────────
 
   static String signIn(String raw) {
     final l = raw.toLowerCase();
@@ -33,7 +21,7 @@ class AppErrors {
           'Check your inbox for the confirmation link.';
     }
     if (l.contains('too many requests') || l.contains('rate limit')) {
-      return 'Too many sign-in attempts. Please wait a few minutes and try again.';
+      return 'Too many sign-in attempts. Please wait a few minutes.';
     }
     if (_isNetwork(l)) return _networkMsg;
     return 'Could not sign in. Please try again.';
@@ -52,14 +40,10 @@ class AppErrors {
     }
     if (l.contains('password') &&
         (l.contains('short') || l.contains('weak'))) {
-      return 'Password is too short. Please use at least 6 characters.';
-    }
-    if (l.contains('database') || l.contains('transaction')) {
-      return 'Something went wrong on our end. '
-          'Please wait a moment and try again.';
+      return 'Password is too short. Use at least 6 characters.';
     }
     if (l.contains('too many requests') || l.contains('rate limit')) {
-      return 'Too many attempts. Please wait a few minutes and try again.';
+      return 'Too many attempts. Please wait a few minutes.';
     }
     if (_isNetwork(l)) return _networkMsg;
     return 'Could not create your account. Please try again.';
@@ -82,9 +66,7 @@ class AppErrors {
     if (l.contains('already registered') || l.contains('already exists')) {
       return 'This email is already in use by another account.';
     }
-    if (l.contains('invalid email')) {
-      return 'Please enter a valid email address.';
-    }
+    if (l.contains('invalid email')) return 'Please enter a valid email address.';
     if (_isNetwork(l)) return _networkMsg;
     return 'Could not update email. Please try again.';
   }
@@ -93,13 +75,46 @@ class AppErrors {
     final l = raw.toLowerCase();
     if (l.contains('password') &&
         (l.contains('short') || l.contains('weak'))) {
-      return 'Password is too short. Please use at least 6 characters.';
+      return 'Password is too short. Use at least 6 characters.';
     }
     if (_isNetwork(l)) return _networkMsg;
     return 'Could not update password. Please try again.';
   }
 
-  // ── Entry / data errors ───────────────────────────────────
+  // ── Recovery code ─────────────────────────────────────────
+
+  /// Shown when the recovery code doesn't decrypt the stored key.
+  static const String wrongRecoveryCode =
+      'That recovery code is incorrect. '
+      'Please double-check it and try again.';
+
+  /// Shown when the user's current password doesn't match
+  /// during a password-change rewrap.
+  static const String wrongCurrentPassword =
+      'Your current password is incorrect.';
+
+  /// Shown in the recovery code display screen (register).
+  static const String recoveryCodeWarning =
+      'Save this code somewhere safe — a note, password manager, '
+      'or printed paper. If you forget your password, this is the '
+      'only way to recover your diary. It will not be shown again.';
+
+  /// Title for the recovery code screen.
+  static const String recoveryCodeTitle = 'Your recovery code';
+
+  /// Hint shown in the recovery-code input field.
+  static const String recoveryCodeHint = 'POPPY-XXXX-XXXX-XXXX-XXXX';
+
+  /// Shown when recovery code field is empty.
+  static const String recoveryCodeEmpty =
+      'Please enter your recovery code.';
+
+  /// Shown when recovery code format looks wrong.
+  static const String recoveryCodeFormat =
+      'Recovery codes look like POPPY-XXXX-XXXX-XXXX-XXXX. '
+      'Check for typos and try again.';
+
+  // ── Entry / data ──────────────────────────────────────────
 
   static String saveEntry(String raw) {
     final l = raw.toLowerCase();
@@ -117,11 +132,10 @@ class AppErrors {
 
   static String loadEntries(String raw) {
     if (_isNetwork(raw.toLowerCase())) return _networkMsg;
-    return 'Could not load your entries. '
-        'Check your connection and try again.';
+    return 'Could not load your entries. Check your connection and try again.';
   }
 
-  // ── Photo errors ──────────────────────────────────────────
+  // ── Photos ────────────────────────────────────────────────
 
   static String uploadPhoto(String raw) {
     final l = raw.toLowerCase();
@@ -137,7 +151,7 @@ class AppErrors {
     return 'Could not remove the photo. Please try again.';
   }
 
-  // ── Import / export errors ────────────────────────────────
+  // ── Import / export ───────────────────────────────────────
 
   static String importFile(Object error) {
     if (error is FormatException) return error.message;
@@ -146,29 +160,28 @@ class AppErrors {
     return 'Import failed. Make sure the file is a valid Poppy export.';
   }
 
-  static String exportFile(Object error) {
-    return 'Export failed. Please try again.';
-  }
+  static String exportFile(Object error) =>
+      'Export failed. Please try again.';
 
-  // ── PIN errors ────────────────────────────────────────────
+  static const String importWrongAccount =
+      'This export is encrypted with a different account\'s password. '
+      'You can only import it from the original account, or ask for '
+      'a plain (unencrypted) export instead.';
 
-  static const String pinIncorrect =
-      'Incorrect PIN. Please try again.';
+  // ── PIN ───────────────────────────────────────────────────
 
-  static const String pinMismatch =
+  static const String pinIncorrect = 'Incorrect PIN. Please try again.';
+  static const String pinMismatch  =
       'PINs do not match. Please try again from the beginning.';
 
-  // ── Validation messages ───────────────────────────────────
-  // Used in forms before any network call is made.
+  // ── Validation ────────────────────────────────────────────
 
   static const String emailEmpty    = 'Please enter your email address.';
   static const String emailInvalid  = 'Please enter a valid email address.';
   static const String passwordEmpty = 'Please enter a password.';
-  static const String passwordShort =
-      'Password must be at least 6 characters.';
+  static const String passwordShort = 'Password must be at least 6 characters.';
   static const String passwordMismatch = 'Passwords do not match.';
-  static const String confirmEmpty  =
-      'Please confirm your password.';
+  static const String confirmEmpty  = 'Please confirm your password.';
 
   static String? validateEmail(String email) {
     if (email.trim().isEmpty) return emailEmpty;
@@ -188,10 +201,21 @@ class AppErrors {
     return null;
   }
 
+  static String? validateRecoveryCode(String code) {
+    if (code.trim().isEmpty) return recoveryCodeEmpty;
+    final norm = code.trim().toUpperCase().replaceAll(' ', '');
+    // Expect POPPY-XXXX-XXXX-XXXX-XXXX = 5 segments separated by -
+    final parts = norm.split('-');
+    if (parts.length != 5 || parts[0] != 'POPPY' ||
+        parts.sublist(1).any((p) => p.length != 4)) {
+      return recoveryCodeFormat;
+    }
+    return null;
+  }
+
   // ── Word limit ────────────────────────────────────────────
 
   static const int wordLimit = 10000;
-
   static String wordLimitExceeded(int count) =>
       'Your entry has $count words, which exceeds the $wordLimit-word limit. '
           'Please shorten it before saving.';
@@ -204,7 +228,7 @@ class AppErrors {
     return 'Something went wrong. Please try again.';
   }
 
-  // ── Private helpers ───────────────────────────────────────
+  // ── Private ───────────────────────────────────────────────
 
   static const String _networkMsg =
       'No internet connection. Please check your network and try again.';

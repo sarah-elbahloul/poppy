@@ -28,6 +28,8 @@ class AppIcons {
   static const IconData edit       = Iconsax.edit_2;
   static const IconData sort       = Iconsax.arrow_swap;
   static const IconData save       = Iconsax.tick_circle;
+  static const IconData copy       = Iconsax.copy;
+  static const IconData key       = Iconsax.key;
   static const IconData chevronRight = Iconsax.arrow_right_3;
   static const IconData chevronDown  = Iconsax.arrow_down_1;
   static const IconData chevronUp    = Iconsax.arrow_up_2;
@@ -68,6 +70,7 @@ class AppIcons {
   static const IconData export_    = Iconsax.export;
   static const IconData import_    = Iconsax.import;
   static const IconData info       = Iconsax.info_circle;
+  static const IconData warning    = Iconsax.warning_2;
   static const IconData privacyPolicy       = Iconsax.shield;
   static const IconData Tos       = Iconsax.document;
   static const IconData Osl       = Iconsax.info_circle;
