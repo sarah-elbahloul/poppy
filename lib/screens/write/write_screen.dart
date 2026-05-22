@@ -612,6 +612,7 @@ class _WriteScreenState extends State<WriteScreen> {
                             inputFormatters: [WordLimitFormatter(kWordLimit,onBlocked: _maybeShowLimitSnackBar,),],
                             */
                             controller: _contentController,
+                            autofocus: true,
                             style: AppTextStyles.bodyLarge(t.textPrimary),
                             decoration: InputDecoration(
                               hintText: 'Write anything…',

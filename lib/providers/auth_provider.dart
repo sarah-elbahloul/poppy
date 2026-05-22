@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:poppy/core/constants.dart';
@@ -12,71 +13,52 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 //  POPPY — Auth Provider
 //  Location: lib/providers/auth_provider.dart
 //
-//  KEY ARCHITECTURE (Option D — random data key)
-//  ──────────────────────────────────────────────
+//  AUTH STATES
+//  ───────────
+//  unknown          → app start, checking session
+//  unauthenticated  → no session, show login
+//  authenticated    → normal session, show home
+//  passwordRecovery → one-time reset session from email link,
+//                     show SetNewPasswordScreen
 //
-//  SIGN-UP FLOW
-//  ────────────
-//  Supabase requires email confirmation before a session exists.
-//  The user_keys RLS policy requires auth.uid(), so we cannot
-//  write to the DB until the user confirms their email and signs
-//  in for the first time.
+//  SIGN-UP (two-phase key save)
+//  ────────────────────────────
+//  Phase 1 (sign-up, no confirmed session):
+//    Generate data key → wrap with password → store blob in
+//    secure storage (pendingEncKey). Return to screen.
+//  Phase 2 (first sign-in):
+//    Flush pendingEncKey blob to user_keys table. Clear storage.
 //
-//  Solution — two-phase key save:
-//    Phase 1 (sign-up, no session):
-//      1. Supabase creates the user (pending confirmation)
-//      2. Generate data key + recovery code in memory
-//      3. Wrap both → store blobs in secure storage as
-//         pendingEncKey / pendingRecoveryKey
-//      4. Return recovery code to screen for display
-//         (user must save it before continuing)
+//  PASSWORD CHANGE (settings)
+//  ──────────────────────────
+//  KeyService.rewrapKey(old, new) — unwrap with old, re-wrap
+//  with new, update DB via update_data_key() RPC. One call.
 //
-//    Phase 2 (first sign-in, confirmed session):
-//      1. Normal Supabase signInWithPassword
-//      2. Check if user_keys row exists for this user
-//      3a. If NOT (first sign-in after sign-up):
-//            - Load pending blobs from secure storage
-//            - Save them to user_keys table
-//            - Clear pending blobs from secure storage
-//            - Set data key in EncryptionService
-//      3b. If YES (returning user):
-//            - Fetch + unwrap data key with password
-//
-//  SIGN-IN FLOW (returning user)
+//  FORGOT PASSWORD (email reset)
 //  ─────────────────────────────
-//    1. Supabase auth
-//    2. loadAndUnwrapWithPassword() → data key in memory
-//
-//  PASSWORD CHANGE (from Account settings)
-//  ────────────────────────────────────────
-//    1. rewrapForPasswordChange(old, new) — one DB row update
-//    2. supabase.auth.updateUser(password: new)
-//    No entry re-encryption. Ever.
-//
-//  FORGOT PASSWORD (from Login screen)
-//  ────────────────────────────────────
-//    1. sendPasswordResetEmail() → Supabase sends email
-//    2. User taps link → app resumes in reset session
-//    3. resetWithRecoveryCode(code, newPassword):
-//         - recoverWithCode() → unwrap with recovery key,
-//           re-wrap with newPassword, update DB
-//         - supabase.auth.updateUser(password: newPassword)
-//    Entries untouched.
+//  1. sendPasswordResetEmail(email) — Supabase sends link
+//  2. User taps link → app gets AuthChangeEvent.passwordRecovery
+//  3. status flips to passwordRecovery → app shows SetNewPasswordScreen
+//  4. User enters new password → completePasswordReset(newPassword):
+//       a. updateUser(password: newPassword)  — updates Supabase auth
+//       b. KeyService.saveNewWrappedKey(newPassword) — re-wraps data key
+//       c. status flips to authenticated → home screen
 // ─────────────────────────────────────────────────────────────
 
-enum AuthStatus { unknown, authenticated, unauthenticated }
+enum AuthStatus { unknown, authenticated, unauthenticated, passwordRecovery }
 
 class AuthProvider extends ChangeNotifier {
   final _storage    = const FlutterSecureStorage();
   final _enc        = EncryptionService.instance;
   final _keyService = KeyService();
 
-  AuthStatus _status       = AuthStatus.unknown;
+  AuthStatus _status          = AuthStatus.unknown;
   User?      _user;
-  bool       _isLocked     = false;
-  bool       _pinEnabled   = false;
+  bool       _isLocked        = false;
+  bool       _pinEnabled      = false;
   String?    _errorMessage;
-  bool       _isLoading    = false;
+  bool       _isLoading       = false;
+  bool       _encryptionReady = false;
 
   AuthStatus get status          => _status;
   User?      get user            => _user;
@@ -85,6 +67,7 @@ class AuthProvider extends ChangeNotifier {
   String?    get errorMessage    => _errorMessage;
   bool       get isLoading       => _isLoading;
   bool       get isAuthenticated => _status == AuthStatus.authenticated;
+  bool       get encryptionReady => _encryptionReady;
 
   AuthProvider() { _init(); }
 
@@ -94,27 +77,43 @@ class AuthProvider extends ChangeNotifier {
       _user   = session.user;
       _status = AuthStatus.authenticated;
       await _checkPinLock();
-      await _enc.loadCachedKey();
+      final loaded = await _enc.loadCachedKey();
+      _encryptionReady = loaded;
     } else {
       _status = AuthStatus.unauthenticated;
     }
-    notifyListeners();
+    _safeNotify();
 
     SupabaseConfig.authStateStream.listen((data) async {
       _user = data.session?.user;
-      if (data.event == AuthChangeEvent.signedIn) {
-        _status = AuthStatus.authenticated;
-        await _checkPinLock();
-        await _enc.loadCachedKey();
-      } else if (data.event == AuthChangeEvent.userUpdated) {
-        // Refresh local user object (e.g. after email change confirms)
-        _user = data.session?.user;
-      } else if (data.event == AuthChangeEvent.signedOut) {
-        _status   = AuthStatus.unauthenticated;
-        _isLocked = false;
-        await _enc.clearKey();
+      switch (data.event) {
+        case AuthChangeEvent.signedIn:
+        // Handled explicitly in signIn() — don't duplicate key load here
+          _status = AuthStatus.authenticated;
+          await _checkPinLock();
+          break;
+        case AuthChangeEvent.passwordRecovery:
+        // One-time session from reset email link.
+        // Data key is still in secure storage cache from before
+        // the user forgot their password (same device) OR we
+        // can't decrypt without the old password.
+        // Either way, navigate to SetNewPasswordScreen.
+          _status = AuthStatus.passwordRecovery;
+          await _enc.loadCachedKey(); // may or may not succeed
+          break;
+        case AuthChangeEvent.userUpdated:
+          _user = data.session?.user;
+          break;
+        case AuthChangeEvent.signedOut:
+          _status          = AuthStatus.unauthenticated;
+          _isLocked        = false;
+          _encryptionReady = false;
+          await _enc.clearKey();
+          break;
+        default:
+          break;
       }
-      notifyListeners();
+      _safeNotify();
     });
   }
 
@@ -124,14 +123,14 @@ class AuthProvider extends ChangeNotifier {
     if (_pinEnabled) _isLocked = true;
   }
 
-  void unlock() { _isLocked = false; notifyListeners(); }
+  void unlock() { _isLocked = false; _safeNotify(); }
 
   Future<void> setPinEnabled(bool enabled) async {
     _pinEnabled = enabled;
     await _storage.write(
         key: StorageKeys.pinEnabled, value: enabled.toString());
     if (!enabled) await _storage.delete(key: StorageKeys.pinHash);
-    notifyListeners();
+    _safeNotify();
   }
 
   // ── Sign in ───────────────────────────────────────────────
@@ -141,107 +140,72 @@ class AuthProvider extends ChangeNotifier {
     required String password,
   }) async {
     _setLoading(true); _clearError();
+    _encryptionReady = false;
     try {
       await SupabaseConfig.client.auth.signInWithPassword(
         email: email.trim(), password: password,
       );
 
-      // Check whether a user_keys row already exists.
       final hasKeys = await _keyService.hasKeysRow();
 
       if (!hasKeys) {
-        // ── First sign-in after sign-up ───────────────────
-        // Load the wrapped blobs we stored in secure storage
-        // at sign-up time and save them to the DB now that
-        // we have a valid session.
-        final pendingEnc      = await _storage.read(key: StorageKeys.pendingEncKey);
-        final pendingRecovery = await _storage.read(key: StorageKeys.pendingRecoveryKey);
-        final cachedKey       = await _storage.read(key: StorageKeys.dataKey);
-
-        if (pendingEnc != null && pendingRecovery != null) {
-          await _keyService.saveWrappedKeys(
-            encDataKeyJson:          pendingEnc,
-            recoveryEncDataKeyJson:  pendingRecovery,
-          );
-          // Clear the temp blobs — they are now in the DB
+        // First sign-in after sign-up: flush pending blob to DB
+        final pending = await _storage.read(key: StorageKeys.pendingEncKey);
+        if (pending != null) {
+          await _keyService.saveWrappedKey(encDataKeyJson: pending);
           await _storage.delete(key: StorageKeys.pendingEncKey);
-          await _storage.delete(key: StorageKeys.pendingRecoveryKey);
         }
-
-        // Data key is already cached in secure storage from sign-up
-        if (cachedKey != null) {
-          await _enc.loadCachedKey();
-        } else {
-          // Fallback: unwrap from DB (handles reinstall edge case)
-          await _keyService.loadAndUnwrapWithPassword(password);
-        }
+        await _enc.loadCachedKey();
       } else {
-        // ── Returning user ────────────────────────────────
-        // Try loading from local cache first (fast path)
         final loaded = await _enc.loadCachedKey();
         if (!loaded) {
-          // Cache miss (reinstall / new device) — fetch from DB
           await _keyService.loadAndUnwrapWithPassword(password);
         }
       }
 
+      _encryptionReady = true;
       return true;
     } on AuthException catch (e) {
-      _errorMessage = AppErrors.signIn(e.message);
-      notifyListeners(); return false;
+      _errorMessage    = AppErrors.signIn(e.message);
+      _encryptionReady = false;
+      _safeNotify(); return false;
     } catch (e) {
-      _errorMessage = AppErrors.fromException(e);
-      notifyListeners(); return false;
+      _errorMessage    = AppErrors.fromException(e);
+      _encryptionReady = false;
+      _safeNotify(); return false;
     } finally { _setLoading(false); }
   }
 
-  // ── Sign up ───────────────────────────────────────────────
-  //
-  // Phase 1 of the two-phase key save (see file header).
-  // Returns the recovery code string on success, null on failure.
-  // The DB write happens in signIn() after email confirmation.
+  // ── Sign up (phase 1 — no session yet) ───────────────────
 
-  Future<String?> signUp({
+  Future<bool> signUp({
     required String email,
     required String password,
   }) async {
     _setLoading(true); _clearError();
     try {
       await SupabaseConfig.client.auth.signUp(
-        email: email.trim(), password: password,
+        email:      email.trim(),
+        password:   password,
+        emailRedirectTo: kIsWeb ? 'http://localhost:49296' : 'io.supabase.poppy://login-callback/',
       );
 
-      // Generate data key + recovery code (in memory only for now)
       final dataKeyBytes = await _enc.generateDataKey();
-      final recoveryCode = _enc.generateRecoveryCode();
+      final wrapped      = await _enc.wrapWithPassword(dataKeyBytes, password);
 
-      // Wrap both — these are safe to store locally because they
-      // are ciphertext: the data key bytes are encrypted inside them
-      final passwordWrapped  = await _enc.wrapWithPassword(
-          dataKeyBytes, password);
-      final recoveryWrapped  = await _enc.wrapWithRecoveryCode(
-          dataKeyBytes, recoveryCode);
-
-      // Save wrapped blobs to secure storage (not DB — no session yet)
       await _storage.write(
         key:   StorageKeys.pendingEncKey,
-        value: jsonEncode(passwordWrapped),
+        value: jsonEncode(wrapped),
       );
-      await _storage.write(
-        key:   StorageKeys.pendingRecoveryKey,
-        value: jsonEncode(recoveryWrapped),
-      );
-      // Data key bytes are also cached (generateDataKey does this)
-
-      return recoveryCode;
+      return true;
     } on AuthException catch (e) {
       _errorMessage = AppErrors.signUp(e.message);
       await _enc.clearKey();
-      notifyListeners(); return null;
+      _safeNotify(); return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);
       await _enc.clearKey();
-      notifyListeners(); return null;
+      _safeNotify(); return false;
     } finally { _setLoading(false); }
   }
 
@@ -251,51 +215,61 @@ class AuthProvider extends ChangeNotifier {
     await SupabaseConfig.client.auth.signOut();
   }
 
-  // ── Send password reset email ─────────────────────────────
+  // ── Forgot password: send reset email ────────────────────
 
   Future<bool> sendPasswordResetEmail(String email) async {
     _setLoading(true); _clearError();
     try {
-      await SupabaseConfig.client.auth
-          .resetPasswordForEmail(email.trim());
+      await SupabaseConfig.client.auth.resetPasswordForEmail(
+        email.trim(),
+        redirectTo: kIsWeb ? 'http://localhost:49296' : 'io.supabase.poppy://login-callback/',
+      );
       return true;
     } on AuthException catch (e) {
       _errorMessage = AppErrors.resetPassword(e.message);
-      notifyListeners(); return false;
+      _safeNotify(); return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);
-      notifyListeners(); return false;
+      _safeNotify(); return false;
     } finally { _setLoading(false); }
   }
 
-  // ── Reset password with recovery code ────────────────────
+  // ── Forgot password: complete reset (called from SetNewPasswordScreen)
+  //
+  // At this point the user has a one-time passwordRecovery session.
+  // We update the Supabase auth password, then re-wrap the data key.
+  // If the data key isn't in memory (different device / reinstall),
+  // entries will be unreadable after the reset — this is the
+  // fundamental limitation of E2E encryption with no escrow.
 
-  Future<bool> resetWithRecoveryCode({
-    required String recoveryCode,
-    required String newPassword,
-  }) async {
+  Future<bool> completePasswordReset(String newPassword) async {
     _setLoading(true); _clearError();
     try {
-      final normCode     = EncryptionService.normaliseRecoveryCode(recoveryCode);
-      final dataKeyBytes = await _keyService.recoverWithCode(
-        recoveryCode: normCode,
-        newPassword:  newPassword,
-      );
-      if (dataKeyBytes == null) {
-        _errorMessage = AppErrors.wrongRecoveryCode;
-        notifyListeners(); return false;
-      }
+      // Update Supabase auth password
       await SupabaseConfig.client.auth.updateUser(
         UserAttributes(password: newPassword),
       );
-      await _enc.setDataKey(dataKeyBytes);
+
+      // Re-wrap the data key with the new password (if key is in memory)
+      if (_enc.hasKey) {
+        final ok = await _keyService.saveNewWrappedKey(newPassword);
+        if (!ok) {
+          // Key save failed but password updated — non-fatal, user can
+          // sign in but entries may not decrypt until key is recovered.
+          // Log this in production.
+        }
+      }
+
+      _status          = AuthStatus.authenticated;
+      _encryptionReady = _enc.hasKey;
+      _safeNotify();
       return true;
     } on AuthException catch (e) {
       _errorMessage = AppErrors.updatePassword(e.message);
-      notifyListeners(); return false;
+      _safeNotify(); return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);
-      notifyListeners(); return false;
+      _safeNotify(); return false;
     } finally { _setLoading(false); }
   }
 
@@ -310,17 +284,14 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on AuthException catch (e) {
       _errorMessage = AppErrors.updateEmail(e.message);
-      notifyListeners(); return false;
+      _safeNotify(); return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);
-      notifyListeners(); return false;
+      _safeNotify(); return false;
     } finally { _setLoading(false); }
   }
 
-  // ── Update password ───────────────────────────────────────
-  //
-  // Re-wraps the data key only. No entry re-encryption.
-  // Requires the old password to unwrap the current data key.
+  // ── Update password (from settings) ──────────────────────
 
   Future<bool> updatePassword({
     required String oldPassword,
@@ -328,13 +299,13 @@ class AuthProvider extends ChangeNotifier {
   }) async {
     _setLoading(true); _clearError();
     try {
-      final ok = await _keyService.rewrapForPasswordChange(
+      final ok = await _keyService.rewrapKey(
         oldPassword: oldPassword,
         newPassword: newPassword,
       );
       if (!ok) {
         _errorMessage = AppErrors.wrongCurrentPassword;
-        notifyListeners(); return false;
+        _safeNotify(); return false;
       }
       await SupabaseConfig.client.auth.updateUser(
         UserAttributes(password: newPassword),
@@ -342,14 +313,22 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on AuthException catch (e) {
       _errorMessage = AppErrors.updatePassword(e.message);
-      notifyListeners(); return false;
+      _safeNotify(); return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);
-      notifyListeners(); return false;
+      _safeNotify(); return false;
     } finally { _setLoading(false); }
   }
 
-  void _setLoading(bool v) { _isLoading = v; notifyListeners(); }
+  // ── Helpers ───────────────────────────────────────────────
+
+  void _safeNotify() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (hasListeners) notifyListeners();
+    });
+  }
+
+  void _setLoading(bool v) { _isLoading = v; _safeNotify(); }
   void _clearError()       => _errorMessage = null;
-  void clearError()        { _clearError(); notifyListeners(); }
+  void clearError()        { _clearError(); _safeNotify(); }
 }

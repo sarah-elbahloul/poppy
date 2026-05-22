@@ -7,25 +7,15 @@
 
     <!-- ── Permissions ──────────────────────────────────── -->
 
-    <!-- Internet — required for Supabase -->
     <uses-permission android:name="android.permission.INTERNET"/>
-
-    <!-- Camera — for taking photos in entries -->
     <uses-permission android:name="android.permission.CAMERA"/>
-
-    <!-- Photo library access -->
-    <!-- Android 13+ uses READ_MEDIA_IMAGES instead of READ_EXTERNAL_STORAGE -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-
-    <!-- Android 12 and below -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32"/>
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29"/>
-
-    <!-- Required by share_plus for sharing files -->
     <uses-permission android:name="android.permission.VIBRATE"/>
 
     <application
@@ -46,19 +36,42 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
 
-            <!-- Specifies an Android theme to apply to this Activity as soon
-                 as the Android process has started. This theme is visible to
-                 the user while the Flutter UI initializes. After that, this
-                 theme continues to determine the Window background behind
-                 the Flutter UI. -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme"/>
 
+            <!-- Standard launcher intent -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- ── Supabase deep link handler ──────────────────
+                 Catches the redirect URL from Supabase auth emails
+                 (password reset, email confirmation, magic link).
+
+                 Scheme: io.supabase.poppy
+                 Host:   login-callback
+
+                 Full URL: io.supabase.poppy://login-callback/
+
+                 This must match the redirectTo value passed to
+                 resetPasswordForEmail() and the Redirect URLs
+                 configured in Supabase dashboard →
+                 Authentication → URL Configuration.
+
+                 android:autoVerify="false" because this is a
+                 custom scheme, not an https App Link.
+            ─────────────────────────────────────────────────── -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="io.supabase.poppy"
+                    android:host="login-callback"/>
+            </intent-filter>
+
         </activity>
 
         <!-- Required by flutter_secure_storage -->

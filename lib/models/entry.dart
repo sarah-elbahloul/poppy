@@ -5,11 +5,19 @@ import 'package:poppy/core/style/style.dart';
 //  POPPY — Entry Model
 //  Location: lib/models/entry.dart
 //
-//  Encryption notes:
-//  - title and content are always the DECRYPTED values in memory
-//  - title_enc and content_enc are the raw JSONB strings from DB
-//  - The service layer handles encrypt/decrypt before storing
-//    and after fetching — this model is always clean plaintext
+//  ENCRYPTION CONTRACT
+//  ───────────────────
+//  This model always holds DECRYPTED values in memory.
+//  It never touches ciphertext directly.
+//
+//  fromMap() is called by EntriesService AFTER it has decrypted
+//  title_enc and content_enc and injected the plain values into
+//  the map under the literal keys 'title' and 'content'.
+//
+//  toInsertMap() / toUpdateMap() return plain title/content —
+//  EntriesService replaces them with encrypted versions before
+//  sending to Supabase.  These methods are kept for reference
+//  but the service builds its own encrypted map in practice.
 // ─────────────────────────────────────────────────────────────
 
 class Entry {
@@ -38,50 +46,50 @@ class Entry {
   });
 
   // ── fromMap ───────────────────────────────────────────────
-  // Called AFTER the service layer has decrypted title_enc
-  // and content_enc into plain strings.
-  // The map passed here already has plain 'title' and 'content'.
+  // The map passed here has already been decrypted by
+  // EntriesService — 'title' and 'content' are plaintext.
 
   factory Entry.fromMap(Map<String, dynamic> map) {
     return Entry(
       id:        map[DBColumn.id]        as String,
       userId:    map[DBColumn.userId]    as String,
-      title:     map[DBColumn.title]     as String? ?? '',
-      content:   map[DBColumn.content]   as String? ?? '',
+      // 'title' and 'content' are injected by the service layer
+      // after decryption — they are not DB column names.
+      title:     map['title']            as String? ?? '',
+      content:   map['content']          as String? ?? '',
       colorTag:  EntryColors.fromDbValue(
-          map[DBColumn.colorTag] as String? ?? 'stone'),
+          map[DBColumn.colorTag]         as String? ?? 'stone'),
       wordCount: map[DBColumn.wordCount] as int?    ?? 0,
       entryDate: DateTime.parse(
-          map[DBColumn.entryDate] as String? ??
-              map[DBColumn.createdAt] as String),
+          map[DBColumn.entryDate]        as String? ??
+              map[DBColumn.createdAt]    as String),
       createdAt: DateTime.parse(map[DBColumn.createdAt] as String),
       updatedAt: DateTime.parse(map[DBColumn.updatedAt] as String),
     );
   }
 
   // ── toInsertMap / toUpdateMap ─────────────────────────────
-  // These return plain title and content.
-  // The service layer replaces them with encrypted versions
-  // before sending to Supabase.
+  // Kept for documentation. In practice EntriesService builds
+  // its own encrypted map and does not call these.
 
   Map<String, dynamic> toInsertMap() => {
-    DBColumn.titleEnc:     title,
-    DBColumn.contentEnc:   content,
-    DBColumn.colorTag:  colorTag.dbValue,
-    DBColumn.wordCount: wordCount,
-    DBColumn.entryDate: entryDate.toIso8601String().substring(0, 10),
+    DBColumn.titleEnc:   title,
+    DBColumn.contentEnc: content,
+    DBColumn.colorTag:   colorTag.dbValue,
+    DBColumn.wordCount:  wordCount,
+    DBColumn.entryDate:  entryDate.toIso8601String().substring(0, 10),
   };
 
   Map<String, dynamic> toUpdateMap() => {
-    DBColumn.titleEnc:     title,
-    DBColumn.contentEnc:   content,
-    DBColumn.colorTag:  colorTag.dbValue,
-    DBColumn.wordCount: wordCount,
-    DBColumn.entryDate: entryDate.toIso8601String().substring(0, 10),
-    DBColumn.updatedAt: DateTime.now().toIso8601String(),
+    DBColumn.titleEnc:   title,
+    DBColumn.contentEnc: content,
+    DBColumn.colorTag:   colorTag.dbValue,
+    DBColumn.wordCount:  wordCount,
+    DBColumn.entryDate:  entryDate.toIso8601String().substring(0, 10),
+    DBColumn.updatedAt:  DateTime.now().toIso8601String(),
   };
 
-  // ── Utilities ──────────────────────────────────────────────
+  // ── Utilities ─────────────────────────────────────────────
 
   String get contentPreview {
     final firstLine = content.split('\n').firstWhere(
@@ -97,7 +105,7 @@ class Entry {
     return text.trim().split(RegExp(r'\s+')).length;
   }
 
-  // ── copyWith ───────────────────────────────────────────────
+  // ── copyWith ──────────────────────────────────────────────
 
   Entry copyWith({
     String? id, String? userId, String? title, String? content,
@@ -116,10 +124,7 @@ class Entry {
     photoUrls: photoUrls ?? this.photoUrls,
   );
 
-  // ── Export / Import ────────────────────────────────────────
-  // Export always uses plain decrypted values — the export
-  // service encrypts the whole payload if the user chooses
-  // secure export mode.
+  // ── Export / Import ───────────────────────────────────────
 
   Map<String, dynamic> toExportMap() => {
     'id':         id,
@@ -140,11 +145,11 @@ class Entry {
         title:     map['title']     as String? ?? '',
         content:   map['content']   as String? ?? '',
         colorTag:  EntryColors.fromDbValue(
-            map['color_tag'] as String? ?? 'stone'),
-        wordCount: map['word_count'] as int?    ?? 0,
+            map['color_tag']        as String? ?? 'stone'),
+        wordCount: map['word_count'] as int?   ?? 0,
         entryDate: DateTime.parse(
-            map['entry_date'] as String? ??
-                map['created_at'] as String),
+            map['entry_date']       as String? ??
+                map['created_at']   as String),
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
         photoUrls: List<String>.from(map['photo_urls'] as List? ?? []),

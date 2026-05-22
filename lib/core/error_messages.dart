@@ -6,6 +6,33 @@
 class AppErrors {
   AppErrors._();
 
+  // ── Word limit ────────────────────────────────────────────
+
+  static const int wordLimit = 10000;
+  static String wordLimitExceeded(int count) =>
+      'Your entry has $count words, which exceeds the $wordLimit-word limit. '
+          'Please shorten it before saving.';
+
+// ── Generic fallback ──────────────────────────────────────
+
+  static String fromException(Object error) {
+    final l = error.toString().toLowerCase();
+    if (_isNetwork(l)) return _networkMsg;
+    return 'Something went wrong. Please try again.';
+  }
+
+// ── Private ───────────────────────────────────────────────
+
+  static const String _networkMsg =
+      'No internet connection. Please check your network and try again.';
+
+  static bool _isNetwork(String lower) =>
+      lower.contains('network')    ||
+          lower.contains('socket')     ||
+          lower.contains('connection') ||
+          lower.contains('timeout')    ||
+          lower.contains('unreachable');
+
   // ── Auth ──────────────────────────────────────────────────
 
   static String signIn(String raw) {
@@ -71,6 +98,9 @@ class AppErrors {
     return 'Could not update email. Please try again.';
   }
 
+  static const String wrongCurrentPassword =
+      'Your current password is incorrect.';
+
   static String updatePassword(String raw) {
     final l = raw.toLowerCase();
     if (l.contains('password') &&
@@ -80,39 +110,6 @@ class AppErrors {
     if (_isNetwork(l)) return _networkMsg;
     return 'Could not update password. Please try again.';
   }
-
-  // ── Recovery code ─────────────────────────────────────────
-
-  /// Shown when the recovery code doesn't decrypt the stored key.
-  static const String wrongRecoveryCode =
-      'That recovery code is incorrect. '
-      'Please double-check it and try again.';
-
-  /// Shown when the user's current password doesn't match
-  /// during a password-change rewrap.
-  static const String wrongCurrentPassword =
-      'Your current password is incorrect.';
-
-  /// Shown in the recovery code display screen (register).
-  static const String recoveryCodeWarning =
-      'Save this code somewhere safe — a note, password manager, '
-      'or printed paper. If you forget your password, this is the '
-      'only way to recover your diary. It will not be shown again.';
-
-  /// Title for the recovery code screen.
-  static const String recoveryCodeTitle = 'Your recovery code';
-
-  /// Hint shown in the recovery-code input field.
-  static const String recoveryCodeHint = 'POPPY-XXXX-XXXX-XXXX-XXXX';
-
-  /// Shown when recovery code field is empty.
-  static const String recoveryCodeEmpty =
-      'Please enter your recovery code.';
-
-  /// Shown when recovery code format looks wrong.
-  static const String recoveryCodeFormat =
-      'Recovery codes look like POPPY-XXXX-XXXX-XXXX-XXXX. '
-      'Check for typos and try again.';
 
   // ── Entry / data ──────────────────────────────────────────
 
@@ -200,43 +197,4 @@ class AppErrors {
     if (password != confirm) return passwordMismatch;
     return null;
   }
-
-  static String? validateRecoveryCode(String code) {
-    if (code.trim().isEmpty) return recoveryCodeEmpty;
-    final norm = code.trim().toUpperCase().replaceAll(' ', '');
-    // Expect POPPY-XXXX-XXXX-XXXX-XXXX = 5 segments separated by -
-    final parts = norm.split('-');
-    if (parts.length != 5 || parts[0] != 'POPPY' ||
-        parts.sublist(1).any((p) => p.length != 4)) {
-      return recoveryCodeFormat;
-    }
-    return null;
-  }
-
-  // ── Word limit ────────────────────────────────────────────
-
-  static const int wordLimit = 10000;
-  static String wordLimitExceeded(int count) =>
-      'Your entry has $count words, which exceeds the $wordLimit-word limit. '
-          'Please shorten it before saving.';
-
-  // ── Generic fallback ──────────────────────────────────────
-
-  static String fromException(Object error) {
-    final l = error.toString().toLowerCase();
-    if (_isNetwork(l)) return _networkMsg;
-    return 'Something went wrong. Please try again.';
-  }
-
-  // ── Private ───────────────────────────────────────────────
-
-  static const String _networkMsg =
-      'No internet connection. Please check your network and try again.';
-
-  static bool _isNetwork(String lower) =>
-      lower.contains('network')    ||
-          lower.contains('socket')     ||
-          lower.contains('connection') ||
-          lower.contains('timeout')    ||
-          lower.contains('unreachable');
 }

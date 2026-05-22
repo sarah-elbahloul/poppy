@@ -9,44 +9,32 @@ import 'package:poppy/core/constants.dart';
 //  POPPY — Encryption Service
 //  Location: lib/services/encryption_service.dart
 //
-//  KEY ARCHITECTURE (Option D)
-//  ───────────────────────────
-//  ONE random DATA KEY per user, generated at sign-up.
+//  KEY ARCHITECTURE
+//  ────────────────
+//  One random 32-byte DATA KEY per user, generated at sign-up.
 //  It encrypts all entries and NEVER changes.
 //
-//  The data key is wrapped (AES-256-GCM encrypted) in two ways
-//  and stored in the user_keys table:
+//  The data key is wrapped (AES-256-GCM encrypted) with a key
+//  derived from the user's password (PBKDF2) and stored in the
+//  user_keys table as encrypted_data_key.
 //
-//    encrypted_data_key          ← wrapped with PBKDF2(password)
-//    recovery_encrypted_data_key ← wrapped with PBKDF2(recovery_code)
+//  Password change:
+//    Unwrap data key with old password → re-wrap with new →
+//    update one DB row. No entry re-encryption. Ever.
 //
-//  On password change: unwrap data key → re-wrap with new password.
-//  ONE tiny DB update. No entry re-encryption. Ever.
-//
-//  On password reset: user provides recovery code → unwrap data key
-//  → re-wrap with new password → update encrypted_data_key in DB.
-//  Entries untouched.
-//
-//  ALGORITHM
-//  ─────────
-//  Data key : 32 random bytes (cryptographically secure)
-//  Wrapping : AES-256-GCM
-//  KDF      : PBKDF2-HMAC-SHA256, 100k iterations
-//  Salts    : different constants for password vs recovery paths
-//             so the same passphrase produces different keys
-//
-//  STORAGE
-//  ───────
-//  Data key bytes cached in flutter_secure_storage so we don't
-//  hit the DB on every cold start.
+//  Forgot password (Supabase reset email):
+//    User gets one-time session from email link.
+//    App prompts for new password, calls wrapWithPassword →
+//    updates encrypted_data_key via update_data_key() RPC.
+//    Old wrapped key is gone; entries still readable because
+//    the DATA KEY is unchanged — only its wrapping changed.
+//    (If user loses access to their email too, entries are
+//    unrecoverable. Same as any E2E encrypted app.)
 //
 //  WHAT IS ENCRYPTED
 //  ─────────────────
-//  entry title_enc   — JSONB in Supabase
-//  entry content_enc — JSONB in Supabase
-//
-//  NOT encrypted (needed for sort/filter):
-//  entry_date, word_count, color_tag, created_at, updated_at
+//  entry title_enc, content_enc — JSONB in Supabase.
+//  NOT encrypted: entry_date, word_count, color_tag, timestamps.
 // ─────────────────────────────────────────────────────────────
 
 class EncryptionService {
@@ -59,16 +47,15 @@ class EncryptionService {
 
   SecretKey? _dataKey;
 
-  // ── Data key management ───────────────────────────────────
+  // ── Data key lifecycle ────────────────────────────────────
 
   /// Generates a fresh random 32-byte data key.
-  /// Call this ONCE at sign-up, then immediately wrap and save it.
-  /// Returns the raw bytes so KeyService can wrap and persist them.
+  /// Caches it in secure storage and returns the raw bytes
+  /// so the caller can wrap and persist them.
   Future<Uint8List> generateDataKey() async {
     final bytes = Uint8List(32);
     for (var i = 0; i < 32; i++) bytes[i] = _rng.nextInt(256);
     _dataKey = SecretKey(bytes);
-    // Cache in secure storage for cold-start reuse
     await _storage.write(
       key:   StorageKeys.dataKey,
       value: base64Encode(bytes),
@@ -76,9 +63,8 @@ class EncryptionService {
     return bytes;
   }
 
-  /// Loads the data key from the local secure storage cache.
-  /// Returns true if a key was found.  Call at app start when
-  /// the user is already authenticated.
+  /// Loads the data key from local secure storage cache.
+  /// Returns true if found. Call at app start when already signed in.
   Future<bool> loadCachedKey() async {
     try {
       final stored = await _storage.read(key: StorageKeys.dataKey);
@@ -90,8 +76,8 @@ class EncryptionService {
     }
   }
 
-  /// Sets the data key directly from raw bytes (e.g. after
-  /// unwrapping from user_keys on sign-in) and caches it.
+  /// Sets the data key from raw bytes and caches it locally.
+  /// Called after unwrapping from user_keys on sign-in.
   Future<void> setDataKey(Uint8List keyBytes) async {
     _dataKey = SecretKey(keyBytes);
     await _storage.write(
@@ -100,90 +86,46 @@ class EncryptionService {
     );
   }
 
-  /// Clears the in-memory key and the secure storage cache.
-  /// Call on sign-out.
+  /// Clears the in-memory key and local cache. Call on sign-out.
   Future<void> clearKey() async {
     _dataKey = null;
     await _storage.delete(key: StorageKeys.dataKey);
   }
 
-  /// True when a data key is loaded and crypto ops can proceed.
   bool get hasKey => _dataKey != null;
 
-  // ── Key wrapping ──────────────────────────────────────────
-  //
-  // "Wrapping" = encrypting the raw data key bytes with a key
-  // derived from a passphrase (password or recovery code).
-  // The wrapped result is a JSONB-ready map.
+  /// Returns the raw data key bytes, or null if no key is loaded.
+  /// Used by KeyService.saveNewWrappedKey() during forgot-password.
+  Future<Uint8List?> currentDataKeyBytes() async {
+    final key = _dataKey;
+    if (key == null) return null;
+    return Uint8List.fromList(await key.extractBytes());
+  }
 
-  /// Wraps [dataKeyBytes] using a key derived from [password].
-  /// Returns a JSONB-encodable map.
+  // ── Key wrapping ──────────────────────────────────────────
+
+  /// Wraps [dataKeyBytes] with a key derived from [password].
+  /// Returns a JSONB-ready map to store in user_keys.
   Future<Map<String, String>> wrapWithPassword(
       Uint8List dataKeyBytes,
       String    password,
       ) async {
-    final wrappingKey = await _derivePasswordKey(password);
+    final wrappingKey = await _deriveKey(password);
     return _wrap(dataKeyBytes, wrappingKey);
   }
 
-  /// Wraps [dataKeyBytes] using a key derived from [recoveryCode].
-  Future<Map<String, String>> wrapWithRecoveryCode(
-      Uint8List dataKeyBytes,
-      String    recoveryCode,
-      ) async {
-    final wrappingKey = await _deriveRecoveryKey(recoveryCode);
-    return _wrap(dataKeyBytes, wrappingKey);
-  }
-
-  /// Unwraps a map previously produced by [wrapWithPassword].
-  /// Returns the raw data key bytes, or null if the password is wrong.
+  /// Unwraps a map produced by [wrapWithPassword].
+  /// Returns raw data key bytes, or null if password is wrong.
   Future<Uint8List?> unwrapWithPassword(
-      Map<String, dynamic> wrappedKey,
+      Map<String, dynamic> wrapped,
       String               password,
       ) async {
-    final wrappingKey = await _derivePasswordKey(password);
-    return _unwrap(wrappedKey, wrappingKey);
+    final wrappingKey = await _deriveKey(password);
+    return _unwrap(wrapped, wrappingKey);
   }
 
-  /// Unwraps a map previously produced by [wrapWithRecoveryCode].
-  /// Returns the raw data key bytes, or null if the code is wrong.
-  Future<Uint8List?> unwrapWithRecoveryCode(
-      Map<String, dynamic> wrappedKey,
-      String               recoveryCode,
-      ) async {
-    final wrappingKey = await _deriveRecoveryKey(recoveryCode);
-    return _unwrap(wrappedKey, wrappingKey);
-  }
+  // ── Encrypt / Decrypt entries ─────────────────────────────
 
-  // ── Recovery code generation ──────────────────────────────
-
-  /// Generates a human-readable recovery code.
-  /// Format: POPPY-XXXX-XXXX-XXXX-XXXX  (hex, uppercase)
-  String generateRecoveryCode() {
-    final sb = StringBuffer(RecoveryConfig.prefix);
-    for (var g = 0; g < RecoveryConfig.groupCount; g++) {
-      sb.write('-');
-      for (var c = 0; c < RecoveryConfig.groupLength; c++) {
-        sb.write(_rng.nextInt(16).toRadixString(16).toUpperCase());
-      }
-    }
-    return sb.toString();
-  }
-
-  /// Normalises a user-typed recovery code:
-  /// strips spaces, uppercases, ensures POPPY- prefix.
-  static String normaliseRecoveryCode(String raw) {
-    var s = raw.trim().toUpperCase().replaceAll(' ', '');
-    if (!s.startsWith('${RecoveryConfig.prefix}-')) {
-      s = '${RecoveryConfig.prefix}-$s';
-    }
-    return s;
-  }
-
-  // ── Encrypt / Decrypt (entries) ───────────────────────────
-
-  /// Encrypts [plaintext] with the loaded data key.
-  /// Returns a JSONB-ready map.
   Future<Map<String, String>?> encrypt(String plaintext) async {
     final key = _dataKey;
     if (key == null) return null;
@@ -226,7 +168,7 @@ class EncryptionService {
   Future<String> decryptFromJson(String? jsonStr, {String fallback = ''}) async {
     if (jsonStr == null || jsonStr.isEmpty) return fallback;
     try {
-      if (!jsonStr.startsWith('{')) return jsonStr; // legacy plain text
+      if (!jsonStr.startsWith('{')) return jsonStr;
       final map    = jsonDecode(jsonStr) as Map<String, dynamic>;
       final result = await decrypt(map);
       return result ?? fallback;
@@ -235,7 +177,7 @@ class EncryptionService {
     }
   }
 
-  // ── Bulk entry helpers ────────────────────────────────────
+  // ── Bulk helpers ──────────────────────────────────────────
 
   Future<({String titleJson, String contentJson})> encryptEntry({
     required String title,
@@ -259,17 +201,13 @@ class EncryptionService {
     return (title: results[0], content: results[1]);
   }
 
-  // ── Private: low-level wrap/unwrap ────────────────────────
+  // ── Private ───────────────────────────────────────────────
 
   Future<Map<String, String>> _wrap(
-      Uint8List  dataKeyBytes,
-      SecretKey  wrappingKey,
-      ) async {
+      Uint8List dataKeyBytes, SecretKey wrappingKey) async {
     final nonce     = _algorithm.newNonce();
     final secretBox = await _algorithm.encrypt(
-      dataKeyBytes,
-      secretKey: wrappingKey,
-      nonce:     nonce,
+      dataKeyBytes, secretKey: wrappingKey, nonce: nonce,
     );
     return {
       'c': base64Encode(secretBox.cipherText),
@@ -279,9 +217,7 @@ class EncryptionService {
   }
 
   Future<Uint8List?> _unwrap(
-      Map<String, dynamic> wrapped,
-      SecretKey            wrappingKey,
-      ) async {
+      Map<String, dynamic> wrapped, SecretKey wrappingKey) async {
     try {
       final secretBox = SecretBox(
         base64Decode(wrapped['c'] as String),
@@ -293,27 +229,19 @@ class EncryptionService {
       );
       return Uint8List.fromList(bytes);
     } catch (_) {
-      return null; // wrong key / corrupted
+      return null;
     }
   }
 
-  // ── Private: KDF ─────────────────────────────────────────
-
-  Future<SecretKey> _derivePasswordKey(String password) =>
-      _pbkdf2(password, 'poppy-diary-salt-v1');
-
-  Future<SecretKey> _deriveRecoveryKey(String recoveryCode) =>
-      _pbkdf2(recoveryCode, RecoveryConfig.pbkdf2Salt);
-
-  Future<SecretKey> _pbkdf2(String secret, String saltString) async {
+  Future<SecretKey> _deriveKey(String password) async {
     final pbkdf2 = Pbkdf2(
       macAlgorithm: Hmac.sha256(),
       iterations:   100000,
       bits:         256,
     );
     return pbkdf2.deriveKey(
-      secretKey: SecretKey(utf8.encode(secret)),
-      nonce:     utf8.encode(saltString),
+      secretKey: SecretKey(utf8.encode(password)),
+      nonce:     utf8.encode('poppy-diary-salt-v1'),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:poppy/providers/auth_provider.dart';
 import 'package:poppy/providers/theme_provider.dart';
 import 'package:poppy/screens/auth/login_screen.dart';
 import 'package:poppy/screens/auth/register_screen.dart';
+import 'package:poppy/screens/auth/set_new_password_screen.dart';
 import 'package:poppy/screens/home/home_screen.dart';
 import 'package:poppy/screens/lock_screen.dart';
 import 'package:poppy/screens/settings/account_screen.dart';
@@ -19,21 +20,12 @@ import 'package:provider/provider.dart';
 //  POPPY — Root App Widget
 //  Location: lib/app.dart
 //
-//  Auth flow:
-//  - AuthProvider listens to Supabase's auth stream.
-//  - AuthProvider.status starts as AuthStatus.unknown while
-//    the session is being checked.
-//  - While unknown we show a blank splash so we never flash
-//    the login screen before knowing the real state.
-//  - Once status is known, MaterialApp mounts with the
-//    correct initialRoute.
-//  - After that, AuthProvider notifies on sign-in/out and
-//    the _AuthListener widget pushes the right route.
-//
-//  Why NOT _AuthGuard with didChangeDependencies:
-//  didChangeDependencies fires before the Supabase session
-//  restore completes, causing a false "not logged in" check
-//  that redirects to login even when the user is signed in.
+//  Auth status → screen mapping:
+//    unknown          → blank splash (checking session)
+//    unauthenticated  → LoginScreen
+//    authenticated    → HomeScreen (or LockScreen if PIN set)
+//    passwordRecovery → SetNewPasswordScreen
+//                       (user tapped Supabase reset email link)
 // ─────────────────────────────────────────────────────────────
 
 class PoppyApp extends StatelessWidget {
@@ -44,9 +36,6 @@ class PoppyApp extends StatelessWidget {
     return Consumer2<ThemeProvider, AuthProvider>(
       builder: (context, themeProvider, auth, _) {
 
-        // ── Still checking session ──────────────────────────
-        // Show a blank themed screen while Supabase restores
-        // the session. This prevents flashing the login screen.
         if (auth.status == AuthStatus.unknown) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
@@ -57,39 +46,26 @@ class PoppyApp extends StatelessWidget {
           );
         }
 
-        // ── Session known — build the full app ──────────────
-        final isLoggedIn = auth.isAuthenticated;
-        final isLocked   = auth.isLocked;
-
-        String initialRoute;
-        if (!isLoggedIn) {
-          initialRoute = AppRoutes.login;
-        } else if (isLocked) {
-          initialRoute = AppRoutes.lock;
-        } else {
-          initialRoute = AppRoutes.home;
-        }
-
         return MaterialApp(
-          title:                    'Poppy',
+          title:                     'Poppy',
           debugShowCheckedModeBanner: false,
-          theme:                    themeProvider.currentThemeData.toThemeData(),
-          home: const _RootRouter(),
+          theme:                     themeProvider.currentThemeData.toThemeData(),
+          home:                      const _RootRouter(),
           routes: {
             AppRoutes.login:      (_) => const LoginScreen(),
             AppRoutes.register:   (_) => const RegisterScreen(),
             AppRoutes.lock:       (_) => const LockScreen(),
+            AppRoutes.setNewPassword:       (_) => const SetNewPasswordScreen(),
             AppRoutes.home:       (_) => const _AuthListener(child: HomeScreen()),
             AppRoutes.settings:   (_) => const SettingsScreen(),
             AppRoutes.settingsDrawer: (_) => const SettingsDrawer(),
             AppRoutes.appearance: (_) => const AppearanceScreen(),
             AppRoutes.account:    (_) => const AccountScreen(),
             AppRoutes.security:   (_) => const SecurityScreen(),
-            AppRoutes.legalPrivacy: (_) => const LegalScreen(doc: LegalDoc.privacy),
-            AppRoutes.legalTerms: (_) => const LegalScreen(doc: LegalDoc.terms),
+            AppRoutes.legalPrivacy:    (_) => const LegalScreen(doc: LegalDoc.privacy),
+            AppRoutes.legalTerms:      (_) => const LegalScreen(doc: LegalDoc.terms),
             AppRoutes.legalOpensource: (_) => const LegalScreen(doc: LegalDoc.opensource),
           },
-
           onGenerateRoute: (settings) {
             if (settings.name == AppRoutes.write) {
               final entryId = settings.arguments as String?;
@@ -106,12 +82,44 @@ class PoppyApp extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Root Router
+//  Watches AuthStatus and renders the correct top-level screen.
+//  This is the single source of truth for auth-driven navigation.
+// ─────────────────────────────────────────────────────────────
+
+class _RootRouter extends StatelessWidget {
+  const _RootRouter();
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
+    switch (auth.status) {
+      case AuthStatus.unknown:
+        return const Scaffold(body: SizedBox());
+
+      case AuthStatus.unauthenticated:
+        return const LoginScreen();
+
+      case AuthStatus.passwordRecovery:
+      // User tapped the Supabase reset email deep link.
+      // Show the set-new-password screen — no navigation needed,
+      // auth_provider.completePasswordReset() flips status to
+      // authenticated which causes this widget to rebuild to HomeScreen.
+        return const SetNewPasswordScreen();
+
+      case AuthStatus.authenticated:
+        if (auth.isLocked) return const LockScreen();
+        return const _AuthListener(child: HomeScreen());
+    }
+  }
+}
 
 // ─────────────────────────────────────────────────────────────
 //  Auth Listener
-//  Wraps the home screen only. Listens to auth state changes
-//  AFTER the app is fully mounted and redirects on sign-out
-//  or lock. Does NOT run during initial session restore.
+//  Wraps HomeScreen. Reacts to auth changes AFTER mount
+//  (sign-out, lock) and redirects appropriately.
 // ─────────────────────────────────────────────────────────────
 
 class _AuthListener extends StatefulWidget {
@@ -133,7 +141,6 @@ class _AuthListenerState extends State<_AuthListener> {
     final status = auth.status;
     final locked = auth.isLocked;
 
-    // Only react to CHANGES, not the initial render
     if (_lastStatus == null) {
       _lastStatus = status;
       _lastLocked = locked;
@@ -142,7 +149,6 @@ class _AuthListenerState extends State<_AuthListener> {
 
     final statusChanged = status != _lastStatus;
     final lockedChanged = locked != _lastLocked;
-
     _lastStatus = status;
     _lastLocked = locked;
 
@@ -151,47 +157,19 @@ class _AuthListenerState extends State<_AuthListener> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final nav = Navigator.of(context);
-
       if (status == AuthStatus.unauthenticated) {
-        nav.pushNamedAndRemoveUntil(
-          AppRoutes.login, (route) => false,
-        );
+        nav.pushNamedAndRemoveUntil(AppRoutes.login, (r) => false);
+      } else if (status == AuthStatus.passwordRecovery) {
+        // Reset email link tapped while home is shown — go to set-password
+        nav.pushNamedAndRemoveUntil(AppRoutes.login, (r) => false);
       } else if (status == AuthStatus.authenticated && locked) {
-        nav.pushNamedAndRemoveUntil(
-          AppRoutes.lock, (route) => false,
-        );
+        nav.pushNamedAndRemoveUntil(AppRoutes.lock, (r) => false);
       } else if (status == AuthStatus.authenticated && !locked) {
-        nav.pushNamedAndRemoveUntil(
-          AppRoutes.home, (route) => false,
-        );
+        nav.pushNamedAndRemoveUntil(AppRoutes.home, (r) => false);
       }
     });
   }
 
   @override
   Widget build(BuildContext context) => widget.child;
-}
-
-
-class _RootRouter extends StatelessWidget {
-  const _RootRouter();
-
-  @override
-  Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-
-    if (auth.status == AuthStatus.unknown) {
-      return const Scaffold(body: SizedBox());
-    }
-
-    if (auth.status == AuthStatus.unauthenticated) {
-      return const LoginScreen();
-    }
-
-    if (auth.isLocked) {
-      return const LockScreen();
-    }
-
-    return const _AuthListener(child: HomeScreen());
-  }
 }

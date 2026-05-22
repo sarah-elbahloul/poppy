@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:poppy/core/app_routes.dart';
 import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/error_messages.dart';
 import 'package:poppy/core/style/style.dart';
@@ -13,12 +11,12 @@ import 'package:provider/provider.dart';
 //  Location: lib/screens/auth/register_screen.dart
 //
 //  Flow:
-//    1. User fills email + password + confirm
-//    2. signUp() → Supabase creates account, generates data key
-//       + recovery code, saves both wrapped to user_keys
-//    3. Screen transitions to _RecoveryCodeScreen (blocking)
-//    4. User must tap "I've saved my recovery code" to continue
-//    5. Navigate to confirmation screen (check your inbox)
+//    1. Fill email + password + confirm
+//    2. signUp() → Supabase creates account (pending confirmation),
+//       generates data key, stores wrapped blob in secure storage
+//    3. Show confirmation message → user checks email
+//    4. User confirms → signs in → first sign-in flushes the
+//       pending blob to user_keys table in DB
 // ─────────────────────────────────────────────────────────────
 
 class RegisterScreen extends StatefulWidget {
@@ -32,11 +30,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController    = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController  = TextEditingController();
-  bool   _obscurePassword   = true;
-  bool   _obscureConfirm    = true;
-  // Non-null once sign-up succeeds — triggers recovery code screen
-  String? _recoveryCode;
-  String  _submittedEmail   = '';
+  bool _obscurePassword     = true;
+  bool _obscureConfirm      = true;
+  bool _signUpDone          = false;
+  String _confirmedEmail    = '';
 
   @override
   void dispose() {
@@ -47,10 +44,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   String? _validate() {
-    final emailErr = AppErrors.validateEmail(_emailController.text);
-    if (emailErr != null) return emailErr;
-    final passwordErr = AppErrors.validatePassword(_passwordController.text);
-    if (passwordErr != null) return passwordErr;
+    final e = AppErrors.validateEmail(_emailController.text);
+    if (e != null) return e;
+    final p = AppErrors.validatePassword(_passwordController.text);
+    if (p != null) return p;
     return AppErrors.validateConfirm(
       _passwordController.text, _confirmController.text,
     );
@@ -63,15 +60,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = context.read<AuthProvider>();
     auth.clearError();
 
-    final code = await auth.signUp(
+    final ok = await auth.signUp(
       email:    _emailController.text.trim(),
       password: _passwordController.text,
     );
-    if (!mounted) return;
-    if (code != null) {
+    if (ok && mounted) {
       setState(() {
-        _submittedEmail = _emailController.text.trim();
-        _recoveryCode   = code;
+        _confirmedEmail = _emailController.text.trim();
+        _signUpDone     = true;
       });
     }
   }
@@ -81,13 +77,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Step 2: show blocking recovery code screen
-    if (_recoveryCode != null) {
-      return _RecoveryCodeScreen(
-        code:  _recoveryCode!,
-        email: _submittedEmail,
-      );
-    }
+    if (_signUpDone) return _ConfirmationScreen(email: _confirmedEmail);
 
     final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
@@ -113,7 +103,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Text('Create your diary',
                   style: AppTextStyles.headlineSmall(t.textPrimary)),
               const SizedBox(height: AppSpacing.xs),
-              Text('Your entries are private and belong only to you.',
+              Text('Your entries are private and encrypted.',
                   style: AppTextStyles.bodySmallSans(t.textTertiary)),
               const SizedBox(height: AppSpacing.lg),
               _Field(
@@ -185,36 +175,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Recovery Code Screen
-//  Shown immediately after sign-up succeeds.
-//  Blocking — user must tick the checkbox to continue.
-// ─────────────────────────────────────────────────────────────
+// ── Confirmation screen ────────────────────────────────────────
 
-class _RecoveryCodeScreen extends StatefulWidget {
-  final String code;
+class _ConfirmationScreen extends StatelessWidget {
   final String email;
-  const _RecoveryCodeScreen({required this.code, required this.email});
-
-  @override
-  State<_RecoveryCodeScreen> createState() => _RecoveryCodeScreenState();
-}
-
-class _RecoveryCodeScreenState extends State<_RecoveryCodeScreen> {
-  bool _confirmed = false;
-  bool _copied    = false;
-
-  void _copyCode() {
-    Clipboard.setData(ClipboardData(text: widget.code));
-    setState(() => _copied = true);
-    Future.delayed(const Duration(seconds: 2),
-            () { if (mounted) setState(() => _copied = false); });
-  }
+  const _ConfirmationScreen({required this.email});
 
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
-
     return Scaffold(
       backgroundColor: t.background,
       body: SafeArea(
@@ -225,147 +194,42 @@ class _RecoveryCodeScreenState extends State<_RecoveryCodeScreen> {
           child: Column(
             children: [
               const Spacer(),
-
-              // Icon
               Container(
                 width: 72, height: 72,
                 decoration: BoxDecoration(
                   color: t.accentLight, shape: BoxShape.circle,
                 ),
-                child: Icon(AppIcons.key, size: AppIconSize.xl, color: t.accent),
+                child: Icon(AppIcons.email,
+                    size: AppIconSize.xl, color: t.accent),
               ),
               const SizedBox(height: AppSpacing.lg),
-
-              Text(AppErrors.recoveryCodeTitle,
+              Text('Check your email',
                   style: AppTextStyles.headlineLarge(t.textPrimary),
                   textAlign: TextAlign.center),
               const SizedBox(height: AppSpacing.sm),
-              Text(AppErrors.recoveryCodeWarning,
-                  style: AppTextStyles.bodySmallSans(t.textSecondary)
-                      .copyWith(height: 1.6),
-                  textAlign: TextAlign.center),
-
-              const SizedBox(height: AppSpacing.xl),
-
-              // Code display box
-              GestureDetector(
-                onTap: _copyCode,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg, vertical: AppSpacing.md,
-                  ),
-                  decoration: BoxDecoration(
-                    color: t.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(
-                      color: t.accent.withOpacity(0.4),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        widget.code,
-                        style: AppTextStyles.titleLarge(t.textPrimary)
-                            .copyWith(
-                          letterSpacing: 2,
-                          fontFamily:    'monospace',
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _copied ? AppIcons.check : AppIcons.copy,
-                            size: AppIconSize.xs,
-                            color: _copied ? t.accent : t.textTertiary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _copied ? 'Copied!' : 'Tap to copy',
-                            style: AppTextStyles.labelLargeSans(
-                              _copied ? t.accent : t.textTertiary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+              Text(
+                'We sent a confirmation link to\n$email\n\n'
+                    'Tap the link to activate your account, '
+                    'then come back and sign in.',
+                style: AppTextStyles.bodySmallSans(t.textSecondary)
+                    .copyWith(height: 1.6),
+                textAlign: TextAlign.center,
               ),
-
-              const SizedBox(height: AppSpacing.lg),
-
-              // Confirmation checkbox
-              InkWell(
-                onTap: () => setState(() => _confirmed = !_confirmed),
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 22, height: 22,
-                        child: Checkbox(
-                          value: _confirmed,
-                          onChanged: (v) =>
-                              setState(() => _confirmed = v ?? false),
-                          activeColor:  t.accent,
-                          side: BorderSide(color: t.border, width: 1.5),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Text(
-                          "I've saved my recovery code. I understand that "
-                              'if I lose both my password and this code, '
-                              'my entries cannot be recovered.',
-                          style: AppTextStyles.bodySmallSans(t.textSecondary)
-                              .copyWith(height: 1.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
               const Spacer(),
-
-              // Continue button — disabled until checkbox ticked
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _confirmed
-                      ? () => Navigator.of(context).pushNamedAndRemoveUntil(
-                    AppRoutes.login,
-                        (route) => false,
-                    arguments: {'email': widget.email},
-                  )
-                      : null,
+                  onPressed: () => Navigator.of(context).pop(),
                   style: FilledButton.styleFrom(
                     backgroundColor: t.accent,
-                    disabledBackgroundColor: t.border,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                   ),
-                  child: const Text('Continue to sign in',
+                  child: const Text('Go to sign in',
                       style: TextStyle(fontSize: 15)),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Check your inbox to confirm your email.',
-                style: AppTextStyles.labelMedium(t.textTertiary),
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.lg),
             ],

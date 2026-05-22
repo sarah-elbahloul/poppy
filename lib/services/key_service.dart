@@ -9,27 +9,30 @@ import 'package:poppy/services/encryption_service.dart';
 //  Location: lib/services/key_service.dart
 //
 //  All DB operations for the user_keys table.
-//  EncryptionService owns the crypto; this owns the persistence.
 //
-//  METHODS
-//  ───────
-//  hasKeysRow             — check if row exists (first-sign-in detection)
-//  saveWrappedKeys        — insert pre-wrapped blobs (first sign-in)
-//  saveKeys               — convenience: wrap + insert (not used in
-//                           normal flow but kept for testing / admin)
-//  loadAndUnwrapWithPassword     — returning user sign-in
-//  recoverWithCode               — forgot-password path
-//  rewrapForPasswordChange       — settings password change
+//  SIGN-UP NOTE
+//  ────────────
+//  Supabase email confirmation means there's no session
+//  immediately after signUp().  So we store the wrapped key
+//  blob in secure storage (pendingEncKey) at sign-up time
+//  and flush it to the DB on first sign-in when a session exists.
+//  hasKeysRow() detects first sign-in vs returning user.
+//
+//  PASSWORD CHANGE (settings) + FORGOT PASSWORD (reset email)
+//  ──────────────────────────────────────────────────────────
+//  Both use the same rewrapKey() method:
+//    - Settings: old password known → unwrap old → wrap new
+//    - Reset email: one-time session, no old password →
+//        client wraps new password → calls saveNewWrappedKey()
+//        directly via the update_data_key() Postgres RPC.
 // ─────────────────────────────────────────────────────────────
 
 class KeyService {
   final _client = SupabaseConfig.client;
   final _enc    = EncryptionService.instance;
 
-  // ── Check row existence ───────────────────────────────────
+  // ── First sign-in detection ───────────────────────────────
 
-  /// Returns true if a user_keys row already exists for this user.
-  /// Used in signIn() to detect first-sign-in-after-signup.
   Future<bool> hasKeysRow() async {
     try {
       final result = await _client
@@ -43,45 +46,19 @@ class KeyService {
     }
   }
 
-  // ── First sign-in: save pre-wrapped blobs from secure storage ─
+  // ── First sign-in: flush pending wrapped key to DB ────────
 
-  /// Saves wrapped key blobs that were generated at sign-up and
-  /// stored locally. Called on first sign-in when hasKeysRow() == false.
-  /// [encDataKeyJson] and [recoveryEncDataKeyJson] are the JSON strings
-  /// that were stored in secure storage during sign-up.
-  Future<void> saveWrappedKeys({
-    required String encDataKeyJson,
-    required String recoveryEncDataKeyJson,
-  }) async {
+  /// Saves a pre-wrapped key blob that was stored in secure storage
+  /// at sign-up time, now that a confirmed session exists.
+  Future<void> saveWrappedKey({required String encDataKeyJson}) async {
     await _client.from(DBTable.userKeys).upsert({
-      DBColumn.userId:             SupabaseConfig.userId,
-      DBColumn.encDataKey:         jsonDecode(encDataKeyJson),
-      DBColumn.recoveryEncDataKey: jsonDecode(recoveryEncDataKeyJson),
+      DBColumn.userId:    SupabaseConfig.userId,
+      DBColumn.encDataKey: jsonDecode(encDataKeyJson),
     }, onConflict: DBColumn.userId);
   }
 
-  // ── Convenience: wrap + save in one call ──────────────────
+  // ── Returning user: unwrap with password ──────────────────
 
-  /// Wraps [dataKeyBytes] with both passwords and saves to DB.
-  /// Requires a valid session. Used for testing / admin scenarios.
-  Future<void> saveKeys({
-    required Uint8List dataKeyBytes,
-    required String    password,
-    required String    recoveryCode,
-  }) async {
-    final passwordWrapped = await _enc.wrapWithPassword(dataKeyBytes, password);
-    final recoveryWrapped = await _enc.wrapWithRecoveryCode(dataKeyBytes, recoveryCode);
-    await _client.from(DBTable.userKeys).upsert({
-      DBColumn.userId:             SupabaseConfig.userId,
-      DBColumn.encDataKey:         passwordWrapped,
-      DBColumn.recoveryEncDataKey: recoveryWrapped,
-    }, onConflict: DBColumn.userId);
-  }
-
-  // ── Returning user sign-in: unwrap with password ──────────
-
-  /// Fetches the password-wrapped key, unwraps it, loads into
-  /// EncryptionService. Returns true on success.
   Future<bool> loadAndUnwrapWithPassword(String password) async {
     try {
       final row = await _client
@@ -103,47 +80,11 @@ class KeyService {
     }
   }
 
-  // ── Forgot password: unwrap with recovery code ────────────
+  // ── Password change (settings): unwrap old, wrap new ──────
 
-  /// Unwraps the data key using the recovery code, re-wraps it
-  /// with newPassword, updates encrypted_data_key in DB.
-  /// Returns the raw data key bytes on success, null if wrong code.
-  Future<Uint8List?> recoverWithCode({
-    required String recoveryCode,
-    required String newPassword,
-  }) async {
-    try {
-      final row = await _client
-          .from(DBTable.userKeys)
-          .select(DBColumn.recoveryEncDataKey)
-          .eq(DBColumn.userId, SupabaseConfig.userId)
-          .single();
-
-      final wrapped      = _toMap(row[DBColumn.recoveryEncDataKey]);
-      if (wrapped == null) return null;
-
-      final normCode     = EncryptionService.normaliseRecoveryCode(recoveryCode);
-      final dataKeyBytes = await _enc.unwrapWithRecoveryCode(wrapped, normCode);
-      if (dataKeyBytes == null) return null;
-
-      // Re-wrap with new password and persist
-      final newWrapped = await _enc.wrapWithPassword(dataKeyBytes, newPassword);
-      await _client
-          .from(DBTable.userKeys)
-          .update({DBColumn.encDataKey: newWrapped})
-          .eq(DBColumn.userId, SupabaseConfig.userId);
-
-      return dataKeyBytes;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  // ── Password change: re-wrap only ─────────────────────────
-
-  /// Unwraps with oldPassword, re-wraps with newPassword.
-  /// One DB row update. No entry re-encryption.
-  Future<bool> rewrapForPasswordChange({
+  /// Requires the old password to unwrap the current data key.
+  /// Returns false if oldPassword is wrong.
+  Future<bool> rewrapKey({
     required String oldPassword,
     required String newPassword,
   }) async {
@@ -154,18 +95,39 @@ class KeyService {
           .eq(DBColumn.userId, SupabaseConfig.userId)
           .single();
 
-      final wrapped      = _toMap(row[DBColumn.encDataKey]);
+      final wrapped = _toMap(row[DBColumn.encDataKey]);
       if (wrapped == null) return false;
 
       final dataKeyBytes = await _enc.unwrapWithPassword(wrapped, oldPassword);
       if (dataKeyBytes == null) return false;
 
       final newWrapped = await _enc.wrapWithPassword(dataKeyBytes, newPassword);
-      await _client
-          .from(DBTable.userKeys)
-          .update({DBColumn.encDataKey: newWrapped})
-          .eq(DBColumn.userId, SupabaseConfig.userId);
+      await _client.rpc('update_data_key',
+          params: {'new_wrapped_key': newWrapped});
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 
+  // ── Forgot password: save new wrapping (session exists) ───
+
+  /// Called when the user has a one-time reset session and has
+  /// chosen a new password.  The data key is already in memory
+  /// (loaded at app start from secure storage cache or the
+  /// one-time session loaded it).  We just re-wrap and save.
+  Future<bool> saveNewWrappedKey(String newPassword) async {
+    try {
+      // Data key must already be in memory
+      if (!_enc.hasKey) return false;
+
+      // Re-wrap the in-memory data key with the new password
+      final dataKeyBytes = await _enc.currentDataKeyBytes();
+      if (dataKeyBytes == null) return false;
+
+      final newWrapped = await _enc.wrapWithPassword(dataKeyBytes, newPassword);
+      await _client.rpc('update_data_key',
+          params: {'new_wrapped_key': newWrapped});
       return true;
     } catch (_) {
       return false;

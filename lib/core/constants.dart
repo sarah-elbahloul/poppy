@@ -49,19 +49,16 @@ class EntryColors {
 
 class StorageKeys {
   StorageKeys._();
-  static const String pinHash         = 'poppy_pin_hash';
-  static const String pinEnabled      = 'poppy_pin_enabled';
-  static const String selectedTheme   = 'poppy_theme';
-  static const String supabaseSession = 'poppy_supabase_session';
+  static const String pinHash       = 'poppy_pin_hash';
+  static const String pinEnabled    = 'poppy_pin_enabled';
+  static const String selectedTheme = 'poppy_theme';
   // Cached plaintext data key bytes (base64).
-  // The data key itself is random and never derived from anything.
-  // This cache avoids a DB round-trip on every cold start.
-  static const String dataKey         = 'poppy_data_key';
-  // Temporary wrapped key blobs stored between sign-up and
-  // first sign-in (before email confirmation gives us a session).
+  // Avoids a DB round-trip on every cold start.
+  static const String dataKey       = 'poppy_data_key';
+  // Temporary wrapped key blob stored between sign-up and first
+  // sign-in (email confirmation means no session at sign-up time).
   // Cleared once successfully saved to user_keys table.
-  static const String pendingEncKey      = 'poppy_pending_enc_key';
-  static const String pendingRecoveryKey = 'poppy_pending_recovery_key';
+  static const String pendingEncKey = 'poppy_pending_enc_key';
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -78,27 +75,22 @@ class DBTable {
 
 class DBColumn {
   DBColumn._();
-  static const String id           = 'id';
-  static const String userId       = 'user_id';
-  static const String createdAt    = 'created_at';
-  static const String updatedAt    = 'updated_at';
-  static const String title        = 'title';
-  static const String content      = 'content';
-  // Encrypted columns — AES-256-GCM ciphertext stored as JSONB
-  // Format: {"c":"<base64>","n":"<base64>","m":"<base64>"}
-  static const String titleEnc     = 'title_enc';
-  static const String contentEnc   = 'content_enc';
-  static const String colorTag     = 'color_tag';
-  static const String wordCount    = 'word_count';
-  static const String entryDate    = 'entry_date';
-  static const String entryId      = 'entry_id';
-  static const String storagePath  = 'storage_path';
-  static const String orderIndex   = 'order_index';
-  static const String theme        = 'theme';
-  static const String pinEnabled   = 'pin_enabled';
+  static const String id          = 'id';
+  static const String userId      = 'user_id';
+  static const String createdAt   = 'created_at';
+  static const String updatedAt   = 'updated_at';
+  static const String titleEnc    = 'title_enc';
+  static const String contentEnc  = 'content_enc';
+  static const String colorTag    = 'color_tag';
+  static const String wordCount   = 'word_count';
+  static const String entryDate   = 'entry_date';
+  static const String entryId     = 'entry_id';
+  static const String storagePath = 'storage_path';
+  static const String orderIndex  = 'order_index';
+  static const String theme       = 'theme';
+  static const String pinEnabled  = 'pin_enabled';
   // user_keys table
-  static const String encDataKey          = 'encrypted_data_key';
-  static const String recoveryEncDataKey  = 'recovery_encrypted_data_key';
+  static const String encDataKey  = 'encrypted_data_key';
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -117,22 +109,5 @@ class StorageBucket {
 class ExportConfig {
   ExportConfig._();
   static const String jsonVersion   = '1.0';
-  static const String jsonFileName  = 'poppy_export.json';
   static const String poppyFileName = 'poppy_export.poppy';
-}
-
-// ─────────────────────────────────────────────────────────────
-//  RECOVERY CODE
-// ─────────────────────────────────────────────────────────────
-
-class RecoveryConfig {
-  RecoveryConfig._();
-  // Format: POPPY-XXXX-XXXX-XXXX-XXXX  (4 groups of 4 hex chars)
-  static const String prefix      = 'POPPY';
-  static const int    groupCount  = 4;
-  static const int    groupLength = 4;
-  // Salt used when deriving a wrapping key FROM the recovery code.
-  // Different from the password salt so the same input produces
-  // different keys for each purpose.
-  static const String pbkdf2Salt  = 'poppy-recovery-salt-v1';
 }

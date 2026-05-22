@@ -7,6 +7,7 @@ import 'package:poppy/core/widgets/entry_card.dart';
 import 'package:poppy/core/widgets/poppy_logo.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/providers/entries_provider.dart';
+import 'package:poppy/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/widgets/color_dot.dart';
@@ -38,12 +39,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _sortDesc = false;
 
+  bool _fetchedOnce = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<EntriesProvider>().fetchEntries();
-    });
+    // fetch is deferred to didChangeDependencies so we can gate on
+    // encryptionReady — the key must be in memory before we decrypt.
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final encReady = context.watch<AuthProvider>().encryptionReady;
+    if (!_fetchedOnce && encReady) {
+      _fetchedOnce = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.read<EntriesProvider>().fetchEntries();
+      });
+    }
   }
 
   @override
@@ -202,8 +216,8 @@ class _HomeScreenState extends State<HomeScreen> {
           style: AppTextStyles.labelLargeSans(t.textPrimary),
         ),
         content: Text('This cannot be undone.',
-            style: AppTextStyles.bodyLarge(t.textPrimary),
-      ),
+          style: AppTextStyles.bodyLarge(t.textPrimary),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -281,10 +295,10 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: _isBatchMode
           ? null
           : FloatingActionButton(
-              onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
-              tooltip: 'New entry',
-              child: const Icon(AppIcons.add, size: AppIconSize.sm),
-            ),
+        onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
+        tooltip: 'New entry',
+        child: const Icon(AppIcons.add, size: AppIconSize.sm),
+      ),
     );
   }
 
@@ -309,61 +323,61 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),        actions: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: _searching
-                ? SizedBox(
-                    key: const ValueKey('searchField'),
-                    width: AppComponentSize.searchFieldWidth,
-                    height: AppComponentSize.filterBarHeight,
-                    child: TextField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      autofocus: true,
-                      style: AppTextStyles.bodyMedium(t.textPrimary),
-                      textAlignVertical: TextAlignVertical.center,
-                      onChanged: (_) => _applyAllFilters(),
-                      decoration: InputDecoration(
-                        fillColor: t.surface,
-                        filled: true,
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.lg),
-                            borderSide: BorderSide(
-                              color: _selectedColor != null
-                                  ? (_selectedColor!.color as Color)
-                                  : t.border,
-                              width: AppStroke.medium,
-                            )
-                        ),
-                        hintText: 'Search entries...',
-                        hintStyle: AppTextStyles.labelLargeSerif(t.textTertiary),
-                        suffixIcon: GestureDetector(
-                          onTap: _exitSearch,
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: AppSpacing.xs),
-                            child: Icon(
-                              AppIcons.close,
-                              size: AppIconSize.xs,
-                              color: t.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+      AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: _searching
+            ? SizedBox(
+          key: const ValueKey('searchField'),
+          width: AppComponentSize.searchFieldWidth,
+          height: AppComponentSize.filterBarHeight,
+          child: TextField(
+            controller: _searchController,
+            focusNode: _searchFocusNode,
+            autofocus: true,
+            style: AppTextStyles.bodyMedium(t.textPrimary),
+            textAlignVertical: TextAlignVertical.center,
+            onChanged: (_) => _applyAllFilters(),
+            decoration: InputDecoration(
+              fillColor: t.surface,
+              filled: true,
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  borderSide: BorderSide(
+                    color: _selectedColor != null
+                        ? (_selectedColor!.color as Color)
+                        : t.border,
+                    width: AppStroke.medium,
                   )
-                : IconButton(
-                    key: const ValueKey('searchIcon'),
-                    icon: Icon(AppIcons.search,
-                        color: t.textSecondary, size: AppIconSize.sm),
-                    onPressed: _startSearch,
+              ),
+              hintText: 'Search entries...',
+              hintStyle: AppTextStyles.labelLargeSerif(t.textTertiary),
+              suffixIcon: GestureDetector(
+                onTap: _exitSearch,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: AppSpacing.xs),
+                  child: Icon(
+                    AppIcons.close,
+                    size: AppIconSize.xs,
+                    color: t.textSecondary,
                   ),
+                ),
+              ),
+            ),
           ),
-          IconButton(
-            icon: Icon(AppIcons.sort, color: t.textSecondary, size: AppIconSize.sm),
-            tooltip: 'Sort ${_sortDesc ?  'descending': 'ascending'}',
-            onPressed: ()=> setState(() => _sortDesc = !_sortDesc),
-          ),
-        ]);
+        )
+            : IconButton(
+          key: const ValueKey('searchIcon'),
+          icon: Icon(AppIcons.search,
+              color: t.textSecondary, size: AppIconSize.sm),
+          onPressed: _startSearch,
+        ),
+      ),
+      IconButton(
+        icon: Icon(AppIcons.sort, color: t.textSecondary, size: AppIconSize.sm),
+        tooltip: 'Sort ${_sortDesc ?  'descending': 'ascending'}',
+        onPressed: ()=> setState(() => _sortDesc = !_sortDesc),
+      ),
+    ]);
   }
 
   AppBar _batchAppBar(PoppyThemeExtension t) {
@@ -375,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: t.background,
       leading: IconButton(
         icon:
-            Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
+        Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
         onPressed: _cancelBatch,
       ),
       title: Text('${_selectedIds.length} selected',
@@ -410,12 +424,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _body(
-    BuildContext context,
-    PoppyThemeExtension t,
-    EntriesProvider provider,
-    List<Entry> entries,
-  ) {
-    if (provider.isLoading) {
+      BuildContext context,
+      PoppyThemeExtension t,
+      EntriesProvider provider,
+      List<Entry> entries,
+      ) {
+    if (provider.isLoading || !_fetchedOnce) {
       return Column(
         children: [
           // ─────────────────────────────────────────
@@ -610,10 +624,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? (colorData.color as Color)
-                                        .withOpacity(0.12)
+                                    .withOpacity(0.12)
                                     : Colors.transparent,
                                 borderRadius:
-                                    BorderRadius.circular(AppRadius.full),
+                                BorderRadius.circular(AppRadius.full),
                                 border: Border.all(
                                   color: isSelected
                                       ? colorData.color as Color
