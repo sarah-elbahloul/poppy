@@ -99,6 +99,7 @@ class DBColumn {
 
 class StorageBucket {
   StorageBucket._();
+  // saved in the way: bucket/userid/entryid/photo
   static const String photos = 'entry-photos';
 }
 

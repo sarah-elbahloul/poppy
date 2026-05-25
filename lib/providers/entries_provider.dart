@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/services/entries_service.dart';
+import 'package:poppy/services/photos_service.dart';
 
 enum EntriesStatus { initial, loading, loaded, error }
 
 class EntriesProvider extends ChangeNotifier {
-  final _service = EntriesService();
+  final _entriesService = EntriesService();
+  final _photosService = PhotosService();
 
   List<Entry> _entries = [];
   EntriesStatus _status = EntriesStatus.initial;
@@ -81,7 +83,7 @@ class EntriesProvider extends ChangeNotifier {
     _status = EntriesStatus.loading;
     notifyListeners();
     try {
-      _entries = await _service.fetchAll();
+      _entries = await _entriesService.fetchAll();
       _status = EntriesStatus.loaded;
     } catch (e) {
       _status = EntriesStatus.error;
@@ -92,7 +94,7 @@ class EntriesProvider extends ChangeNotifier {
 
   Future<Entry?> createEntry(Entry entry) async {
     try {
-      final created = await _service.create(entry);
+      final created = await _entriesService.create(entry);
       _entries.add(created);
       notifyListeners();
       return created;
@@ -105,7 +107,7 @@ class EntriesProvider extends ChangeNotifier {
 
   Future<bool> updateEntry(Entry entry) async {
     try {
-      final updated = await _service.update(entry);
+      final updated = await _entriesService.update(entry);
 
       final index = _entries.indexWhere((e) => e.id == entry.id);
       if (index != -1) {
@@ -123,7 +125,8 @@ class EntriesProvider extends ChangeNotifier {
 
   Future<bool> deleteEntry(String entryId) async {
     try {
-      await _service.delete(entryId);
+      await _photosService.deleteAllForEntry(entryId);
+      await _entriesService.delete(entryId);
       _entries.removeWhere((e) => e.id == entryId);
       notifyListeners();
       return true;

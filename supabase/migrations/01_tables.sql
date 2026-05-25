@@ -15,6 +15,7 @@
 drop table if exists public.photos   cascade;
 drop table if exists public.entries  cascade;
 drop table if exists public.profiles cascade;
+drop table if exists public.user_keys cascade;
 
 
 -- ──────────────────────────────────────────────────────────────
@@ -94,4 +95,26 @@ create table public.photos (
   storage_path  text        not null,
   order_index   integer     not null default 0,
   created_at    timestamptz not null default now()
+);
+
+
+-- ═══════════════════════════════════════════════════════════════
+--  User Keys Table
+--  Stores one row per user: the data key wrapped (AES-256-GCM)
+--  with a key derived from the user's password (PBKDF2).
+--
+--  The data key is random, generated at sign-up, and NEVER
+--  changes.  Only the wrapping changes when the password changes.
+--
+--  No recovery_encrypted_data_key column — recovery is handled
+--  by the standard Supabase password-reset email flow.
+-- ═══════════════════════════════════════════════════════════════
+
+create table public.user_keys (
+  user_id           uuid        primary key
+                                references auth.users(id)
+                                on delete cascade,
+  encrypted_data_key jsonb      not null,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
 );

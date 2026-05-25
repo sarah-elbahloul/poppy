@@ -3,6 +3,7 @@ import 'package:poppy/core/error_messages.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:poppy/core/widgets/poppy_logo.dart';
 import 'package:poppy/providers/auth_provider.dart';
+import 'package:poppy/services/encryption_service.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -11,13 +12,17 @@ import 'package:provider/provider.dart';
 //
 //  Shown when AuthStatus == passwordRecovery (user tapped the
 //  Supabase reset email link and the app received the one-time
-//  session via deep link).
+//  session via deep link / web URL fragment).
 //
-//  User just enters a new password and confirms it.
-//  auth_provider.completePasswordReset() handles:
-//    1. updateUser(password: newPassword)
-//    2. re-wrap data key with new password
-//    3. flip status to authenticated → _RootRouter shows home
+//  Two scenarios:
+//    A) Same device / key still in secure storage:
+//       → Re-wrap the existing data key. All entries stay readable.
+//    B) Different device / fresh install:
+//       → A new data key is generated. Old encrypted entries
+//         become unreadable (expected E2E limitation). A warning
+//         is shown to the user before they confirm.
+//
+//  auth_provider.completePasswordReset() handles both cases.
 // ─────────────────────────────────────────────────────────────
 
 class SetNewPasswordScreen extends StatefulWidget {
@@ -32,6 +37,10 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
   final _confirmPassController = TextEditingController();
   bool _obscureNew     = true;
   bool _obscureConfirm = true;
+
+  /// True if the data key is NOT cached locally — means this is a
+  /// fresh device / reinstall. Old entries will become unreadable.
+  bool get _keyMissing => !EncryptionService.instance.hasKey;
 
   @override
   void dispose() {
@@ -49,10 +58,59 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
     );
     if (confirmErr != null) { _showSnack(confirmErr); return; }
 
+    // If on a fresh device, warn the user that old entries will be lost
+    if (_keyMissing) {
+      final confirmed = await _showLostEntriesDialog();
+      if (!confirmed) return;
+    }
+
     final auth = context.read<AuthProvider>();
     auth.clearError();
     await auth.completePasswordReset(_newPassController.text);
     // Navigation handled by _RootRouter watching AuthStatus
+  }
+
+  Future<bool> _showLostEntriesDialog() async {
+    final t = context.poppyTheme;
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: t.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
+        title: Text(
+          'Entries may be unreadable',
+          style: AppTextStyles.headlineSmall(t.textPrimary),
+        ),
+        content: Text(
+          'You\'re resetting your password on a different device or after '
+              'reinstalling the app. Because Poppy is end-to-end encrypted, '
+              'your existing diary entries cannot be decrypted without the '
+              'original encryption key, which is only stored on the device '
+              'you first used.\n\n'
+              'Your account and entries will still exist — if you sign in '
+              'on your original device you can read them again.',
+          style: AppTextStyles.bodySmallSans(t.textSecondary)
+              .copyWith(height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel',
+                style: AppTextStyles.bodySmallSans(t.textTertiary)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: t.accent),
+            child: Text('Continue anyway',
+                style: const TextStyle(fontSize: 14)),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   void _showSnack(String msg) => ScaffoldMessenger.of(context)
@@ -80,8 +138,15 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
               Text('Set new password',
                   style: AppTextStyles.headlineSmall(t.textPrimary)),
               const SizedBox(height: AppSpacing.xs),
-              Text('Choose a strong password for your account.',
-                  style: AppTextStyles.bodySmallSans(t.textTertiary)),
+              Text(
+                _keyMissing
+                    ? 'Choose a new password. Note: existing entries may '
+                    'not be readable on this device (see info above).'
+                    : 'Choose a strong password. Your diary entries will '
+                    'remain accessible.',
+                style: AppTextStyles.bodySmallSans(t.textTertiary)
+                    .copyWith(height: 1.6),
+              ),
               const SizedBox(height: AppSpacing.lg),
               _Field(
                 controller:  _newPassController,

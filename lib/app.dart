@@ -7,9 +7,11 @@ import 'package:poppy/screens/auth/register_screen.dart';
 import 'package:poppy/screens/auth/set_new_password_screen.dart';
 import 'package:poppy/screens/home/home_screen.dart';
 import 'package:poppy/screens/lock_screen.dart';
+import 'package:poppy/screens/settings/about_screen.dart';
 import 'package:poppy/screens/settings/account_screen.dart';
 import 'package:poppy/screens/settings/appearance_screen.dart';
 import 'package:poppy/screens/settings/legal_screen.dart';
+import 'package:poppy/screens/settings/notifications_screen.dart';
 import 'package:poppy/screens/settings/security_screen.dart';
 import 'package:poppy/screens/settings/settings_drawer.dart';
 import 'package:poppy/screens/settings/settings_screen.dart';
@@ -20,12 +22,15 @@ import 'package:provider/provider.dart';
 //  POPPY — Root App Widget
 //  Location: lib/app.dart
 //
-//  Auth status → screen mapping:
-//    unknown          → blank splash (checking session)
+//  Navigation is driven EXCLUSIVELY by _RootRouter watching
+//  AuthProvider.status. There is no secondary _AuthListener.
+//  Having two navigation drivers caused races and blank screens.
+//
+//  Auth status → screen:
+//    unknown          → blank (initialising)
 //    unauthenticated  → LoginScreen
-//    authenticated    → HomeScreen (or LockScreen if PIN set)
 //    passwordRecovery → SetNewPasswordScreen
-//                       (user tapped Supabase reset email link)
+//    authenticated    → HomeScreen (or LockScreen if PIN set)
 // ─────────────────────────────────────────────────────────────
 
 class PoppyApp extends StatelessWidget {
@@ -35,7 +40,8 @@ class PoppyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer2<ThemeProvider, AuthProvider>(
       builder: (context, themeProvider, auth, _) {
-
+        // While checking the session, show a blank splash so there
+        // is no flicker before we know where to send the user.
         if (auth.status == AuthStatus.unknown) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
@@ -50,18 +56,22 @@ class PoppyApp extends StatelessWidget {
           title:                     'Poppy',
           debugShowCheckedModeBanner: false,
           theme:                     themeProvider.currentThemeData.toThemeData(),
-          home:                      const _RootRouter(),
+          // _RootRouter is the single source of truth for top-level
+          // navigation. All other routes are used by screens that
+          // push on top of the root (settings, write, etc.).
+          home: const _RootRouter(),
           routes: {
-            AppRoutes.login:      (_) => const LoginScreen(),
-            AppRoutes.register:   (_) => const RegisterScreen(),
-            AppRoutes.lock:       (_) => const LockScreen(),
-            AppRoutes.setNewPassword:       (_) => const SetNewPasswordScreen(),
-            AppRoutes.home:       (_) => const _AuthListener(child: HomeScreen()),
-            AppRoutes.settings:   (_) => const SettingsScreen(),
-            AppRoutes.settingsDrawer: (_) => const SettingsDrawer(),
-            AppRoutes.appearance: (_) => const AppearanceScreen(),
-            AppRoutes.account:    (_) => const AccountScreen(),
-            AppRoutes.security:   (_) => const SecurityScreen(),
+            AppRoutes.login:           (_) => const LoginScreen(),
+            AppRoutes.register:        (_) => const RegisterScreen(),
+            AppRoutes.lock:            (_) => const LockScreen(),
+            AppRoutes.home:            (_) => const HomeScreen(),
+            AppRoutes.settings:        (_) => const SettingsScreen(),
+            AppRoutes.settingsDrawer:  (_) => const SettingsDrawer(),
+            AppRoutes.appearance:      (_) => const AppearanceScreen(),
+            AppRoutes.account:         (_) => const AccountScreen(),
+            AppRoutes.security:        (_) => const SecurityScreen(),
+            AppRoutes.notifications:   (_) => const NotificationsScreen(),
+            AppRoutes.about:           (_) => const AboutScreen(),
             AppRoutes.legalPrivacy:    (_) => const LegalScreen(doc: LegalDoc.privacy),
             AppRoutes.legalTerms:      (_) => const LegalScreen(doc: LegalDoc.terms),
             AppRoutes.legalOpensource: (_) => const LegalScreen(doc: LegalDoc.opensource),
@@ -83,9 +93,14 @@ class PoppyApp extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  Root Router
-//  Watches AuthStatus and renders the correct top-level screen.
-//  This is the single source of truth for auth-driven navigation.
+//  _RootRouter
+//
+//  Watches AuthProvider and returns the correct widget for the
+//  current auth state. This is a pure function of auth.status —
+//  no imperative navigation, no pushNamed, no races.
+//
+//  When auth.status changes, Consumer rebuilds this widget and
+//  Flutter swaps the tree. Clean, predictable, no side-effects.
 // ─────────────────────────────────────────────────────────────
 
 class _RootRouter extends StatelessWidget {
@@ -103,73 +118,13 @@ class _RootRouter extends StatelessWidget {
         return const LoginScreen();
 
       case AuthStatus.passwordRecovery:
-      // User tapped the Supabase reset email deep link.
-      // Show the set-new-password screen — no navigation needed,
-      // auth_provider.completePasswordReset() flips status to
-      // authenticated which causes this widget to rebuild to HomeScreen.
         return const SetNewPasswordScreen();
 
       case AuthStatus.authenticated:
-        if (auth.isLocked) return const LockScreen();
-        return const _AuthListener(child: HomeScreen());
+        if (auth.pinEnabled && auth.isLocked) {
+          return const LockScreen();
+        }
+        return const HomeScreen();
     }
   }
-}
-
-// ─────────────────────────────────────────────────────────────
-//  Auth Listener
-//  Wraps HomeScreen. Reacts to auth changes AFTER mount
-//  (sign-out, lock) and redirects appropriately.
-// ─────────────────────────────────────────────────────────────
-
-class _AuthListener extends StatefulWidget {
-  final Widget child;
-  const _AuthListener({required this.child});
-
-  @override
-  State<_AuthListener> createState() => _AuthListenerState();
-}
-
-class _AuthListenerState extends State<_AuthListener> {
-  AuthStatus? _lastStatus;
-  bool?       _lastLocked;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final auth   = context.watch<AuthProvider>();
-    final status = auth.status;
-    final locked = auth.isLocked;
-
-    if (_lastStatus == null) {
-      _lastStatus = status;
-      _lastLocked = locked;
-      return;
-    }
-
-    final statusChanged = status != _lastStatus;
-    final lockedChanged = locked != _lastLocked;
-    _lastStatus = status;
-    _lastLocked = locked;
-
-    if (!statusChanged && !lockedChanged) return;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final nav = Navigator.of(context);
-      if (status == AuthStatus.unauthenticated) {
-        nav.pushNamedAndRemoveUntil(AppRoutes.login, (r) => false);
-      } else if (status == AuthStatus.passwordRecovery) {
-        // Reset email link tapped while home is shown — go to set-password
-        nav.pushNamedAndRemoveUntil(AppRoutes.login, (r) => false);
-      } else if (status == AuthStatus.authenticated && locked) {
-        nav.pushNamedAndRemoveUntil(AppRoutes.lock, (r) => false);
-      } else if (status == AuthStatus.authenticated && !locked) {
-        nav.pushNamedAndRemoveUntil(AppRoutes.home, (r) => false);
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }

@@ -4,7 +4,7 @@ class Photo {
   final String id;
   final String entryId;
   final String userId;
-  final String storagePath;
+  final String storagePath; // saved in the way: userid/entryid/photo
   final int orderIndex;
   final DateTime createdAt;
   final String? signedUrl;

@@ -13,6 +13,7 @@
 
 drop trigger if exists entries_updated_at   on public.entries;
 drop trigger if exists on_auth_user_created on auth.users;
+drop trigger if exists user_keys_updated_at on public.user_keys;
 
 
 -- ──────────────────────────────────────────────────────────────
@@ -21,6 +22,8 @@ drop trigger if exists on_auth_user_created on auth.users;
 
 drop function if exists public.update_updated_at() cascade;
 drop function if exists public.handle_new_user()   cascade;
+drop function if exists public.update_data_key(jsonb);
+drop function if exists public.public.delete_user_account();
 
 
 -- ──────────────────────────────────────────────────────────────
@@ -104,3 +107,92 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row
   execute function public.handle_new_user();
+
+
+-- ──────────────────────────────────────────────────────────────
+--  FUNCTION: delete_user_account
+--
+--  Permanently deletes all user-owned app data.
+--
+--  NOTE:
+--  This does NOT delete the auth.users row itself because
+--  Postgres functions cannot call auth.admin.deleteUser().
+--  The actual auth account deletion is handled separately
+--  by the Edge Function using the service role key.
+--
+--  SECURITY DEFINER is required so the function can delete
+--  across all user-owned tables safely under RLS.
+-- ──────────────────────────────────────────────────────────────
+
+create or replace function public.delete_user_account()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid;
+begin
+  uid := auth.uid();
+
+  if uid is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  -- Delete child rows first
+  delete from public.photos
+  where user_id = uid;
+
+  delete from public.entries
+  where user_id = uid;
+
+  delete from public.user_keys
+  where user_id = uid;
+
+  delete from public.profiles
+  where id = uid;
+
+end;
+$$;
+
+grant execute on function public.delete_user_account()
+to authenticated;
+
+-- ──────────────────────────────────────────────────────────────
+--  FUNCTION: update_data_key
+--
+--  Called by the client after a password change (both from
+--  settings AND from the reset-email one-time session).
+--  Takes only the new wrapped key — the caller already has
+--  a valid session so auth.uid() identifies the row to update.
+--
+--  SECURITY DEFINER is not needed here because the policy
+--  already allows the authenticated user to update their own
+--  row.  We use a function purely for a clean single call.
+-- ──────────────────────────────────────────────────────────────
+
+create or replace function public.update_data_key(new_wrapped_key jsonb)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  update public.user_keys
+  set    encrypted_data_key = new_wrapped_key
+  where  user_id = auth.uid();
+end;
+$$;
+
+grant execute on function public.update_data_key(jsonb)
+  to authenticated;
+
+-- ──────────────────────────────────────────────────────────────
+--  TRIGGER: user_keys_updated_at
+-- ──────────────────────────────────────────────────────────────
+
+create trigger user_keys_updated_at
+  before update on public.user_keys
+  for each row
+  execute function public.update_updated_at();
+

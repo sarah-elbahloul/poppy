@@ -1,5 +1,7 @@
+import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
@@ -170,7 +172,10 @@ class PhotosService {
     final photos = await fetchForEntry(entryId);
     if (photos.isEmpty) return;
     final paths = photos.map((p) => p.storagePath).toList();
-    await _client.storage.from(StorageBucket.photos).remove(paths);
+    log('deleting $paths');
+    await _client.storage
+        .from(StorageBucket.photos)
+        .remove(paths);
     await _client
         .from(DBTable.photos)
         .delete()

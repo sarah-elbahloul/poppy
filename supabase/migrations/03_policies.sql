@@ -20,6 +20,7 @@
 alter table public.profiles enable row level security;
 alter table public.entries  enable row level security;
 alter table public.photos   enable row level security;
+alter table public.user_keys enable row level security;
 
 
 -- ──────────────────────────────────────────────────────────────
@@ -69,6 +70,18 @@ create policy "entries: own rows"
 drop policy if exists "photos: own rows" on public.photos;
 create policy "photos: own rows"
   on public.photos
+  for all
+  using  (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+
+-- ──────────────────────────────────────────────────────────────
+--  user keys policies
+-- ──────────────────────────────────────────────────────────────
+
+drop policy if exists "user_keys: own row" on public.user_keys;
+create policy "user_keys: own row"
+  on public.user_keys
   for all
   using  (auth.uid() = user_id)
   with check (auth.uid() = user_id);

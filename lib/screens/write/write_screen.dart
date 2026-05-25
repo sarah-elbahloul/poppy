@@ -816,7 +816,7 @@ class _PhotoPendingThumb extends StatelessWidget {
 
     final image = kIsWeb && pending.bytes != null
         ? Image.memory(pending.bytes!, fit: BoxFit.cover)
-        : Image.network(pending.xFile.path, fit: BoxFit.cover);
+        : Image.file(File(pending.xFile.path), fit: BoxFit.cover);
 
     return Stack(
       children: [

@@ -18,6 +18,8 @@ class AppRoutes {
   static const String appearance = '/settings/appearance';
   static const String account    = '/settings/account';
   static const String security   = '/settings/security';
+  static const String notifications = '/settings/notifications';
+  static const String about      = '/settings/about';
   static const String legalPrivacy    = '/settings/legal/privacy';
   static const String legalTerms      = '/settings/legal/terms';
   static const String legalOpensource = '/settings/legal/opensource';

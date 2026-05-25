@@ -20,11 +20,10 @@ import 'package:poppy/services/encryption_service.dart';
 //
 //  PASSWORD CHANGE (settings) + FORGOT PASSWORD (reset email)
 //  ──────────────────────────────────────────────────────────
-//  Both use the same rewrapKey() method:
-//    - Settings: old password known → unwrap old → wrap new
-//    - Reset email: one-time session, no old password →
-//        client wraps new password → calls saveNewWrappedKey()
-//        directly via the update_data_key() Postgres RPC.
+//  Settings:      rewrapKey(old, new) — unwrap old → wrap new
+//  Reset (same device):   saveNewWrappedKey(new) — re-wrap in-memory key
+//  Reset (fresh device):  saveWrappedKeyMap(map) — save pre-wrapped key
+//                         after a brand-new key was generated
 // ─────────────────────────────────────────────────────────────
 
 class KeyService {
@@ -52,8 +51,17 @@ class KeyService {
   /// at sign-up time, now that a confirmed session exists.
   Future<void> saveWrappedKey({required String encDataKeyJson}) async {
     await _client.from(DBTable.userKeys).upsert({
-      DBColumn.userId:    SupabaseConfig.userId,
+      DBColumn.userId:     SupabaseConfig.userId,
       DBColumn.encDataKey: jsonDecode(encDataKeyJson),
+    }, onConflict: DBColumn.userId);
+  }
+
+  /// Saves a pre-wrapped key map directly (used after password reset
+  /// on a fresh device where a new data key was generated).
+  Future<void> saveWrappedKeyMap(Map<String, String> wrapped) async {
+    await _client.from(DBTable.userKeys).upsert({
+      DBColumn.userId:     SupabaseConfig.userId,
+      DBColumn.encDataKey: wrapped,
     }, onConflict: DBColumn.userId);
   }
 
@@ -110,18 +118,16 @@ class KeyService {
     }
   }
 
-  // ── Forgot password: save new wrapping (session exists) ───
+  // ── Forgot password (same device): save new wrapping ──────
 
-  /// Called when the user has a one-time reset session and has
-  /// chosen a new password.  The data key is already in memory
-  /// (loaded at app start from secure storage cache or the
-  /// one-time session loaded it).  We just re-wrap and save.
+  /// Called when the user has a one-time reset session AND the data
+  /// key is already in memory (loaded from secure storage cache —
+  /// same device that originally registered).
+  /// Returns false if the key is not in memory (different device).
   Future<bool> saveNewWrappedKey(String newPassword) async {
     try {
-      // Data key must already be in memory
       if (!_enc.hasKey) return false;
 
-      // Re-wrap the in-memory data key with the new password
       final dataKeyBytes = await _enc.currentDataKeyBytes();
       if (dataKeyBytes == null) return false;
 

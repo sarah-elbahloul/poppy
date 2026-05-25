@@ -687,41 +687,46 @@ class _HomeScreenState extends State<HomeScreen> {
         // ─────────────────────────────────────────
         // ENTRIES LIST (filtered or all)
         // ─────────────────────────────────────────
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await provider.fetchEntries();
+            },
+            child: ListView.separated(
+              padding: const EdgeInsets.only(bottom: 100),
+              itemCount: displayedEntries.length,
+              separatorBuilder: (_, __) => Divider(
+                height: AppStroke.hairline,
+                thickness: AppStroke.hairline,
+                color: t.border,
+              ),
+              itemBuilder: (context, i) {
+                final entry = displayedEntries[i];
+                final isSelected = _selectedIds.contains(entry.id);
+
+                return Stack(
+                  children: [
+                    if (isSelected)
+                      Positioned.fill(
+                        child: Container(color: t.accentLight),
+                      ),
+                    EntryCard(
+                      entry: entry,
+                      onTap: () => _onEntryTap(entry),
+                      onLongPress: () => _onEntryLongPress(entry),
+                      isBatchMode: _isBatchMode,
+                      isSelected: isSelected,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
         Divider(
           height: AppStroke.hairline,
           thickness: AppStroke.hairline,
           color: t.border,
-        ),
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.only(bottom: 100),
-            itemCount: displayedEntries.length,
-            separatorBuilder: (_, __) => Divider(
-              height: AppStroke.hairline,
-              thickness: AppStroke.hairline,
-              color: t.border,
-            ),
-            itemBuilder: (context, i) {
-              final entry = displayedEntries[i];
-              final isSelected = _selectedIds.contains(entry.id);
-
-              return Stack(
-                children: [
-                  if (isSelected)
-                    Positioned.fill(
-                      child: Container(color: t.accentLight),
-                    ),
-                  EntryCard(
-                    entry: entry,
-                    onTap: () => _onEntryTap(entry),
-                    onLongPress: () => _onEntryLongPress(entry),
-                    isBatchMode: _isBatchMode,
-                    isSelected: isSelected,
-                  ),
-                ],
-              );
-            },
-          ),
         ),
       ],
     );

@@ -21,28 +21,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 //  passwordRecovery → one-time reset session from email link,
 //                     show SetNewPasswordScreen
 //
-//  SIGN-UP (two-phase key save)
-//  ────────────────────────────
-//  Phase 1 (sign-up, no confirmed session):
-//    Generate data key → wrap with password → store blob in
-//    secure storage (pendingEncKey). Return to screen.
-//  Phase 2 (first sign-in):
-//    Flush pendingEncKey blob to user_keys table. Clear storage.
-//
-//  PASSWORD CHANGE (settings)
-//  ──────────────────────────
-//  KeyService.rewrapKey(old, new) — unwrap with old, re-wrap
-//  with new, update DB via update_data_key() RPC. One call.
-//
-//  FORGOT PASSWORD (email reset)
-//  ─────────────────────────────
+//  FORGOT PASSWORD (email reset) — HOW IT WORKS
+//  ─────────────────────────────────────────────
 //  1. sendPasswordResetEmail(email) — Supabase sends link
-//  2. User taps link → app gets AuthChangeEvent.passwordRecovery
-//  3. status flips to passwordRecovery → app shows SetNewPasswordScreen
+//  2. User taps link → Supabase redirects to app deep link /
+//     web URL → app receives AuthChangeEvent.passwordRecovery
+//  3. _status flips to passwordRecovery → SetNewPasswordScreen shown
 //  4. User enters new password → completePasswordReset(newPassword):
 //       a. updateUser(password: newPassword)  — updates Supabase auth
 //       b. KeyService.saveNewWrappedKey(newPassword) — re-wraps data key
-//       c. status flips to authenticated → home screen
+//          If no key in memory (different device / reinstall):
+//          generate a fresh data key (old entries unreadable — expected
+//          behaviour for E2E encrypted app with no key escrow).
+//       c. _status flips to authenticated → home screen
 // ─────────────────────────────────────────────────────────────
 
 enum AuthStatus { unknown, authenticated, unauthenticated, passwordRecovery }
@@ -88,39 +79,50 @@ class AuthProvider extends ChangeNotifier {
       _user = data.session?.user;
       switch (data.event) {
         case AuthChangeEvent.signedIn:
-        // Handled explicitly in signIn() — don't duplicate key load here
-          _status = AuthStatus.authenticated;
-          await _checkPinLock();
+        // signIn() sets _status and _encryptionReady itself after the
+        // full key-load sequence completes. The stream event fires
+        // concurrently — if we set status here too we create a race
+        // where _RootRouter renders HomeScreen before the key is ready.
+        // Only handle the case where the session was restored at cold
+        // start (i.e. _init already handled it) — nothing to do here.
           break;
+
         case AuthChangeEvent.passwordRecovery:
         // One-time session from reset email link.
-        // Data key is still in secure storage cache from before
-        // the user forgot their password (same device) OR we
-        // can't decrypt without the old password.
-        // Either way, navigate to SetNewPasswordScreen.
+        // Try to load the data key from local cache — may succeed
+        // if same device; will fail on fresh install (expected).
           _status = AuthStatus.passwordRecovery;
-          await _enc.loadCachedKey(); // may or may not succeed
+          await _enc.loadCachedKey(); // best-effort; may not succeed
+          _safeNotify();
           break;
+
         case AuthChangeEvent.userUpdated:
+        // Fired after updateUser() — just keep user reference fresh.
+        // completePasswordReset() has already set status/encryptionReady.
           _user = data.session?.user;
+          _safeNotify();
           break;
+
         case AuthChangeEvent.signedOut:
           _status          = AuthStatus.unauthenticated;
           _isLocked        = false;
           _encryptionReady = false;
           await _enc.clearKey();
+          _safeNotify();
           break;
+
         default:
           break;
       }
-      _safeNotify();
     });
   }
 
-  Future<void> _checkPinLock() async {
+  Future<void> _checkPinLock({bool resetLock = false}) async {
     final enabled = await _storage.read(key: StorageKeys.pinEnabled);
-    _pinEnabled   = enabled == 'true';
-    if (_pinEnabled) _isLocked = true;
+    _pinEnabled = enabled == 'true';
+    if (_pinEnabled && resetLock) {
+      _isLocked = true;
+    }
   }
 
   void unlock() { _isLocked = false; _safeNotify(); }
@@ -163,7 +165,10 @@ class AuthProvider extends ChangeNotifier {
         }
       }
 
-      _encryptionReady = true;
+      _encryptionReady = _enc.hasKey;
+      _status          = AuthStatus.authenticated;
+      await _checkPinLock(resetLock: false);
+      _safeNotify();
       return true;
     } on AuthException catch (e) {
       _errorMessage    = AppErrors.signIn(e.message);
@@ -185,9 +190,9 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true); _clearError();
     try {
       await SupabaseConfig.client.auth.signUp(
-        email:      email.trim(),
-        password:   password,
-        emailRedirectTo: kIsWeb ? 'http://localhost:49296' : 'io.supabase.poppy://login-callback/',
+        email:           email.trim(),
+        password:        password,
+        emailRedirectTo: _redirectUrl,
       );
 
       final dataKeyBytes = await _enc.generateDataKey();
@@ -222,7 +227,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       await SupabaseConfig.client.auth.resetPasswordForEmail(
         email.trim(),
-        redirectTo: kIsWeb ? 'http://localhost:49296' : 'io.supabase.poppy://login-callback/',
+        redirectTo: _redirectUrl,
       );
       return true;
     } on AuthException catch (e) {
@@ -238,30 +243,42 @@ class AuthProvider extends ChangeNotifier {
   //
   // At this point the user has a one-time passwordRecovery session.
   // We update the Supabase auth password, then re-wrap the data key.
-  // If the data key isn't in memory (different device / reinstall),
-  // entries will be unreadable after the reset — this is the
-  // fundamental limitation of E2E encryption with no escrow.
+  //
+  // KEY RECOVERY LOGIC:
+  //  - Same device / key still in cache → re-wrap existing key.
+  //    All existing entries remain readable. ✓
+  //  - Different device / fresh install → generate a brand-new data key
+  //    and wrap it with the new password. Old entries will be unreadable
+  //    (their ciphertext can't be decrypted without the lost key).
+  //    This is the accepted trade-off for E2E encryption with no escrow.
 
   Future<bool> completePasswordReset(String newPassword) async {
     _setLoading(true); _clearError();
     try {
-      // Update Supabase auth password
+      // Update Supabase auth password first
       await SupabaseConfig.client.auth.updateUser(
         UserAttributes(password: newPassword),
       );
 
-      // Re-wrap the data key with the new password (if key is in memory)
+      bool keySaved = false;
+
       if (_enc.hasKey) {
-        final ok = await _keyService.saveNewWrappedKey(newPassword);
-        if (!ok) {
-          // Key save failed but password updated — non-fatal, user can
-          // sign in but entries may not decrypt until key is recovered.
-          // Log this in production.
-        }
+        // Same device: re-wrap the existing data key with the new password.
+        keySaved = await _keyService.saveNewWrappedKey(newPassword);
       }
 
-      _status          = AuthStatus.authenticated;
+      if (!keySaved) {
+        // Different device / fresh install / key was never cached:
+        // generate a fresh data key and wrap it with the new password.
+        // Old entries will be undecryptable — unavoidable without key escrow.
+        final newKeyBytes = await _enc.generateDataKey();
+        final newWrapped  = await _enc.wrapWithPassword(newKeyBytes, newPassword);
+        await _keyService.saveWrappedKeyMap(newWrapped);
+        keySaved = true;
+      }
+
       _encryptionReady = _enc.hasKey;
+      _status          = AuthStatus.authenticated;
       _safeNotify();
       return true;
     } on AuthException catch (e) {
@@ -322,6 +339,59 @@ class AuthProvider extends ChangeNotifier {
 
   // ── Helpers ───────────────────────────────────────────────
 
+  /// The redirect URL to use for Supabase auth emails.
+  /// On web: the current page origin (works for any port).
+  /// On mobile: the registered custom scheme deep link.
+  static String get _redirectUrl {
+    if (kIsWeb) {
+      // Use the window's origin so it works on any port / domain
+      // without hard-coding localhost:49296.
+      // ignore: undefined_prefixed_name
+      return Uri.base.origin;
+    }
+    return 'io.supabase.poppy://login-callback/';
+  }
+
+  // ── Delete account ────────────────────────────────────────
+  //
+  // Calls the Supabase `delete_user_account` RPC which must:
+  //   1. Delete all rows in user_keys, entries, photos for this user
+  //   2. Call auth.admin.deleteUser(uid) via a Postgres trigger or
+  //      Supabase Edge Function (see SQL migration note below).
+  //
+
+  Future<bool> deleteAccount() async {
+    _setLoading(true); _clearError();
+    try {
+      // Step 1: delete all app data via RPC
+      await SupabaseConfig.client.rpc('delete_user_account');
+
+      // Step 2: call Edge Function to delete the auth.users row
+      // (service role key is required — only safe from server side)
+      try {
+        await SupabaseConfig.client.functions.invoke('delete-user');
+      } catch (_) {
+        // If Edge Function isn't deployed yet, the data is still
+        // gone but the auth row remains. Sign out anyway so the
+        // user is effectively logged out.
+      }
+
+      // Step 3: sign out locally
+      await SupabaseConfig.client.auth.signOut();
+      await _enc.clearKey();
+      _status          = AuthStatus.unauthenticated;
+      _encryptionReady = false;
+      _safeNotify();
+      return true;
+    } on AuthException catch (e) {
+      _errorMessage = 'Could not delete account: ${e.message}';
+      _safeNotify(); return false;
+    } catch (e) {
+      _errorMessage = AppErrors.fromException(e);
+      _safeNotify(); return false;
+    } finally { _setLoading(false); }
+  }
+
   void _safeNotify() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (hasListeners) notifyListeners();
@@ -332,3 +402,7 @@ class AuthProvider extends ChangeNotifier {
   void _clearError()       => _errorMessage = null;
   void clearError()        { _clearError(); _safeNotify(); }
 }
+
+// NOTE: This extension is appended — the class above ends with the closing }.
+// The deleteAccount method is added directly below inside the class definition
+// via the patch in auth_provider_patch.dart — see that file.

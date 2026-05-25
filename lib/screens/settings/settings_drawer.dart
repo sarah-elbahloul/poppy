@@ -1,16 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/app_routes.dart';
 import 'package:poppy/core/style/style.dart';
+import 'package:poppy/core/widgets/poppy_logo.dart';
 import 'package:poppy/providers/auth_provider.dart';
 import 'package:poppy/providers/entries_provider.dart';
 import 'package:poppy/providers/theme_provider.dart';
-import 'package:poppy/services/export_service.dart';
-import 'package:poppy/core/widgets/poppy_logo.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Settings Drawer
-//  Location: lib/core/widgets/settings_drawer.dart
+//  Location: lib/screens/settings/settings_drawer.dart
+//
+//  PURPOSE: Quick-access sidebar opened from the ☰ button on
+//  HomeScreen. It is NOT a second settings screen — it shows
+//  profile context, entry stats, and direct shortcuts to the
+//  most common destinations. The full Settings screen
+//  (AppRoutes.settings) is where all configuration lives.
+//
+//  STRUCTURE:
+//    Header  — avatar initial, email, entry count
+//    Quick write — "New entry" shortcut
+//    Shortcuts — Appearance, Security, Export (most-used)
+//    All Settings — link to full settings hub
+//    Footer — version, sign out
 // ─────────────────────────────────────────────────────────────
 
 class SettingsDrawer extends StatelessWidget {
@@ -18,151 +30,21 @@ class SettingsDrawer extends StatelessWidget {
 
   void _close(BuildContext context) => Navigator.pop(context);
 
-  void _navigateTo(BuildContext context, String route) {
+  void _go(BuildContext context, String route) {
     Navigator.pop(context);
     Navigator.of(context).pushNamed(route);
   }
 
-  // ── Export ────────────────────────────────────────────────
-
-  Future<void> _onExport(BuildContext context) async {
-    Navigator.pop(context);
-
-    final entries = context.read<EntriesProvider>().entries;
-    if (entries.isEmpty) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No entries to export.')),
-        );
-      }
-      return;
-    }
-
-    final t = context.poppyTheme;
-    final choice = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Export diary'),
-        content: const Text('How would you like to export your entries?'),
-        actions: [
-          TextButton.icon(
-            icon: Icon(AppIcons.export_, color: t.textSecondary, size: AppIconSize.xs),
-            onPressed: () => Navigator.pop(context, false),
-            label: Text('Plain text', style: TextStyle(color: t.textSecondary)),
-          ),
-          FilledButton.icon(
-            icon: Icon(AppIcons.lock, color: AppColors.white, size: AppIconSize.xs),
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: t.accent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
-            ),
-            label: const Text('Encrypted'),
-          ),
-        ],
-      ),
-    );
-
-    if (choice == null) return;
-
-    try {
-      await ExportService().exportEntries(entries, encrypted: choice);
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Export failed. Please try again.')),
-        );
-      }
-    }
-  }
-
-  // ── Import ────────────────────────────────────────────────
-
-  Future<void> _onImport(BuildContext context) async {
-    Navigator.pop(context);
-
-    try {
-      final count = await ExportService().importEntries();
-      if (!context.mounted) return;
-
-      if (count > 0) {
-        await context.read<EntriesProvider>().fetchEntries();
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '$count ${count == 1 ? 'entry' : 'entries'} imported successfully.',
-              ),
-            ),
-          );
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No entries found in the selected file.')),
-        );
-      }
-    } on FormatException catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
-        );
-      }
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Import failed. Make sure you are using the correct account to decrypt this file.',
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  // ── Sign out ──────────────────────────────────────────────
-
-  Future<void> _onSignOut(BuildContext context) async {
-    final t = context.poppyTheme;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Sign out?'),
-        content: const Text('Your diary will remain saved in the cloud.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: t.textSecondary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Sign out', style: TextStyle(color: t.accent)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    context.read<EntriesProvider>().clear();
-    await context.read<AuthProvider>().signOut();
-    if (context.mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.login,
-            (route) => false,
-      );
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────
-  // BUILD
-  // ─────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
-    final auth = context.watch<AuthProvider>();
+    final t         = context.poppyTheme;
+    final auth      = context.watch<AuthProvider>();
+    final entries   = context.watch<EntriesProvider>().entries;
     final themeData = context.watch<ThemeProvider>().currentThemeData;
+
+    final email    = auth.user?.email ?? '';
+    final initial  = email.isNotEmpty ? email[0].toUpperCase() : 'P';
+    final count    = entries.length;
 
     return Drawer(
       backgroundColor: t.surface,
@@ -170,115 +52,132 @@ class SettingsDrawer extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Header ──
+
+            // ── Header ────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.lg,
-                AppSpacing.lg,
-                AppSpacing.md,
+                AppSpacing.lg, AppSpacing.lg,
+                AppSpacing.lg, AppSpacing.md,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const PoppyLogo(size: 32, prominent: false),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    auth.user?.email ?? '',
-                    style: AppTextStyles.labelLargeSans(t.textTertiary),
+                  // Avatar
+                  Container(
+                    width: 42, height: 42,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: t.accentLight,
+                    ),
+                    child: Center(
+                      child: Text(
+                        initial,
+                        style: AppTextStyles.titleLarge(t.accent)
+                            .copyWith(fontSize: 18),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          email,
+                          style: AppTextStyles.bodySmallSans(t.textPrimary),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$count ${count == 1 ? 'entry' : 'entries'}',
+                          style: AppTextStyles.labelLargeSans(t.textTertiary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Close button
+                  IconButton(
+                    icon: Icon(AppIcons.close,
+                        size: AppIconSize.xs, color: t.textTertiary),
+                    onPressed: () => _close(context),
+                    splashRadius: 18,
                   ),
                 ],
               ),
             ),
 
-            _Divider(),
+            Divider(height: 1, thickness: AppStroke.hairline,
+                color: t.border),
 
-            const SizedBox(height: AppSpacing.xs),
-
-            // ── Menu Items ──
+            // ── Scrollable content ────────────────────────
             Expanded(
               child: ListView(
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.sm),
                 children: [
-                  _Item(
-                    icon: AppIcons.appearance,
-                    label: 'Appearance',
+
+                  // ── New entry shortcut ─────────────────
+                  _DrawerItem(
+                    icon:    AppIcons.write,
+                    label:   'New entry',
+                    accent:  true,
+                    onTap:   () {
+                      Navigator.pop(context);
+                      Navigator.of(context).pushNamed(AppRoutes.write);
+                    },
+                  ),
+
+                  _DrawerDivider(label: 'Quick access'),
+
+                  // ── Most-used settings shortcuts ───────
+                  _DrawerItem(
+                    icon:     AppIcons.appearance,
+                    label:    'Theme',
                     trailing: '${themeData.emoji} ${themeData.name}',
-                    onTap: () => _navigateTo(context, AppRoutes.appearance),
+                    onTap:    () => _go(context, AppRoutes.appearance),
                   ),
-                  _Divider(),
-                  _Item(
-                    icon: AppIcons.person,
-                    label: 'Account',
-                    trailing: 'Email · Password',
-                    onTap: () => _navigateTo(context, AppRoutes.account),
+                  _DrawerItem(
+                    icon:     AppIcons.security,
+                    label:    'Security',
+                    trailing: auth.pinEnabled ? 'PIN on' : null,
+                    onTap:    () => _go(context, AppRoutes.security),
                   ),
-                  _Divider(),
-                  _Item(
-                    icon: AppIcons.security,
-                    label: 'Security',
-                    trailing: 'App PIN lock',
-                    onTap: () => _navigateTo(context, AppRoutes.security),
-                  ),
+                  _DrawerDivider(label: 'More'),
 
-                  const SizedBox(height: AppSpacing.sm),
-
-                  _Item(
-                    icon: AppIcons.export_,
-                    label: 'Export diary',
-                    trailing: 'Save backup file',
-                    onTap: () => _onExport(context),
+                  // ── Full settings hub ──────────────────
+                  _DrawerItem(
+                    icon:    AppIcons.settings,
+                    label:   'All settings',
+                    onTap:   () => _go(context, AppRoutes.settings),
                   ),
-                  _Divider(),
-                  _Item(
-                    icon: AppIcons.import_,
-                    label: 'Import diary',
-                    trailing: 'Restore from file',
-                    onTap: () => _onImport(context),
-                  ),
-
-                  const SizedBox(height: AppSpacing.sm),
-
-                  _Item(
-                    icon: AppIcons.info,
-                    label: 'Privacy Policy',
-                    onTap: () => _navigateTo(context, AppRoutes.legalPrivacy),
-                  ),
-                  _Divider(),
-                  _Item(
-                    icon: AppIcons.info,
-                    label: 'Terms of Use',
-                    onTap: () => _navigateTo(context, AppRoutes.legalTerms),
-                  ),
-                  _Divider(),
-                  _Item(
-                    icon: AppIcons.info,
-                    label: 'Open Source Licenses',
-                    onTap: () => _navigateTo(context, AppRoutes.legalOpensource),
+                  _DrawerItem(
+                    icon:  AppIcons.info,
+                    label: 'About Poppy',
+                    onTap: () => _go(context, AppRoutes.about),
                   ),
                 ],
               ),
             ),
 
-            // ── Footer ──
-            _Divider(),
+            // ── Footer ────────────────────────────────────
+            Divider(height: 1, thickness: AppStroke.hairline,
+                color: t.border),
 
-            _Item(
-              icon: AppIcons.logout,
-              label: 'Sign out',
+            _DrawerItem(
+              icon:          AppIcons.logout,
+              label:         'Sign out',
               isDestructive: true,
-              onTap: () => _onSignOut(context),
+              onTap:         () => _onSignOut(context),
             ),
 
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.sm,
-              ),
-              child: Text(
-                'Poppy · v1.0.0',
-                style: AppTextStyles.labelMedium(t.textTertiary),
-                textAlign: TextAlign.center,
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: Center(
+                child: Text(
+                  'Poppy · v1.0.0',
+                  style: AppTextStyles.labelSmall(t.textTertiary),
+                ),
               ),
             ),
           ],
@@ -286,31 +185,80 @@ class SettingsDrawer extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _onSignOut(BuildContext context) async {
+    final t         = context.poppyTheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: t.surface,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg)),
+        title: Text('Sign out?',
+            style: AppTextStyles.headlineSmall(t.textPrimary)),
+        content: Text(
+          'Your diary is safely stored in the cloud and will be '
+              'here when you sign back in.',
+          style: AppTextStyles.bodySmallSans(t.textSecondary)
+              .copyWith(height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel',
+                style: TextStyle(color: t.textTertiary)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: t.accent),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+    context.read<EntriesProvider>().clear();
+    await context.read<AuthProvider>().signOut();
+    if (context.mounted) {
+      Navigator.of(context)
+          .pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
+    }
+  }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  PRIVATE HELPERS
-// ─────────────────────────────────────────────────────────────
+// ── Private widgets ────────────────────────────────────────────
 
-class _Item extends StatelessWidget {
+class _DrawerItem extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final String? trailing;
+  final String   label;
+  final String?  trailing;
+  final bool     isDestructive;
+  final bool     accent;
   final VoidCallback onTap;
-  final bool isDestructive;
 
-  const _Item({
+  const _DrawerItem({
     required this.icon,
     required this.label,
     required this.onTap,
     this.trailing,
     this.isDestructive = false,
+    this.accent = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
-    final color = isDestructive ? t.accent : t.textPrimary;
+    final t          = context.poppyTheme;
+    final labelColor = isDestructive
+        ? AppColors.error
+        : accent
+        ? t.accent
+        : t.textPrimary;
+    final iconColor  = isDestructive
+        ? AppColors.error
+        : accent
+        ? t.accent
+        : t.textTertiary;
 
     return InkWell(
       onTap: onTap,
@@ -321,31 +269,20 @@ class _Item extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              size: AppIconSize.sm,
-              color: isDestructive ? t.accent : t.textTertiary,
-            ),
+            Icon(icon, size: AppIconSize.sm, color: iconColor),
             const SizedBox(width: AppSpacing.md),
             Expanded(
-              child: Text(
-                label,
-                style: AppTextStyles.titleSmallSans(color),
-              ),
+              child: Text(label,
+                  style: AppTextStyles.titleSmallSans(labelColor)),
             ),
-            if (trailing != null)
-              Text(
-                trailing!,
-                style: AppTextStyles.labelLargeSans(t.textTertiary),
-              ),
-            if (!isDestructive) ...[
-              if (trailing != null) const SizedBox(width: AppSpacing.sm),
-              Icon(
-                AppIcons.chevronRight,
-                size: AppIconSize.xs,
-                color: t.textTertiary,
-              ),
+            if (trailing != null) ...[
+              Text(trailing!,
+                  style: AppTextStyles.labelLargeSans(t.textTertiary)),
+              const SizedBox(width: AppSpacing.xs),
             ],
+            if (!isDestructive)
+              Icon(AppIcons.chevronRight,
+                  size: AppIconSize.xs, color: t.textTertiary),
           ],
         ),
       ),
@@ -353,18 +290,22 @@ class _Item extends StatelessWidget {
   }
 }
 
-class _Divider extends StatelessWidget {
+class _DrawerDivider extends StatelessWidget {
+  final String label;
+  const _DrawerDivider({required this.label});
+
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
     return Padding(
-      padding: const EdgeInsets.only(
-        left: AppSpacing.lg + AppIconSize.sm + AppSpacing.md,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg, AppSpacing.md,
+        AppSpacing.lg, AppSpacing.xs,
       ),
-      child: Divider(
-        height: AppStroke.hairline,
-        thickness: AppStroke.hairline,
-        color: t.border,
+      child: Text(
+        label.toUpperCase(),
+        style: AppTextStyles.labelSmall(t.textTertiary)
+            .copyWith(letterSpacing: 0.8),
       ),
     );
   }
