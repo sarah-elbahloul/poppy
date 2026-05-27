@@ -29,10 +29,10 @@ class _LockScreenState extends State<LockScreen> {
     if (!mounted) return;
 
     if (isCorrect) {
+      // Just flip isLocked — _RootRouter watches AuthProvider and will
+      // rebuild to HomeScreen automatically. Imperative pushNamed on top
+      // of a declarative router creates a duplicate route on the stack.
       context.read<AuthProvider>().unlock();
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRoutes.home, (route) => false,
-      );
     } else {
       setState(() => _hasError = true);
       await Future.delayed(AppDuration.errorReset);
@@ -42,10 +42,8 @@ class _LockScreenState extends State<LockScreen> {
 
   Future<void> _onSignOut() async {
     await context.read<AuthProvider>().signOut();
-    if (!mounted) return;
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      AppRoutes.login, (route) => false,
-    );
+    // _RootRouter will switch to LoginScreen when status → unauthenticated.
+    // No imperative navigation needed.
   }
 
   @override

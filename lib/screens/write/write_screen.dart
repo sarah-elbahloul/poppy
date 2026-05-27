@@ -355,14 +355,21 @@ class _WriteScreenState extends State<WriteScreen> {
     final t = context.poppyTheme;
 
     return PopScope(
-      canPop: !_hasChanges, // allow pop only if no changes
-      onPopInvoked: (didPop) async {
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        if (_hasChanges) {
-          final result = await _save();
-          if (result == true) {
-            Navigator.of(context).pop(); // manually pop after saving
-          }
+
+        // nothing changed → allow leaving
+        if (!_hasChanges) {
+          Navigator.of(context).pop();
+          return;
+        }
+
+        // save first
+        final success = await _save();
+
+        if (success && mounted) {
+          Navigator.of(context).pop();
         }
       },
       child: Scaffold(
@@ -471,24 +478,6 @@ class _WriteScreenState extends State<WriteScreen> {
             ],
           ),
           actions: [
-            // Unsaved changes dot indicator
-            AnimatedBuilder(
-              animation:
-              Listenable.merge([_titleController, _contentController]),
-              builder: (context, _) {
-                return _hasChanges
-                    ? Container(
-                  width: AppSpacing.sm,
-                  height: AppSpacing.sm,
-                  margin: const EdgeInsets.only(right: AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: t.accent,
-                    shape: BoxShape.circle,
-                  ),
-                )
-                    : const SizedBox.shrink();
-              },
-            ),
             PopupMenuButton(
               enabled: _isEditing ? true : false,
               menuPadding: const EdgeInsets.all(0),

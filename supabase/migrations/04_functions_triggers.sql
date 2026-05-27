@@ -23,7 +23,7 @@ drop trigger if exists user_keys_updated_at on public.user_keys;
 drop function if exists public.update_updated_at() cascade;
 drop function if exists public.handle_new_user()   cascade;
 drop function if exists public.update_data_key(jsonb);
-drop function if exists public.public.delete_user_account();
+drop function if exists public.delete_user_account();
 
 
 -- ──────────────────────────────────────────────────────────────
@@ -140,8 +140,7 @@ begin
   end if;
 
   -- Delete child rows first
-  delete from public.photos
-  where user_id = uid;
+  delete from public.photos where user_id = uid;
 
   delete from public.entries
   where user_id = uid;

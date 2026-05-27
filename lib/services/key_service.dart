@@ -20,10 +20,12 @@ import 'package:poppy/services/encryption_service.dart';
 //
 //  PASSWORD CHANGE (settings) + FORGOT PASSWORD (reset email)
 //  ──────────────────────────────────────────────────────────
-//  Settings:      rewrapKey(old, new) — unwrap old → wrap new
-//  Reset (same device):   saveNewWrappedKey(new) — re-wrap in-memory key
-//  Reset (fresh device):  saveWrappedKeyMap(map) — save pre-wrapped key
-//                         after a brand-new key was generated
+//  Settings:            rewrapKey(old, new) — unwrap old → wrap new
+//  Reset (same device): saveNewWrappedKey(new) — re-wrap in-memory key
+//  Reset (diff device): rewrapWithOldPassword(old, new) — unwrap from
+//                       DB using old password → wrap with new. No data
+//                       loss. Falls back to new key only if old password
+//                       is wrong (user genuinely cannot remember it).
 // ─────────────────────────────────────────────────────────────
 
 class KeyService {
@@ -140,6 +142,47 @@ class KeyService {
     }
   }
 
+  // ── Forgot password (different device): unwrap from DB ────
+
+  /// Fetches the wrapped key from the DB and tries to unwrap it using
+  /// [oldPassword]. If successful, re-wraps with [newPassword], saves
+  /// it, and loads the data key into memory.
+  ///
+  /// Returns [RewrapResult.success] on success.
+  /// Returns [RewrapResult.wrongPassword] if [oldPassword] is wrong —
+  /// the caller should tell the user and let them try again or choose
+  /// to generate a new key (losing old entries).
+  /// Returns [RewrapResult.error] on network / DB failures.
+  Future<RewrapResult> rewrapWithOldPassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final row = await _client
+          .from(DBTable.userKeys)
+          .select(DBColumn.encDataKey)
+          .eq(DBColumn.userId, SupabaseConfig.userId)
+          .single();
+
+      final wrapped = _toMap(row[DBColumn.encDataKey]);
+      if (wrapped == null) return RewrapResult.error;
+
+      final dataKeyBytes = await _enc.unwrapWithPassword(wrapped, oldPassword);
+      if (dataKeyBytes == null) return RewrapResult.wrongPassword;
+
+      // Old password was correct — re-wrap with new password and save.
+      final newWrapped = await _enc.wrapWithPassword(dataKeyBytes, newPassword);
+      await _client.rpc('update_data_key',
+          params: {'new_wrapped_key': newWrapped});
+
+      // Load the data key into memory so entries are immediately readable.
+      await _enc.setDataKey(dataKeyBytes);
+      return RewrapResult.success;
+    } catch (_) {
+      return RewrapResult.error;
+    }
+  }
+
   // ── Private ───────────────────────────────────────────────
 
   Map<String, dynamic>? _toMap(dynamic value) {
@@ -152,3 +195,6 @@ class KeyService {
     return null;
   }
 }
+
+/// Result of [KeyService.rewrapWithOldPassword].
+enum RewrapResult { success, wrongPassword, error }
