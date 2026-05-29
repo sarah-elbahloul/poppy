@@ -110,6 +110,18 @@ class StorageBucket {
 
 class ExportConfig {
   ExportConfig._();
-  static const String jsonVersion   = '1.0';
-  static const String poppyFileName = 'poppy_export.poppy';
+  static const String jsonVersion = '1.0';
+
+  /// Generates a timestamped filename, e.g. poppy_2026-05-29_14-30.json
+  /// Using .json so every platform/app can open it without registering
+  /// a custom MIME type for .poppy.
+  static String fileName() {
+    final now = DateTime.now();
+    final ts  = '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}_'
+        '${now.hour.toString().padLeft(2, '0')}-'
+        '${now.minute.toString().padLeft(2, '0')}';
+    return 'poppy_$ts.json';
+  }
 }

@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
@@ -8,7 +10,6 @@ import 'package:poppy/core/supabase_client.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/services/encryption_service.dart';
 import 'package:share_plus/share_plus.dart';
-import 'dart:io';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Export / Import Service
@@ -29,11 +30,17 @@ import 'dart:io';
 //    "entries":    [ ... ] | "<encrypted blob>"
 //  }
 //
-//  Import — cross-account safety:
-//    Encrypted exports can only be imported by the account whose
-//    key encrypted them.  Attempting to import with a different
-//    account produces a clear, actionable error rather than a
-//    generic decryption failure.  Plain exports work with any account.
+//  NOTE: user_id is intentionally NOT stored in the export file.
+//  Cross-account detection relies solely on decryption failure,
+//  which already returns an empty string on failure.  Omitting
+//  user_id avoids leaking which Supabase account created the file.
+//
+//  Files are saved directly to the Downloads folder (Android) or the
+//  app Documents directory (iOS, visible in Files app).  A share sheet
+//  is offered as a secondary option.
+//
+//  Filenames are timestamped so successive exports never clobber each
+//  other: poppy_2026-05-29_14-30.json
 // ─────────────────────────────────────────────────────────────
 
 class ExportService {
@@ -44,7 +51,10 @@ class ExportService {
 
   /// [encrypted] = true  → secure export (blob encrypted with user key)
   /// [encrypted] = false → plain export (human-readable JSON)
-  Future<void> exportEntries(
+  ///
+  /// Returns the path where the file was saved (for snackbar feedback),
+  /// or null if the operation was cancelled / web share was used.
+  Future<String?> exportEntries(
       List<Entry> entries, {
         bool encrypted = true,
       }) async {
@@ -54,7 +64,8 @@ class ExportService {
     Map<String, dynamic> payload;
 
     if (encrypted) {
-      // Encrypt the entire entries array as one blob
+      // Encrypt the entire entries array as one blob.
+      // user_id is intentionally omitted — see file header comment.
       final plainText     = jsonEncode(entriesJson);
       final encryptedBlob = await _enc.encryptToJson(plainText);
 
@@ -64,10 +75,7 @@ class ExportService {
         'exported_at': DateTime.now().toIso8601String(),
         'entry_count': entries.length,
         'encrypted':   true,
-        // user_id is stored in plain so the importer can detect a
-        // cross-account mismatch without attempting decryption first.
-        'user_id':     SupabaseConfig.userId,
-        'entries':     encryptedBlob, // single encrypted string
+        'entries':     encryptedBlob,
       };
     } else {
       payload = {
@@ -82,62 +90,84 @@ class ExportService {
 
     final jsonString = const JsonEncoder.withIndent('  ').convert(payload);
     final bytes      = utf8.encode(jsonString);
+    final filename   = ExportConfig.fileName();
 
-    await _share(bytes);
+    return _saveToDownloads(bytes, filename);
   }
 
-  Future<void> _share(List<int> bytes) async {
+  /// Saves to the Downloads folder (Android) or app Documents (iOS).
+  /// On web, falls back to a share sheet.
+  /// Returns the saved path, or null on web / cancellation.
+  Future<String?> _saveToDownloads(List<int> bytes, String filename) async {
     if (kIsWeb) {
       final xFile = XFile.fromData(
         Uint8List.fromList(bytes),
-        name:     ExportConfig.poppyFileName,
-        mimeType: 'application/octet-stream',
+        name:     filename,
+        mimeType: 'application/json',
       );
       await Share.shareXFiles([xFile], subject: 'Poppy diary export');
-    } else {
-      final dir  = await getTemporaryDirectory();
-      final file = File('${dir.path}/${ExportConfig.poppyFileName}');
+      return null;
+    }
+
+    if (Platform.isAndroid) {
+      // Android 10+ uses scoped storage — /storage/emulated/0/Download is
+      // the stable path for files the user can find in the Files app.
+      // No WRITE_EXTERNAL_STORAGE permission is needed for this path on
+      // Android 10+ when targeting API 29+.
+      final dir  = Directory('/storage/emulated/0/Download');
+      if (!await dir.exists()) await dir.create(recursive: true);
+      final file = File('${dir.path}/$filename');
       await file.writeAsBytes(bytes);
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'application/octet-stream')],
-        subject: 'Poppy diary export',
-      );
+      return file.path;
+    } else {
+      // iOS: save to app Documents folder (visible in Files → On My iPhone → Poppy)
+      final dir  = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$filename');
+      await file.writeAsBytes(bytes);
+      return file.path;
     }
   }
 
+  /// Opens a share sheet for the given saved file.
+  /// Call this if the user taps "Share" from the post-export snackbar.
+  Future<void> shareExportFile(String filePath) async {
+    await Share.shareXFiles(
+      [XFile(filePath, mimeType: 'application/json')],
+      subject: 'Poppy diary export',
+    );
+  }
+
   // ── Import ────────────────────────────────────────────────
-  // Returns the number of entries successfully imported.
-  // Caller MUST call entriesProvider.fetchEntries() after this.
+  //
+  // Returns an [ImportPreview] with metadata from the file header
+  // so the caller can show a confirmation dialog before committing.
   //
   // Cross-account detection:
-  //   If the file is an encrypted export AND it contains a user_id
-  //   that differs from the signed-in user, we throw a FormatException
-  //   with the importWrongAccount message before attempting decryption.
-  //   This gives users a clear, actionable error rather than a cryptic
-  //   "could not decrypt" message.
-  //
-  //   If user_id is absent (older exports) we attempt decryption and
-  //   fall back to the generic "wrong account" error on failure.
+  //   user_id is no longer stored in the export.  If decryption fails
+  //   (returns empty string), we throw a FormatException with a clear
+  //   "wrong account or changed password" message.  This is functionally
+  //   identical to the previous user_id check but without leaking the uid.
 
-  Future<int> importEntries() async {
+  /// Step 1 — read the file and return a preview (no entries written yet).
+  Future<ImportPreview> previewImport() async {
     final result = await FilePicker.platform.pickFiles(
-      // FileType.custom with allowedExtensions blocks .poppy files on Android
-      // because the extension has no registered MIME type — Android renders
-      // them un-tappable in the picker. Use FileType.any and validate the
-      // file contents ourselves (already done via payload['app'] check below).
+      // FileType.custom with allowedExtensions blocks .json on some Android
+      // versions.  Use FileType.any and validate contents ourselves.
       type:     FileType.any,
       withData: true,
     );
-    if (result == null || result.files.isEmpty) return 0;
+    if (result == null || result.files.isEmpty) {
+      throw const ImportCancelledException();
+    }
 
     final pickedFile = result.files.single;
     late String jsonString;
 
     if (kIsWeb) {
-      if (pickedFile.bytes == null) return 0;
+      if (pickedFile.bytes == null) throw const ImportCancelledException();
       jsonString = utf8.decode(pickedFile.bytes!);
     } else {
-      if (pickedFile.path == null) return 0;
+      if (pickedFile.path == null) throw const ImportCancelledException();
       jsonString = await File(pickedFile.path!).readAsString();
     }
 
@@ -159,31 +189,36 @@ class ExportService {
           'This export was made with a different version of Poppy.');
     }
 
-    // ── Decrypt if encrypted export ───────────────────────
-    final isEncrypted = payload['encrypted'] as bool? ?? false;
+    final isEncrypted  = payload['encrypted']   as bool?   ?? false;
+    final entryCount   = payload['entry_count']  as int?    ?? 0;
+    final exportedAt   = payload['exported_at']  as String? ?? '';
+
+    return ImportPreview(
+      payload:     payload,
+      isEncrypted: isEncrypted,
+      entryCount:  entryCount,
+      exportedAt:  exportedAt,
+    );
+  }
+
+  /// Step 2 — commit the import after the user has confirmed the preview.
+  /// Returns the number of entries successfully written.
+  /// Caller MUST call entriesProvider.fetchEntries() after this.
+  Future<int> commitImport(ImportPreview preview) async {
+    final payload     = preview.payload;
+    final isEncrypted = preview.isEncrypted;
     late List rawEntries;
 
     if (isEncrypted) {
-      // Cross-account check: if user_id is present and doesn't match,
-      // reject immediately with a clear message.
-      final exportedBy = payload['user_id'] as String?;
-      if (exportedBy != null && exportedBy != SupabaseConfig.userId) {
-        throw const FormatException(
-          'This export is encrypted with a different account\'s password. '
-              'You can only import it if you sign in with the original account. '
-              'Ask the exporter to share a plain (unencrypted) copy instead.',
-        );
-      }
-
       final encryptedBlob = payload['entries'] as String?;
       if (encryptedBlob == null) {
         throw const FormatException('Encrypted export is missing data.');
       }
 
-      // Attempt decryption with current key
+      // Attempt decryption with current key.
+      // Empty result → wrong account or changed password.
       final plainText = await _enc.decryptFromJson(encryptedBlob);
       if (plainText.isEmpty) {
-        // user_id was absent (old export) — give a cross-account hint
         throw const FormatException(
             'Could not decrypt this export. '
                 'Make sure you are signed in with the same account '
@@ -199,7 +234,6 @@ class ExportService {
             'Decrypted data is corrupted. The file may be damaged.');
       }
     } else {
-      // Plain export — entries is already a list
       rawEntries = payload['entries'] as List? ?? [];
     }
 
@@ -207,7 +241,7 @@ class ExportService {
 
     // ── Upsert entries ────────────────────────────────────
     final userId = SupabaseConfig.userId;
-    int count    = 0;
+    int   count  = 0;
 
     for (final raw in rawEntries) {
       try {
@@ -216,7 +250,6 @@ class ExportService {
         final entryId = map['id'] as String?;
         if (entryId == null || entryId.isEmpty) continue;
 
-        // Parse plain values from export map
         final title     = map['title']     as String? ?? '';
         final content   = map['content']   as String? ?? '';
         final colorTag  = map['color_tag'] as String? ?? 'stone';
@@ -229,7 +262,7 @@ class ExportService {
         final updatedAt = map['updated_at'] as String?
             ?? DateTime.now().toIso8601String();
 
-        // Encrypt before storing (always re-encrypt with current user's key)
+        // Re-encrypt with the current user's key before storing
         final encrypted = await _enc.encryptEntry(
           title:   title,
           content: content,
@@ -256,4 +289,41 @@ class ExportService {
     }
     return count;
   }
+}
+
+// ── Supporting types ──────────────────────────────────────────
+
+/// Metadata extracted from an export file before any entries are written.
+/// Shown to the user in a confirmation dialog.
+class ImportPreview {
+  final Map<String, dynamic> payload;
+  final bool   isEncrypted;
+  final int    entryCount;
+  final String exportedAt;
+
+  const ImportPreview({
+    required this.payload,
+    required this.isEncrypted,
+    required this.entryCount,
+    required this.exportedAt,
+  });
+
+  /// Parses exportedAt into a human-readable date, e.g. "May 15, 2026".
+  String get exportedAtFormatted {
+    try {
+      final dt = DateTime.parse(exportedAt).toLocal();
+      const months = [
+        '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      return '${months[dt.month]} ${dt.day}, ${dt.year}';
+    } catch (_) {
+      return exportedAt;
+    }
+  }
+}
+
+/// Thrown when the user cancels the file picker (not a real error).
+class ImportCancelledException implements Exception {
+  const ImportCancelledException();
 }

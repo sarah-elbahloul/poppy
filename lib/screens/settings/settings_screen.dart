@@ -180,6 +180,14 @@ class SettingsScreen extends StatelessWidget {
       Navigator.of(context).pushNamed(route);
 
   // ── Export ────────────────────────────────────────────────
+  //
+  // Redesigned flow:
+  //   1. Dialog with clear visual distinction between plain (⚠ red) and
+  //      encrypted options (change #6).
+  //   2. File saved directly to Downloads / Documents; snackbar confirms
+  //      the path with an optional "Share" action (change #2).
+  //   3. Filename is timestamped (change #3 — handled in ExportConfig).
+  //   4. user_id no longer embedded in payload (change #4 — in service).
 
   Future<void> _onExport(BuildContext context) async {
     final entries = context.read<EntriesProvider>().entries;
@@ -191,6 +199,9 @@ class SettingsScreen extends StatelessWidget {
     }
 
     final t      = context.poppyTheme;
+
+    // ── Step 1: choose export type ────────────────────────
+    // Returns true (encrypted), false (plain), or null (cancelled).
     final choice = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -199,60 +210,237 @@ class SettingsScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: Text('Export diary',
             style: AppTextStyles.headlineSmall(t.textPrimary)),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(width: AppSpacing.sm),
-            _ExportOption(
-              icon:  AppIcons.export_,
-              title: 'Plain text',
-              desc:  'Readable by anyone. Use for backups you may need to open elsewhere.',
-              color: AppColors.error,
-            ),
-            SizedBox(height: AppSpacing.sm),
+            // ── Encrypted option (recommended, shown first) ──
             _ExportOption(
               icon:  AppIcons.lock,
               title: 'Encrypted',
-              desc:  'Entries are encrypted. Can only be imported back into this Poppy account.',
-              color: AppColors.error,
+              desc:  'Entries are scrambled. Only importable back into this Poppy account.',
+              color: t.accent,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            // ── Plain option with ⚠ warning ──────────────────
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color:        AppColors.error.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                border:       Border.all(
+                  color: AppColors.error.withOpacity(0.25),
+                  width: AppStroke.hairline,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _ExportOption(
+                    icon:  AppIcons.export_,
+                    title: 'Plain text',
+                    desc:  'Readable by anyone who opens the file.',
+                    color: AppColors.error,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      Icon(AppIcons.info,
+                          size: 13, color: AppColors.error),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Your diary entries will be unprotected. '
+                              'Only use if you need to open the file outside Poppy.',
+                          style: AppTextStyles.labelSmall(AppColors.error)
+                              .copyWith(height: 1.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel',
+                style: TextStyle(color: t.textTertiary)),
+          ),
+          TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text('Plain text',
-                style: TextStyle(color: t.textSecondary)),
+                style: TextStyle(color: AppColors.error)),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            style:
-            FilledButton.styleFrom(backgroundColor: t.accent),
+            style: FilledButton.styleFrom(backgroundColor: t.accent),
             child: const Text('Encrypted'),
           ),
         ],
       ),
     );
 
-    if (choice == null) return;
+    if (choice == null || !context.mounted) return;
+
+    // ── Step 2: run export, show result snackbar ──────────
     try {
-      await ExportService().exportEntries(entries, encrypted: choice);
+      final svc      = ExportService();
+      final savedPath = await svc.exportEntries(entries, encrypted: choice);
+
+      if (!context.mounted) return;
+
+      if (savedPath != null) {
+        // Saved to local storage — show path with optional Share action
+        final filename = savedPath.split('/').last;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Saved to Downloads/$filename'),
+            duration: const Duration(seconds: 5),
+            /*action: SnackBarAction(
+              label: 'Share',
+              onPressed: () => svc.shareExportFile(savedPath),
+            ),*/
+          ),
+        );
+      } else {
+        // Web — share sheet was invoked; no local path to display
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Export ready to share.')),
+        );
+      }
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Export failed. Please try again.')),
+          const SnackBar(content: Text('Export failed. Please try again.')),
         );
       }
     }
   }
 
   // ── Import ────────────────────────────────────────────────
+  //
+  // Redesigned as a two-step flow (change #5):
+  //   1. previewImport() reads the file and returns metadata.
+  //   2. A confirmation dialog shows entry count + export date.
+  //   3. commitImport() upserts entries only after user confirms.
 
   Future<void> _onImport(BuildContext context) async {
+    final svc = ExportService();
+    final t   = context.poppyTheme;
+
+    // ── Step 1: pick file and read preview ────────────────
+    late ImportPreview preview;
     try {
-      final count = await ExportService().importEntries();
+      preview = await svc.previewImport();
+    } on ImportCancelledException {
+      return; // user dismissed the picker — silent
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e is FormatException
+                ? e.message
+                : 'Could not read the file. Is it a valid Poppy export?'),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    // ── Step 2: show confirmation dialog ──────────────────
+    final entryWord = preview.entryCount == 1 ? 'entry' : 'entries';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: t.surface,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.lg)),
+        title: Text('Import entries?',
+            style: AppTextStyles.headlineSmall(t.textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── File summary card ─────────────────────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color:        t.accentLight,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                border:       Border.all(
+                  color: t.accent.withOpacity(0.2),
+                  width: AppStroke.hairline,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(AppIcons.import_,
+                          size: AppIconSize.xs, color: t.accent),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        '${preview.entryCount} $entryWord found',
+                        style: AppTextStyles.titleSmallSans(t.textPrimary),
+                      ),
+                    ],
+                  ),
+                  if (preview.exportedAt.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 20),
+                      child: Text(
+                        'Exported ${preview.exportedAtFormatted}',
+                        style: AppTextStyles.labelLargeSans(t.textTertiary),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20),
+                    child: Text(
+                      preview.isEncrypted ? 'Encrypted backup' : 'Plain text backup',
+                      style: AppTextStyles.labelLargeSans(t.textTertiary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'New entries will be added. Existing entries with the same ID will be skipped.',
+              style: AppTextStyles.bodySmallSans(t.textSecondary)
+                  .copyWith(height: 1.5),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel',
+                style: TextStyle(color: t.textTertiary)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: t.accent),
+            child: Text('Import ${preview.entryCount} $entryWord'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    // ── Step 3: commit import ─────────────────────────────
+    try {
+      final count = await svc.commitImport(preview);
       if (!context.mounted) return;
       if (count > 0) {
         await context.read<EntriesProvider>().fetchEntries();
@@ -267,8 +455,7 @@ class SettingsScreen extends StatelessWidget {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text(
-                  'No entries found in the selected file.')),
+              content: Text('No new entries found in the selected file.')),
         );
       }
     } catch (e) {
@@ -288,6 +475,7 @@ class SettingsScreen extends StatelessWidget {
   // ── Feedback ──────────────────────────────────────────────
 
   Future<void> _onFeedback(BuildContext context) async {
+    // todo: change the email
     const email = 'hello@poppy.app';
     final t     = context.poppyTheme;
 

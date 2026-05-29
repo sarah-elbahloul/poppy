@@ -83,7 +83,7 @@ class _PrivacyContent extends StatelessWidget {
         'You have the right to access, correct, or delete your data at any time. '
             'You can export all your entries from the Settings screen. '
             'To permanently delete your account and all associated data, '
-            'contact us at support@poppydiary.app.',
+            'contact us at support@poppydiary.app.', // todo: change the email
         ),
         _Section(title: 'Data retention', body:
         'We retain your data for as long as your account is active. '
@@ -98,7 +98,7 @@ class _PrivacyContent extends StatelessWidget {
         ),
         _Section(title: 'Contact', body:
         'If you have questions about this privacy policy, '
-            'please contact us at support@poppydiary.app.',
+            'please contact us at support@poppydiary.app.', // todo:change the email
         ),
       ],
     );
@@ -157,7 +157,7 @@ class _TermsContent extends StatelessWidget {
             'Continued use of Poppy after changes constitutes acceptance.',
         ),
         _Section(title: 'Contact', body:
-        'Questions about these terms? Contact us at support@poppydiary.app.',
+        'Questions about these terms? Contact us at support@poppydiary.app.', // todo: change the emal
         ),
       ],
     );
