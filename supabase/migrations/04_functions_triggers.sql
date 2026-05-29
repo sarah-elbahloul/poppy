@@ -170,17 +170,22 @@ to authenticated;
 --  row.  We use a function purely for a clean single call.
 -- ──────────────────────────────────────────────────────────────
 
-create or replace function public.update_data_key(new_wrapped_key jsonb)
-returns void
-language plpgsql
-security invoker
-set search_path = public
-as $$
-begin
-  update public.user_keys
-  set    encrypted_data_key = new_wrapped_key
-  where  user_id = auth.uid();
-end;
+CREATE OR REPLACE FUNCTION update_data_key(
+  new_wrapped_key          jsonb,
+  new_recovery_wrapped_key jsonb DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE user_keys
+  SET
+    encrypted_data_key      = new_wrapped_key,
+    recovery_enc_data_key   = COALESCE(new_recovery_wrapped_key, recovery_enc_data_key),
+    updated_at              = now()
+  WHERE user_id = auth.uid();
+END;
 $$;
 
 grant execute on function public.update_data_key(jsonb)

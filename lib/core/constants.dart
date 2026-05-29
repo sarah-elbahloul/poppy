@@ -90,7 +90,8 @@ class DBColumn {
   static const String theme       = 'theme';
   static const String pinEnabled  = 'pin_enabled';
   // user_keys table
-  static const String encDataKey  = 'encrypted_data_key';
+  static const String encDataKey          = 'encrypted_data_key';
+  static const String recoveryEncDataKey  = 'recovery_enc_data_key';
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -207,14 +207,14 @@ class SettingsScreen extends StatelessWidget {
             _ExportOption(
               icon:  AppIcons.export_,
               title: 'Plain text',
-              desc:  'Readable by anyone. No password needed.',
+              desc:  'Readable by anyone. Use for backups you may need to open elsewhere.',
               color: AppColors.error,
             ),
             SizedBox(height: AppSpacing.sm),
             _ExportOption(
               icon:  AppIcons.lock,
               title: 'Encrypted',
-              desc:  'Requires your Poppy password to import.',
+              desc:  'Entries are encrypted. Can only be imported back into this Poppy account.',
               color: AppColors.error,
             ),
           ],

@@ -121,9 +121,12 @@ class ExportService {
 
   Future<int> importEntries() async {
     final result = await FilePicker.platform.pickFiles(
-      type:              FileType.custom,
-      allowedExtensions: ['poppy', 'json'],
-      withData:          true,
+      // FileType.custom with allowedExtensions blocks .poppy files on Android
+      // because the extension has no registered MIME type — Android renders
+      // them un-tappable in the picker. Use FileType.any and validate the
+      // file contents ourselves (already done via payload['app'] check below).
+      type:     FileType.any,
+      withData: true,
     );
     if (result == null || result.files.isEmpty) return 0;
 

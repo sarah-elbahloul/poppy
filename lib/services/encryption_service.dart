@@ -18,18 +18,17 @@ import 'package:poppy/core/constants.dart';
 //  derived from the user's password (PBKDF2) and stored in the
 //  user_keys table as encrypted_data_key.
 //
+//  A second copy is wrapped with a key derived from the user's
+//  uid + app pepper and stored as recovery_enc_data_key.
+//  This lets forgot-password work on any device with no UX prompts.
+//
 //  Password change:
 //    Unwrap data key with old password → re-wrap with new →
 //    update one DB row. No entry re-encryption. Ever.
 //
 //  Forgot password (Supabase reset email):
-//    User gets one-time session from email link.
-//    App prompts for new password, calls wrapWithPassword →
-//    updates encrypted_data_key via update_data_key() RPC.
-//    Old wrapped key is gone; entries still readable because
-//    the DATA KEY is unchanged — only its wrapping changed.
-//    (If user loses access to their email too, entries are
-//    unrecoverable. Same as any E2E encrypted app.)
+//    App unwraps recovery copy using uid from the one-time session,
+//    re-wraps with new password, saves. Zero extra prompts.
 //
 //  WHAT IS ENCRYPTED
 //  ─────────────────
@@ -95,14 +94,13 @@ class EncryptionService {
   bool get hasKey => _dataKey != null;
 
   /// Returns the raw data key bytes, or null if no key is loaded.
-  /// Used by KeyService.saveNewWrappedKey() during forgot-password.
   Future<Uint8List?> currentDataKeyBytes() async {
     final key = _dataKey;
     if (key == null) return null;
     return Uint8List.fromList(await key.extractBytes());
   }
 
-  // ── Key wrapping ──────────────────────────────────────────
+  // ── Key wrapping — password ───────────────────────────────
 
   /// Wraps [dataKeyBytes] with a key derived from [password].
   /// Returns a JSONB-ready map to store in user_keys.
@@ -110,7 +108,7 @@ class EncryptionService {
       Uint8List dataKeyBytes,
       String    password,
       ) async {
-    final wrappingKey = await _deriveKey(password);
+    final wrappingKey = await _deriveKeyFromPassword(password);
     return _wrap(dataKeyBytes, wrappingKey);
   }
 
@@ -120,7 +118,30 @@ class EncryptionService {
       Map<String, dynamic> wrapped,
       String               password,
       ) async {
-    final wrappingKey = await _deriveKey(password);
+    final wrappingKey = await _deriveKeyFromPassword(password);
+    return _unwrap(wrapped, wrappingKey);
+  }
+
+  // ── Key wrapping — uid recovery ───────────────────────────
+
+  /// Wraps [dataKeyBytes] with a key derived from the user's uid.
+  /// Stored as recovery_enc_data_key — lets forgot-password work
+  /// on any device without asking for the old password.
+  Future<Map<String, String>> wrapWithUid(
+      Uint8List dataKeyBytes,
+      String    uid,
+      ) async {
+    final wrappingKey = await _deriveKeyFromUid(uid);
+    return _wrap(dataKeyBytes, wrappingKey);
+  }
+
+  /// Unwraps a recovery-wrapped key produced by [wrapWithUid].
+  /// Returns raw data key bytes, or null if uid is wrong.
+  Future<Uint8List?> unwrapWithUid(
+      Map<String, dynamic> wrapped,
+      String               uid,
+      ) async {
+    final wrappingKey = await _deriveKeyFromUid(uid);
     return _unwrap(wrapped, wrappingKey);
   }
 
@@ -233,7 +254,7 @@ class EncryptionService {
     }
   }
 
-  Future<SecretKey> _deriveKey(String password) async {
+  Future<SecretKey> _deriveKeyFromPassword(String password) async {
     final pbkdf2 = Pbkdf2(
       macAlgorithm: Hmac.sha256(),
       iterations:   100000,
@@ -242,6 +263,21 @@ class EncryptionService {
     return pbkdf2.deriveKey(
       secretKey: SecretKey(utf8.encode(password)),
       nonce:     utf8.encode('poppy-diary-salt-v1'),
+    );
+  }
+
+  Future<SecretKey> _deriveKeyFromUid(String uid) async {
+    // Pepper is app-level — prevents offline attacks on the recovery
+    // column from someone who only has the DB dump without the source.
+    const pepper = 'poppy-recovery-pepper-v1';
+    final pbkdf2 = Pbkdf2(
+      macAlgorithm: Hmac.sha256(),
+      iterations:   100000,
+      bits:         256,
+    );
+    return pbkdf2.deriveKey(
+      secretKey: SecretKey(utf8.encode(uid)),
+      nonce:     utf8.encode(pepper),
     );
   }
 }
