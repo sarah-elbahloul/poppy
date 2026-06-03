@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/style/app_colors.dart';
-import 'package:poppy/core/style/app_durations.dart';
 import 'package:poppy/core/style/app_sizes.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Flower Theme System
 //  Location: lib/core/style/app_theme.dart
-//
-//  Replaces lib/core/theme/themes.dart.
-//  The old file can be deleted once all imports are updated.
 // ─────────────────────────────────────────────────────────────
 
 enum PoppyTheme { poppy, iris, lily, marigold, lavender }

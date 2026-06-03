@@ -3,8 +3,8 @@ import 'package:poppy/core/app_routes.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:poppy/core/widgets/poppy_logo.dart';
 import 'package:provider/provider.dart';
-
-import '../../providers/theme_provider.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:poppy/providers/theme_provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — About Screen
@@ -14,13 +14,31 @@ import '../../providers/theme_provider.dart';
 //  the legal screens.
 // ─────────────────────────────────────────────────────────────
 
-class AboutScreen extends StatelessWidget {
+class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
 
-  // Update this when you bump the version in pubspec.yaml.
-  // Replace with package_info_plus when you add that dep.
-  static const _version = '1.0.0';
-  static const _build   = '1';
+  @override
+  State<AboutScreen> createState() => _AboutScreenState();
+}
+
+class _AboutScreenState extends State<AboutScreen> {
+  String _version = '';
+  String _build = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPackageInfo();
+  }
+
+  Future<void> _loadPackageInfo() async {
+    final info = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    setState(() {
+      _version = info.version;
+      _build = info.buildNumber;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +67,7 @@ class AboutScreen extends StatelessWidget {
             child: Column(
               children: [
                 const SizedBox(height: AppSpacing.lg),
-                const PoppyLogo(size: AppIconSize.logo, prominent: false),
+                const PoppyLogo(size: AppIconSize.logo, prominent: true),
                 const SizedBox(height: AppSpacing.md),
                 Text('Poppy',
                     style: AppTextStyles.titleLarge(t.textPrimary, fp)),

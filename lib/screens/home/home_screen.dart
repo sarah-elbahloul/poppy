@@ -103,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _startSearch() {
     setState(() => _searching = true);
 
-    Future.delayed(Duration(milliseconds: 50), () {
+    Future.delayed(const Duration(milliseconds: 50), () {
       _searchFocusNode.requestFocus();
     });
   }
@@ -327,10 +327,12 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         titleSpacing: 0,
         backgroundColor: t.background,
-        title: _searching ? null :Text(
-          '$_greeting, $username!',
-          style: AppTextStyles.titleLarge(t.textPrimary, fp),
-        ),
+        title: _searching
+            ? null
+            : Text(
+                '$_greeting, $username!',
+                style: AppTextStyles.titleLarge(t.textPrimary, fp),
+              ),
         leading: Padding(
           padding: const EdgeInsets.all(AppSpacing.sm),
           child: Builder(
@@ -363,24 +365,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                         borderSide: BorderSide(
-                          color: t.accent,
+                          color: t.border,
                           width: AppStroke.thin,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                         borderSide: BorderSide(
-                          color: t.accent,
+                          color: t.border,
                           width: AppStroke.thin,
                         ),
                       ),
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppRadius.lg),
                           borderSide: BorderSide(
-                            color: t.accent,
+                            color: t.border,
                             width: AppStroke.thin,
-                          )
-                      ),
+                          )),
                       hintText: 'Search entries...',
                       hintStyle:
                           AppTextStyles.labelLargeSerif(t.textTertiary, fp),
@@ -535,7 +536,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: AppComponentSize.filterBarHeight,
                 width: AppComponentSize.searchFieldWidth,
                 margin: const EdgeInsets.only(
-                    left: AppSpacing.md, right: AppSpacing.sm),
+                  left: AppSpacing.md,
+                  right: AppSpacing.sm,
+                ),
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                 decoration: BoxDecoration(
                   color: t.surface,
@@ -554,41 +557,78 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(width: AppSpacing.sm),
 
-                    /// Expanded dropdown
+                    /// YEAR SELECTOR
                     Expanded(
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          dropdownColor: t.surface,
-                          menuMaxHeight: 400,
-                          menuWidth: AppComponentSize.searchFieldWidth / 2,
-                          borderRadius: BorderRadius.circular(AppRadius.md),
-                          style: AppTextStyles.labelLargeSans(
-                              _selectedYear != null
-                                  ? t.textPrimary
-                                  : t.textSecondary,
-                              fp),
-                          icon: Icon(
-                            AppIcons.chevronDown,
-                            size: AppIconSize.sm,
-                            color: t.textSecondary,
-                          ),
-                          hint: Text(
-                            '${years.last} - ${years.first}',
-                            style: AppTextStyles.labelLargeSans(
-                                t.textSecondary, fp),
-                          ),
-                          value: _selectedYear,
-                          items: years
-                              .map(
-                                (y) =>
-                                    DropdownMenuItem(value: y, child: Text(y)),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() => _selectedYear = value);
-                            _applyAllFilters();
-                          },
+                      child: MenuAnchor(
+                        alignmentOffset:
+                            const Offset(-AppSpacing.sm, AppSpacing.xs),
+                        style: MenuStyle(
+                          minimumSize: const WidgetStatePropertyAll(Size(
+                              AppComponentSize.searchFieldWidth / 2.7, 50)),
+                          maximumSize: const WidgetStatePropertyAll(
+                              Size(AppComponentSize.searchFieldWidth / 2, 300)),
+                          backgroundColor: WidgetStatePropertyAll(t.surface),
+                          shape: const WidgetStatePropertyAll(RoundedRectangleBorder(
+                            borderRadius: BorderRadius.only(topLeft: Radius.circular(0), topRight: Radius.circular(0), bottomLeft: Radius.circular(AppRadius.sm), bottomRight: Radius.circular(AppRadius.sm))
+                          )),
+
+                        ),
+                        menuChildren: years.map((year) {
+                          final isSelected = year == _selectedYear;
+
+                          return MenuItemButton(
+                            style: const ButtonStyle(
+                              alignment: AlignmentDirectional.centerStart,
+                              minimumSize: WidgetStatePropertyAll(Size(
+                                  AppComponentSize.searchFieldWidth / 2.7,
+                                  AppComponentSize.filterBarHeight / 2)),
+                            ),
+                            onPressed: () {
+                              setState(() => _selectedYear = year);
+                              _applyAllFilters();
+                            },
+                            child: Text(
+                              year,
+                              style: AppTextStyles.labelLargeSans(
+                                isSelected ? t.textPrimary : t.textSecondary,
+                                fp,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        builder: (context, controller, child) {
+                          return InkWell(
+                            onTap: () {
+                              controller.isOpen
+                                  ? controller.close()
+                                  : controller.open();
+                            },
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            child: child,
+                          );
+                        },
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _selectedYear ??
+                                    '${years.last} - ${years.first}',
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTextStyles.labelLargeSans(
+                                  _selectedYear != null
+                                      ? t.textPrimary
+                                      : t.textSecondary,
+                                  fp,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Icon(
+                              AppIcons.chevronDown,
+                              size: AppIconSize.sm,
+                              color: t.textSecondary,
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -655,14 +695,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                             child: AnimatedContainer(
                               duration: AppDuration.fast,
-                              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs / 3, vertical: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.xs / 3, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.xs),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? (colorData.color as Color)
                                         .withOpacity(0.12)
                                     : Colors.transparent,
-                                borderRadius: BorderRadius.circular(AppRadius.full),
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.full),
                                 border: Border.all(
                                   color: isSelected
                                       ? colorData.color as Color

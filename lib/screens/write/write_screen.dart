@@ -122,7 +122,7 @@ class _WriteScreenState extends State<WriteScreen> {
     final content = _contentController.text.trim();
     final wordCount = Entry.countWords(content);
 
-    // 🚫 BLOCK: over limit
+    // BLOCK: over limit
     if (wordCount > kWordLimit) {
       _maybeShowLimitSnackBar();
       return false; // do NOT save, do NOT allow pop
@@ -194,7 +194,7 @@ class _WriteScreenState extends State<WriteScreen> {
         }
       }
 
-      return true; // ✅ success → allow pop
+      return true; // success → allow pop
     } catch (e) {
       return false;
     } finally {
@@ -493,7 +493,6 @@ class _WriteScreenState extends State<WriteScreen> {
               elevation: 8,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadius.sm),
-                side: BorderSide(color: t.border, width: AppStroke.hairline),
               ),
               position: PopupMenuPosition.under,
               onSelected: (value) {
@@ -835,7 +834,7 @@ class _PhotoPendingThumb extends StatelessWidget {
             width: AppSpacing.sm,
             height: AppSpacing.sm,
             decoration: BoxDecoration(
-              color: t.accent,
+              color: AppColors.error,
               shape: BoxShape.circle,
             ),
           ),

@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
+  // not using these anymore since enabled user to pick his own but will still keep it here if needed in the future
   // ── Poppy ──────────────────────────────────────────────
   static const poppyAccent      = Color(0xFFC94040);
   static const poppyAccentLight = Color(0xFFFBEAEA);
@@ -90,6 +91,46 @@ class AppColors {
   // ── Centre of the Poppy logo ───────────────────────────
   static const logoCentre    = Color(0xFF2D1B0E);
   static const logoHighlight = Color(0xFFF2D100);
+
+
+
+  // ── Curated palette ──────────────────────────────────────
+  // 8 columns × 9 rows = 72 swatches.
+  // Columns: Reds → Pinks → Purples → Blues → Teals → Greens → Ambers → Neutrals
+  static const colorPalette = [
+    // Reds
+    Color(0xFFFFEBEB), Color(0xFFFFCDD2), Color(0xFFEF9A9A),
+    Color(0xFFE57373), Color(0xFFEF5350), Color(0xFFE53935),
+    Color(0xFFC62828), Color(0xFFB71C1C), Color(0xFF8B0000),
+    // Pinks
+    Color(0xFFFCE4EC), Color(0xFFF8BBD0), Color(0xFFF48FB1),
+    Color(0xFFF06292), Color(0xFFEC407A), Color(0xFFE91E63),
+    Color(0xFFAD1457), Color(0xFF880E4F), Color(0xFF560027),
+    // Purples
+    Color(0xFFF3E5F5), Color(0xFFE1BEE7), Color(0xFFCE93D8),
+    Color(0xFFBA68C8), Color(0xFFAB47BC), Color(0xFF9C27B0),
+    Color(0xFF6A1B9A), Color(0xFF4A148C), Color(0xFF2E0054),
+    // Blues
+    Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color(0xFF90CAF9),
+    Color(0xFF64B5F6), Color(0xFF42A5F5), Color(0xFF2196F3),
+    Color(0xFF1565C0), Color(0xFF0D47A1), Color(0xFF08306B),
+    // Teals + Greens
+    Color(0xFFE0F2F1), Color(0xFFB2DFDB), Color(0xFF80CBC4),
+    Color(0xFF4DB6AC), Color(0xFF26A69A), Color(0xFF009688),
+    Color(0xFF00695C), Color(0xFF004D40), Color(0xFF002820),
+    // Ambers + Browns
+    Color(0xFFFFF8E1), Color(0xFFFFECB3), Color(0xFFFFE082),
+    Color(0xFFFFD54F), Color(0xFFFFCA28), Color(0xFFFFC107),
+    Color(0xFFFF8F00), Color(0xFFE65100), Color(0xFFBF360C),
+    // Neutrals (near-white → near-black)
+    Color(0xFFFFFFFF), Color(0xFFF5F5F5), Color(0xFFEEEEEE),
+    Color(0xFFE0E0E0), Color(0xFFBDBDBD), Color(0xFF9E9E9E),
+    Color(0xFF616161), Color(0xFF212121), Color(0xFF121212),
+    // Warm neutrals
+    Color(0xFFFFFBF8), Color(0xFFF5EBE0), Color(0xFFE8D5C0),
+    Color(0xFFD4B896), Color(0xFFA08060), Color(0xFF7D5A3C),
+    Color(0xFF5C3D20), Color(0xFF3E2010), Color(0xFF1E0F06),
+  ];
 }
 
 

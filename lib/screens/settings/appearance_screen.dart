@@ -95,7 +95,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
 
           // 5 ── Colours ─────────────────────────────────────
           _SectionRow(
-            label: 'Colours',
+            label: 'App Colours',
             trailing: tp.hasAnyCustomColor
                 ? _ResetAllButton(tp: tp)
                 : null,
@@ -621,45 +621,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
   late final TextEditingController _hexCtrl;
   bool _hexValid = true;
 
-  // ── Curated palette ──────────────────────────────────────
-  // 8 columns × 5 rows = 40 swatches.
-  // Columns: Reds → Pinks → Purples → Blues → Teals → Greens → Ambers → Neutrals
-  static const _palette = [
-    // Reds
-    Color(0xFFFFEBEB), Color(0xFFFFCDD2), Color(0xFFEF9A9A),
-    Color(0xFFE57373), Color(0xFFEF5350), Color(0xFFE53935),
-    Color(0xFFC62828), Color(0xFFB71C1C),
-    // Pinks
-    Color(0xFFFCE4EC), Color(0xFFF8BBD0), Color(0xFFF48FB1),
-    Color(0xFFF06292), Color(0xFFEC407A), Color(0xFFE91E63),
-    Color(0xFFAD1457), Color(0xFF880E4F),
-    // Purples
-    Color(0xFFF3E5F5), Color(0xFFE1BEE7), Color(0xFFCE93D8),
-    Color(0xFFBA68C8), Color(0xFFAB47BC), Color(0xFF9C27B0),
-    Color(0xFF6A1B9A), Color(0xFF4A148C),
-    // Blues
-    Color(0xFFE3F2FD), Color(0xFFBBDEFB), Color(0xFF90CAF9),
-    Color(0xFF64B5F6), Color(0xFF42A5F5), Color(0xFF2196F3),
-    Color(0xFF1565C0), Color(0xFF0D47A1),
-    // Teals + Greens
-    Color(0xFFE0F2F1), Color(0xFFB2DFDB), Color(0xFF80CBC4),
-    Color(0xFF4DB6AC), Color(0xFF26A69A), Color(0xFF009688),
-    Color(0xFF00695C), Color(0xFF004D40),
-    // Ambers + Browns
-    Color(0xFFFFF8E1), Color(0xFFFFECB3), Color(0xFFFFE082),
-    Color(0xFFFFD54F), Color(0xFFFFCA28), Color(0xFFFFC107),
-    Color(0xFFFF8F00), Color(0xFFE65100),
-    // Neutrals (near-white → near-black)
-    Color(0xFFFFFFFF), Color(0xFFF5F5F5), Color(0xFFEEEEEE),
-    Color(0xFFE0E0E0), Color(0xFFBDBDBD), Color(0xFF9E9E9E),
-    Color(0xFF616161), Color(0xFF212121),
-    // Warm neutrals
-    Color(0xFFFFFBF8), Color(0xFFF5EBE0), Color(0xFFE8D5C0),
-    Color(0xFFD4B896), Color(0xFFA08060), Color(0xFF7D5A3C),
-    Color(0xFF5C3D20), Color(0xFF3E2010),
-  ];
-
-  static const _cols = 8;
+  static const _cols = 9;
 
   @override
   void initState() {
@@ -702,7 +664,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
-    final fp = context.watch<ThemeProvider>().currentFontPairData;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Container(
       decoration: BoxDecoration(
@@ -778,7 +740,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                 return Wrap(
                   spacing:    4,
                   runSpacing: 4,
-                  children: _palette.map((c) {
+                  children: AppColors.colorPalette.map((c) {
                     final sel = c.value == _current.value;
                     return GestureDetector(
                       onTap: () => _pick(c),

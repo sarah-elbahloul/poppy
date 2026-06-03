@@ -53,7 +53,7 @@ class AppTextStyles {
   // Entry detail title, Legal heading (smaller)
   static TextStyle headlineMedium(Color color, FontPairData fp,
       {double scale = 1.0}) =>
-      fp.titleFont.style(color, size: 18 * scale, height: 1.3);
+      fp.titleFont.style(color, size: 18 * scale, height: 1.3, weight: FontWeight.w500);
 
   // Auth heading
   static TextStyle headlineSmall(Color color, FontPairData fp) =>

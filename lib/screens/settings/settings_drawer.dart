@@ -100,7 +100,6 @@ class SettingsDrawer extends StatelessWidget {
             ),
 
             Divider(
-              indent: AppSpacing.lg,
                 height: AppStroke.hairline,
                 thickness: AppStroke.hairline,
                 color: t.border
