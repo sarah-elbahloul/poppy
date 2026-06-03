@@ -8,6 +8,8 @@ import 'package:poppy/providers/auth_provider.dart';
 import 'package:poppy/services/pin_service.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/theme_provider.dart';
+
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Lock Screen
 //  Location: lib/screens/lock_screen.dart
@@ -49,6 +51,7 @@ class _LockScreenState extends State<LockScreen> {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -76,7 +79,7 @@ class _LockScreenState extends State<LockScreen> {
               TextButton(
                 onPressed: _onSignOut,
                 child: Text('Sign out instead',
-                    style: AppTextStyles.bodySmallSans(t.textTertiary)),
+                    style: AppTextStyles.bodySmallSans(t.textTertiary, fp)),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],

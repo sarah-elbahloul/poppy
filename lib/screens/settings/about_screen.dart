@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:poppy/core/app_routes.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:poppy/core/widgets/poppy_logo.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/theme_provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — About Screen
@@ -9,11 +12,6 @@ import 'package:poppy/core/widgets/poppy_logo.dart';
 //
 //  Shows app version, build, a short description, and links to
 //  the legal screens.
-//
-//  TODO: Replace the hardcoded version string with package_info_plus:
-//    1. Add `package_info_plus: ^8.0.0` to pubspec.yaml
-//    2. final info = await PackageInfo.fromPlatform();
-//    3. Display info.version and info.buildNumber
 // ─────────────────────────────────────────────────────────────
 
 class AboutScreen extends StatelessWidget {
@@ -27,6 +25,7 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -39,7 +38,7 @@ class AboutScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text('About Poppy',
-            style: AppTextStyles.titleLarge(t.textPrimary)),
+            style: AppTextStyles.titleLarge(t.textPrimary, fp)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -53,12 +52,12 @@ class AboutScreen extends StatelessWidget {
                 const PoppyLogo(size: AppIconSize.logo, prominent: false),
                 const SizedBox(height: AppSpacing.md),
                 Text('Poppy',
-                    style: AppTextStyles.titleLarge(t.textPrimary)),
+                    style: AppTextStyles.titleLarge(t.textPrimary, fp)),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   'Version $_version (build $_build)',
                   style:
-                  AppTextStyles.labelLargeSans(t.textTertiary),
+                  AppTextStyles.labelLargeSans(t.textTertiary, fp),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Container(
@@ -74,7 +73,7 @@ class AboutScreen extends StatelessWidget {
                   child: Text(
                     'End-to-end encrypted diary',
                     style:
-                    AppTextStyles.labelLargeSans(t.accent),
+                    AppTextStyles.labelLargeSans(t.accent,fp),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -85,7 +84,7 @@ class AboutScreen extends StatelessWidget {
           // ── Description ────────────────────────────────
           Text(
             'About',
-            style: AppTextStyles.labelLargeSans(t.textTertiary)
+            style: AppTextStyles.labelLargeSans(t.textTertiary,fp)
                 .copyWith(letterSpacing: 0.6),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -101,7 +100,7 @@ class AboutScreen extends StatelessWidget {
               'Poppy is a private diary app. Every entry is encrypted '
                   'on your device before it leaves — nobody but you can '
                   'read your words, not even us.',
-              style: AppTextStyles.bodySmallSans(t.textSecondary)
+              style: AppTextStyles.bodySmallSans(t.textSecondary,fp)
                   .copyWith(height: 1.7),
             ),
           ),
@@ -111,7 +110,7 @@ class AboutScreen extends StatelessWidget {
           // ── Legal links ─────────────────────────────────
           Text(
             'Legal',
-            style: AppTextStyles.labelLargeSans(t.textTertiary)
+            style: AppTextStyles.labelLargeSans(t.textTertiary,fp)
                 .copyWith(letterSpacing: 0.6),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -143,7 +142,7 @@ class AboutScreen extends StatelessWidget {
           Center(
             child: Text(
               '© 2025 Poppy. Made with care.',
-              style: AppTextStyles.labelSmall(t.textTertiary),
+              style: AppTextStyles.labelSmall(t.textTertiary,fp),
             ),
           ),
 
@@ -184,6 +183,8 @@ class _LegalRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.md),
@@ -199,7 +200,7 @@ class _LegalRow extends StatelessWidget {
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Text(label,
-                  style: AppTextStyles.titleSmallSans(t.textPrimary)),
+                  style: AppTextStyles.titleSmallSans(t.textPrimary,fp)),
             ),
             Icon(AppIcons.chevronRight,
                 size: AppIconSize.xs, color: t.textTertiary),

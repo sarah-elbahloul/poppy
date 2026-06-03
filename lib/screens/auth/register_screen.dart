@@ -6,6 +6,8 @@ import 'package:poppy/core/widgets/poppy_logo.dart';
 import 'package:poppy/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/theme_provider.dart';
+
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Register Screen
 //  Location: lib/screens/auth/register_screen.dart
@@ -81,6 +83,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -98,13 +101,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Center(child: Text(kAppName,
                   style: AppTextStyles.displayLarge(t.textPrimary))),
               Center(child: Text(kAppTagline,
-                  style: AppTextStyles.bodySmallSerif(t.textTertiary))),
+                  style: AppTextStyles.bodySmallSerif(t.textTertiary, fp))),
               SizedBox(height: AppSpacing.xl * 1.5),
               Text('Create your diary',
-                  style: AppTextStyles.headlineSmall(t.textPrimary)),
+                  style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
               const SizedBox(height: AppSpacing.xs),
               Text('Your entries are private and encrypted.',
-                  style: AppTextStyles.bodySmallSans(t.textTertiary)),
+                  style: AppTextStyles.bodySmallSans(t.textTertiary, fp)),
               const SizedBox(height: AppSpacing.lg),
               _Field(
                 controller:   _emailController,
@@ -164,7 +167,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text('Already have an account? Sign in',
-                      style: AppTextStyles.bodySmallSans(t.textTertiary)),
+                      style: AppTextStyles.bodySmallSans(t.textTertiary, fp)),
                 ),
               ),
             ],
@@ -184,6 +187,8 @@ class _ConfirmationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Scaffold(
       backgroundColor: t.background,
       body: SafeArea(
@@ -204,14 +209,14 @@ class _ConfirmationScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text('Check your email',
-                  style: AppTextStyles.headlineLarge(t.textPrimary),
+                  style: AppTextStyles.headlineLarge(t.textPrimary, fp),
                   textAlign: TextAlign.center),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 'We sent a confirmation link to\n$email\n\n'
                     'Tap the link to activate your account, '
                     'then come back and sign in.',
-                style: AppTextStyles.bodySmallSans(t.textSecondary)
+                style: AppTextStyles.bodySmallSans(t.textSecondary, fp)
                     .copyWith(height: 1.6),
                 textAlign: TextAlign.center,
               ),
@@ -256,6 +261,8 @@ class _Field extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Container(
       decoration: BoxDecoration(
         color: t.surface,
@@ -265,10 +272,10 @@ class _Field extends StatelessWidget {
       child: TextField(
         controller: controller, obscureText: obscureText,
         keyboardType: keyboardType,
-        style: AppTextStyles.bodyMedium(t.textPrimary),
+        style: AppTextStyles.bodyMedium(t.textPrimary, fp),
         decoration: InputDecoration(
           labelText:  label,
-          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary),
+          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary, fp),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -305,6 +312,8 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -319,7 +328,7 @@ class _ErrorBanner extends StatelessWidget {
           Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
           const SizedBox(width: AppSpacing.sm),
           Expanded(child: Text(message,
-              style: AppTextStyles.bodySmallSans(t.accent))),
+              style: AppTextStyles.bodySmallSans(t.accent, fp))),
         ],
       ),
     );

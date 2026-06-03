@@ -16,7 +16,6 @@ enum PoppyTheme { poppy, iris, lily, marigold, lavender }
 class PoppyThemeData {
   final PoppyTheme id;
   final String name;
-  final String emoji;
   final Color accent;
   final Color accentLight;
   final Color accentMuted;
@@ -30,7 +29,6 @@ class PoppyThemeData {
   const PoppyThemeData({
     required this.id,
     required this.name,
-    required this.emoji,
     required this.accent,
     required this.accentLight,
     required this.accentMuted,
@@ -157,7 +155,6 @@ class PoppyThemeData {
           textTertiary: textTertiary,
           border: border,
           themeName: name,
-          themeEmoji: emoji,
         ),
       ],
     );
@@ -179,7 +176,6 @@ class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
   final Color textTertiary;
   final Color border;
   final String themeName;
-  final String themeEmoji;
 
   const PoppyThemeExtension({
     required this.accent,
@@ -192,7 +188,6 @@ class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
     required this.textTertiary,
     required this.border,
     required this.themeName,
-    required this.themeEmoji,
   });
 
   @override
@@ -220,7 +215,6 @@ class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
         textTertiary: textTertiary ?? this.textTertiary,
         border: border ?? this.border,
         themeName: themeName ?? this.themeName,
-        themeEmoji: themeEmoji ?? this.themeEmoji,
       );
 
   @override
@@ -237,7 +231,6 @@ class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
       textTertiary: Color.lerp(textTertiary, other.textTertiary, t)!,
       border: Color.lerp(border, other.border, t)!,
       themeName: other.themeName,
-      themeEmoji: other.themeEmoji,
     );
   }
 }
@@ -257,7 +250,6 @@ class PoppyThemes {
   static const poppy = PoppyThemeData(
     id: PoppyTheme.poppy,
     name: 'Poppy',
-    emoji: '🌺',
     accent: AppColors.poppyAccent,
     accentLight: AppColors.poppyAccentLight,
     accentMuted: AppColors.poppyAccentMuted,
@@ -272,7 +264,6 @@ class PoppyThemes {
   static const iris = PoppyThemeData(
     id: PoppyTheme.iris,
     name: 'Iris',
-    emoji: '🪻',
     accent: AppColors.irisAccent,
     accentLight: AppColors.irisAccentLight,
     accentMuted: AppColors.irisAccentMuted,
@@ -287,7 +278,6 @@ class PoppyThemes {
   static const lily = PoppyThemeData(
     id: PoppyTheme.lily,
     name: 'Lily',
-    emoji: '🌸',
     accent: AppColors.lilyAccent,
     accentLight: AppColors.lilyAccentLight,
     accentMuted: AppColors.lilyAccentMuted,
@@ -302,7 +292,6 @@ class PoppyThemes {
   static const marigold = PoppyThemeData(
     id: PoppyTheme.marigold,
     name: 'Marigold',
-    emoji: '🌼',
     accent: AppColors.marigoldAccent,
     accentLight: AppColors.marigoldAccentLight,
     accentMuted: AppColors.marigoldAccentMuted,
@@ -317,7 +306,6 @@ class PoppyThemes {
   static const lavender = PoppyThemeData(
     id: PoppyTheme.lavender,
     name: 'Lavender',
-    emoji: '💜',
     accent: AppColors.lavenderAccent,
     accentLight: AppColors.lavenderAccentLight,
     accentMuted: AppColors.lavenderAccentMuted,

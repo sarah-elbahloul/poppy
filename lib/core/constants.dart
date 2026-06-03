@@ -49,16 +49,30 @@ class EntryColors {
 
 class StorageKeys {
   StorageKeys._();
-  static const String pinHash       = 'poppy_pin_hash';
-  static const String pinEnabled    = 'poppy_pin_enabled';
-  static const String selectedTheme = 'poppy_theme';
+  static const String pinHash          = 'poppy_pin_hash';
+  static const String pinEnabled       = 'poppy_pin_enabled';
+  static const String selectedTheme    = 'poppy_theme';
+  static const String selectedTitleFont  = 'poppy_title_font';
+  static const String selectedBodyFont   = 'poppy_body_font';
+  static const String selectedFontSize   = 'poppy_font_size';
+  static const String selectedLineHeight = 'poppy_line_height';
+  // Per-slot colour overrides (absent = use Poppy default)
+  static const String colorAccent        = 'poppy_color_accent';
+  static const String colorAccentLight   = 'poppy_color_accent_light';
+  static const String colorAccentMuted   = 'poppy_color_accent_muted';
+  static const String colorSurface       = 'poppy_color_surface';
+  static const String colorBackground    = 'poppy_color_background';
+  static const String colorTextPrimary   = 'poppy_color_text_primary';
+  static const String colorTextSecondary = 'poppy_color_text_secondary';
+  static const String colorTextTertiary  = 'poppy_color_text_tertiary';
+  static const String colorBorder        = 'poppy_color_border';
   // Cached plaintext data key bytes (base64).
   // Avoids a DB round-trip on every cold start.
-  static const String dataKey       = 'poppy_data_key';
+  static const String dataKey          = 'poppy_data_key';
   // Temporary wrapped key blob stored between sign-up and first
   // sign-in (email confirmation means no session at sign-up time).
   // Cleared once successfully saved to user_keys table.
-  static const String pendingEncKey = 'poppy_pending_enc_key';
+  static const String pendingEncKey    = 'poppy_pending_enc_key';
 }
 
 // ─────────────────────────────────────────────────────────────

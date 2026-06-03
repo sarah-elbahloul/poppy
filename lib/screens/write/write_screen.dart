@@ -15,6 +15,7 @@ import 'package:poppy/core/widgets/color_tag_picker.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/models/photo.dart';
 import 'package:poppy/providers/entries_provider.dart';
+import 'package:poppy/providers/theme_provider.dart';
 import 'package:poppy/services/photos_service.dart';
 import 'package:provider/provider.dart';
 
@@ -352,7 +353,8 @@ class _WriteScreenState extends State<WriteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
 
     return PopScope(
       canPop: false,
@@ -434,7 +436,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       const SizedBox(height: 2),
                       Text(
                         DateFormat('MMM').format(_entryDate).toUpperCase(),
-                        style: AppTextStyles.labelSmall(t.textTertiary,),
+                        style: AppTextStyles.labelSmall(t.textTertiary,fp),
                       ),
                     ],
                   ),
@@ -449,12 +451,12 @@ class _WriteScreenState extends State<WriteScreen> {
                     textAlign: TextAlign.center,
                     textAlignVertical: TextAlignVertical.center,
                     textCapitalization: TextCapitalization.words,
-                    style: AppTextStyles.headlineMedium(t.textPrimary),
+                    style: AppTextStyles.headlineMedium(t.textPrimary, fp),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: t.surface,
                       hintText: 'Title',
-                      hintStyle: AppTextStyles.headlineMedium(t.textTertiary)
+                      hintStyle: AppTextStyles.headlineMedium(t.textTertiary, fp)
                           .copyWith(fontSize: 15),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -512,7 +514,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       Text(
                         'Delete entry',
                         style: AppTextStyles.bodyLarge(
-                          Theme.of(context).colorScheme.error,
+                          Theme.of(context).colorScheme.error, fp,
                         ),
                       ),
                     ],
@@ -568,7 +570,7 @@ class _WriteScreenState extends State<WriteScreen> {
                                       children: [
                                         Text(
                                           '$count / $kWordLimit words',
-                                          style: AppTextStyles.labelLargeSerif(color),
+                                          style: AppTextStyles.labelLargeSerif(color, fp),
                                         ),
                                         if (over) ...[
                                           SizedBox(width: AppSpacing.sm,),
@@ -602,11 +604,11 @@ class _WriteScreenState extends State<WriteScreen> {
                             */
                             controller: _contentController,
                             autofocus: true,
-                            style: AppTextStyles.bodyLarge(t.textPrimary),
+                            style: AppTextStyles.bodyLarge(t.textPrimary, fp),
                             decoration: InputDecoration(
                               hintText: 'Write anything…',
                               hintStyle:
-                              AppTextStyles.bodyLarge(t.textTertiary),
+                              AppTextStyles.bodyLarge(t.textTertiary, fp),
                               border: InputBorder.none,
                             ),
                             keyboardType: TextInputType.multiline,
@@ -710,6 +712,7 @@ class _PhotoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -733,7 +736,7 @@ class _PhotoSection extends StatelessWidget {
                   totalCount == 0
                       ? 'Photos'
                       : 'Photos ($totalCount/$maxPhotos)',
-                  style: AppTextStyles.labelLargeSerif(t.textTertiary),
+                  style: AppTextStyles.labelLargeSerif(t.textTertiary, fp),
                 ),
                 const Spacer(),
                 Icon(

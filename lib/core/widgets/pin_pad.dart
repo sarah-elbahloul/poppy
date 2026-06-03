@@ -1,6 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:poppy/core/style/style.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/theme_provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — PIN Pad Widget
@@ -106,12 +109,13 @@ class _PinPadState extends State<PinPad>
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         // Label
-        Text(widget.label, style: AppTextStyles.titleSmallSans(t.textSecondary)),
+        Text(widget.label, style: AppTextStyles.titleSmallSans(t.textSecondary,fp)),
 
         const SizedBox(height: AppSpacing.lg),
 
@@ -188,7 +192,7 @@ class _PinPadState extends State<PinPad>
                 ),
                 child: Text(
                   'Confirm',
-                  style: AppTextStyles.titleSmallSans(AppColors.white),
+                  style: AppTextStyles.titleSmallSans(AppColors.white,fp),
                 ),
               ),
             ),
@@ -209,6 +213,8 @@ class _DigitKey extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -219,7 +225,7 @@ class _DigitKey extends StatelessWidget {
         ),
         child: Center(
           child: Text(digit,
-              style: AppTextStyles.pinDigit(t.textPrimary)),
+              style: AppTextStyles.pinDigit(t.textPrimary,fp)),
         ),
       ),
     );

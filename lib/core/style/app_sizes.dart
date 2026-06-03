@@ -110,7 +110,7 @@ class AppComponentSize {
   static const double filterBarHeight = 40.0;
 
   /// Search field width in app bar
-  static const double searchFieldWidth = 240.0;
+  static const double searchFieldWidth = 280.0;
 
   /// Height of a compact entry card row
   static const double entryCardHeight = 58.0;

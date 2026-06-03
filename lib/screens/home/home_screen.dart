@@ -9,9 +9,9 @@ import 'package:poppy/models/entry.dart';
 import 'package:poppy/providers/entries_provider.dart';
 import 'package:poppy/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
-
-import '../../core/widgets/color_dot.dart';
-import '../settings/settings_drawer.dart';
+import 'package:poppy/core/widgets/color_dot.dart';
+import 'package:poppy/providers/theme_provider.dart';
+import 'package:poppy/screens/settings/settings_drawer.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Home Screen
@@ -40,12 +40,21 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _sortDesc = false;
 
   bool _fetchedOnce = false;
+  String _greeting = '';
 
   @override
   void initState() {
     super.initState();
-    // fetch is deferred to didChangeDependencies so we can gate on
-    // encryptionReady — the key must be in memory before we decrypt.
+    final hour = DateTime.now().hour;
+    setState(() {
+      if (hour < 12) {
+        _greeting = 'Good morning';
+      } else if (hour < 17) {
+        _greeting = 'Good afternoon';
+      } else {
+        _greeting = 'Good evening';
+      }
+    });
   }
 
   @override
@@ -143,7 +152,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _openColorPicker() async {
     final t = context.poppyTheme;
-
+    final fp = context.read<ThemeProvider>().currentFontPairData;
     final selected = await showModalBottomSheet<EntryColorData>(
       context: context,
       backgroundColor: t.surface,
@@ -160,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 'Choose color',
-                style: AppTextStyles.labelLargeSans(t.textPrimary),
+                style: AppTextStyles.labelLargeSans(t.textPrimary, fp),
               ),
               const SizedBox(height: AppSpacing.md),
               Wrap(
@@ -175,7 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: (colorData.color as Color),
-                          width: AppStroke.medium,
+                          width: AppStroke.thin,
                         ),
                       ),
                       child: ColorDot(
@@ -202,6 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _deleteBatch() async {
     final t = context.poppyTheme;
     final count = _selectedIds.length;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -213,24 +223,25 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         title: Text(
           'Delete $count ${count == 1 ? 'entry' : 'entries'}?',
-          style: AppTextStyles.labelLargeSans(t.textPrimary),
+          style: AppTextStyles.labelLargeSans(t.textPrimary, fp),
         ),
-        content: Text('This cannot be undone.',
-          style: AppTextStyles.bodyLarge(t.textPrimary),
+        content: Text(
+          'This cannot be undone.',
+          style: AppTextStyles.bodyLarge(t.textPrimary, fp),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(
               'Cancel',
-              style: AppTextStyles.labelLargeSans(t.textPrimary),
+              style: AppTextStyles.labelLargeSans(t.textPrimary, fp),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(
               'Delete',
-              style: AppTextStyles.labelLargeSans(AppColors.error),
+              style: AppTextStyles.labelLargeSans(AppColors.error, fp),
             ),
           ),
         ],
@@ -286,6 +297,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final t = context.poppyTheme;
     final provider = context.watch<EntriesProvider>();
     final entries = provider.filteredEntries;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -295,21 +307,30 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: _isBatchMode
           ? null
           : FloatingActionButton(
-        onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
-        tooltip: 'New entry',
-        child: const Icon(AppIcons.add, size: AppIconSize.sm),
-      ),
+              onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
+              tooltip: 'New entry',
+              child: const Icon(AppIcons.add, size: AppIconSize.sm),
+            ),
     );
   }
 
   AppBar _normalAppBar(PoppyThemeExtension t, EntriesProvider provider) {
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+    final email = context.read<AuthProvider>().user?.email;
+    final username = (email != null && email.contains('@'))
+        ? email.split('@')[0]
+        : email ?? 'User';
+
     return AppBar(
         actionsPadding: const EdgeInsets.all(AppSpacing.sm),
         toolbarHeight: AppComponentSize.appBarHeight,
         elevation: 0,
         titleSpacing: 0,
         backgroundColor: t.background,
-        title: Text(kAppName, style: AppTextStyles.titleLarge(t.textPrimary)),
+        title: _searching ? null :Text(
+          '$_greeting, $username!',
+          style: AppTextStyles.titleLarge(t.textPrimary, fp),
+        ),
         leading: Padding(
           padding: const EdgeInsets.all(AppSpacing.sm),
           child: Builder(
@@ -322,65 +343,79 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () => Scaffold.of(context).openDrawer(),
             ),
           ),
-        ),        actions: [
-      AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
-        child: _searching
-            ? SizedBox(
-          key: const ValueKey('searchField'),
-          width: AppComponentSize.searchFieldWidth,
-          height: AppComponentSize.filterBarHeight,
-          child: TextField(
-            controller: _searchController,
-            focusNode: _searchFocusNode,
-            autofocus: true,
-            style: AppTextStyles.bodyMedium(t.textPrimary),
-            textAlignVertical: TextAlignVertical.center,
-            onChanged: (_) => _applyAllFilters(),
-            decoration: InputDecoration(
-              fillColor: t.surface,
-              filled: true,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  borderSide: BorderSide(
-                    color: _selectedColor != null
-                        ? (_selectedColor!.color as Color)
-                        : t.border,
-                    width: AppStroke.medium,
-                  )
-              ),
-              hintText: 'Search entries...',
-              hintStyle: AppTextStyles.labelLargeSerif(t.textTertiary),
-              suffixIcon: GestureDetector(
-                onTap: _exitSearch,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: AppSpacing.xs),
-                  child: Icon(
-                    AppIcons.close,
-                    size: AppIconSize.xs,
-                    color: t.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        )
-            : IconButton(
-          key: const ValueKey('searchIcon'),
-          icon: Icon(AppIcons.search,
-              color: t.textSecondary, size: AppIconSize.sm),
-          onPressed: _startSearch,
         ),
-      ),
-      IconButton(
-        icon: Icon(AppIcons.sort, color: t.textSecondary, size: AppIconSize.sm),
-        tooltip: 'Sort ${_sortDesc ?  'descending': 'ascending'}',
-        onPressed: ()=> setState(() => _sortDesc = !_sortDesc),
-      ),
-    ]);
+        actions: [
+          _searching
+              ? SizedBox(
+                  key: const ValueKey('searchField'),
+                  width: AppComponentSize.searchFieldWidth,
+                  height: AppComponentSize.filterBarHeight,
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    autofocus: true,
+                    style: AppTextStyles.bodyMedium(t.textPrimary, fp),
+                    textAlignVertical: TextAlignVertical.center,
+                    onChanged: (_) => _applyAllFilters(),
+                    decoration: InputDecoration(
+                      fillColor: t.surface,
+                      filled: true,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        borderSide: BorderSide(
+                          color: t.accent,
+                          width: AppStroke.thin,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        borderSide: BorderSide(
+                          color: t.accent,
+                          width: AppStroke.thin,
+                        ),
+                      ),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          borderSide: BorderSide(
+                            color: t.accent,
+                            width: AppStroke.thin,
+                          )
+                      ),
+                      hintText: 'Search entries...',
+                      hintStyle:
+                          AppTextStyles.labelLargeSerif(t.textTertiary, fp),
+                      suffixIcon: GestureDetector(
+                        onTap: _exitSearch,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: AppSpacing.xs),
+                          child: Icon(
+                            AppIcons.close,
+                            size: AppIconSize.xs,
+                            color: t.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : IconButton(
+                  key: const ValueKey('searchIcon'),
+                  icon: Icon(AppIcons.search,
+                      color: t.textSecondary, size: AppIconSize.sm),
+                  onPressed: _startSearch,
+                ),
+          IconButton(
+            icon: Icon(AppIcons.sort,
+                color: t.textSecondary, size: AppIconSize.sm),
+            tooltip: 'Sort ${_sortDesc ? 'descending' : 'ascending'}',
+            onPressed: () => setState(() => _sortDesc = !_sortDesc),
+          ),
+        ]);
   }
 
   AppBar _batchAppBar(PoppyThemeExtension t) {
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return AppBar(
       actionsPadding: const EdgeInsets.all(AppSpacing.sm),
       toolbarHeight: AppComponentSize.appBarHeight,
@@ -389,11 +424,11 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: t.background,
       leading: IconButton(
         icon:
-        Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
+            Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
         onPressed: _cancelBatch,
       ),
       title: Text('${_selectedIds.length} selected',
-          style: AppTextStyles.titleLarge(t.textPrimary)),
+          style: AppTextStyles.titleLarge(t.textPrimary, fp)),
       actions: [
         IconButton(
           tooltip: 'Select All',
@@ -424,11 +459,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _body(
-      BuildContext context,
-      PoppyThemeExtension t,
-      EntriesProvider provider,
-      List<Entry> entries,
-      ) {
+    BuildContext context,
+    PoppyThemeExtension t,
+    EntriesProvider provider,
+    List<Entry> entries,
+  ) {
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     if (provider.isLoading || !_fetchedOnce) {
       return Column(
         children: [
@@ -437,19 +474,16 @@ class _HomeScreenState extends State<HomeScreen> {
           // ─────────────────────────────────────────
           const _FiltersSkeleton(),
 
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
 
           // ─────────────────────────────────────────
           // ENTRIES LIST SKELETON
           // ─────────────────────────────────────────
-
           Divider(
             height: AppStroke.hairline,
             thickness: AppStroke.hairline,
             color: t.border,
-            indent: AppSpacing.lg + AppStroke.colorStrip,
           ),
-
           Expanded(
             child: ListView.separated(
               itemCount: 8,
@@ -457,7 +491,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: AppStroke.hairline,
                 thickness: AppStroke.hairline,
                 color: t.border,
-                indent: AppSpacing.lg + AppStroke.colorStrip,
               ),
               itemBuilder: (_, __) => _SkeletonCard(),
             ),
@@ -474,12 +507,13 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: AppSpacing.md),
             Text(
               'Could not load entries.',
-              style: AppTextStyles.bodySmallSans(t.textSecondary),
+              style: AppTextStyles.bodySmallSans(t.textSecondary, fp),
             ),
             const SizedBox(height: AppSpacing.sm),
             TextButton(
               onPressed: () => provider.fetchEntries(),
-              child: Text('Try again', style: AppTextStyles.bodySmallSans(t.accent)),
+              child: Text('Try again',
+                  style: AppTextStyles.bodySmallSans(t.accent, fp)),
             ),
           ],
         ),
@@ -489,9 +523,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (provider.entries.isEmpty) return _EmptyState();
 
     final years = _extractYears(provider.entries);
-    final displayedEntries = _sortDesc
-        ? entries.reversed.toList()
-        : entries;
+    final displayedEntries = _sortDesc ? entries.reversed.toList() : entries;
 
     return Column(
       children: [
@@ -510,7 +542,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(
                     color: _selectedYear != null ? t.accent : t.border,
-                    width: AppStroke.medium,
+                    width: AppStroke.thin,
                   ),
                 ),
                 child: Row(
@@ -529,13 +561,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           isExpanded: true,
                           dropdownColor: t.surface,
                           menuMaxHeight: 400,
-                          menuWidth: AppComponentSize.searchFieldWidth/2,
+                          menuWidth: AppComponentSize.searchFieldWidth / 2,
                           borderRadius: BorderRadius.circular(AppRadius.md),
                           style: AppTextStyles.labelLargeSans(
-                            _selectedYear != null
-                                ? t.textPrimary
-                                : t.textSecondary,
-                          ),
+                              _selectedYear != null
+                                  ? t.textPrimary
+                                  : t.textSecondary,
+                              fp),
                           icon: Icon(
                             AppIcons.chevronDown,
                             size: AppIconSize.sm,
@@ -543,11 +575,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           hint: Text(
                             '${years.last} - ${years.first}',
-                            style: AppTextStyles.labelLargeSans(t.textSecondary),
+                            style: AppTextStyles.labelLargeSans(
+                                t.textSecondary, fp),
                           ),
                           value: _selectedYear,
                           items: years
-                              .map((y) => DropdownMenuItem(value: y, child: Text(y)),)
+                              .map(
+                                (y) =>
+                                    DropdownMenuItem(value: y, child: Text(y)),
+                              )
                               .toList(),
                           onChanged: (value) {
                             setState(() => _selectedYear = value);
@@ -557,7 +593,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
 
-                    /// Clear button (nice UX touch)
+                    /// Clear button
                     if (_selectedYear != null)
                       GestureDetector(
                         onTap: () {
@@ -590,7 +626,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: _selectedColor != null
                         ? (_selectedColor!.color as Color)
                         : t.border,
-                    width: AppStroke.medium,
+                    width: AppStroke.thin,
                   ),
                 ),
                 child: Row(
@@ -619,15 +655,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                             child: AnimatedContainer(
                               duration: AppDuration.fast,
-                              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs/2, vertical: 6),
+                              margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs / 3, vertical: 6),
                               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? (colorData.color as Color)
-                                    .withOpacity(0.12)
+                                        .withOpacity(0.12)
                                     : Colors.transparent,
-                                borderRadius:
-                                BorderRadius.circular(AppRadius.full),
+                                borderRadius: BorderRadius.circular(AppRadius.full),
                                 border: Border.all(
                                   color: isSelected
                                       ? colorData.color as Color
@@ -647,8 +682,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Text(
                                       colorData.name,
                                       style: AppTextStyles.labelLargeSans(
-                                        colorData.color as Color,
-                                      ),
+                                          colorData.color as Color, fp),
                                     ),
                                   ],
                                 ],
@@ -682,11 +716,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
 
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
 
         // ─────────────────────────────────────────
         // ENTRIES LIST (filtered or all)
         // ─────────────────────────────────────────
+        Divider(
+          height: AppStroke.hairline,
+          thickness: AppStroke.hairline,
+          color: t.border,
+        ),
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
@@ -723,11 +762,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        Divider(
-          height: AppStroke.hairline,
-          thickness: AppStroke.hairline,
-          color: t.border,
-        ),
       ],
     );
   }
@@ -737,6 +771,8 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -744,10 +780,10 @@ class _EmptyState extends StatelessWidget {
           const PoppyLogo(size: AppIconSize.logo, prominent: false),
           const SizedBox(height: AppSpacing.lg),
           Text('Your diary is empty.',
-              style: AppTextStyles.bodyLarge(t.textPrimary)),
+              style: AppTextStyles.bodyLarge(t.textPrimary, fp)),
           const SizedBox(height: AppSpacing.xs),
           Text('Tap + to write your first entry.',
-              style: AppTextStyles.bodySmallSans(t.textTertiary)),
+              style: AppTextStyles.bodySmallSans(t.textTertiary, fp)),
         ],
       ),
     );
@@ -819,14 +855,19 @@ class _FiltersSkeleton extends StatelessWidget {
           // ─────────────────────────────
           // YEAR DROPDOWN SKELETON
           // ─────────────────────────────
-          Expanded(
+          Flexible(
             child: Container(
               height: AppComponentSize.filterBarHeight,
+              width: AppComponentSize.searchFieldWidth,
+              margin: const EdgeInsets.only(right: AppSpacing.sm),
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
               decoration: BoxDecoration(
                 color: t.surface,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: t.border),
+                border: Border.all(
+                  color: t.border,
+                  width: AppStroke.thin,
+                ),
               ),
               child: Row(
                 children: [
@@ -865,19 +906,21 @@ class _FiltersSkeleton extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(width: AppSpacing.sm),
-
           // ─────────────────────────────
           // COLOR FILTER SKELETON
           // ─────────────────────────────
-          Expanded(
+          Flexible(
             child: Container(
               height: AppComponentSize.filterBarHeight,
+              width: AppComponentSize.searchFieldWidth,
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               decoration: BoxDecoration(
                 color: t.surface,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: t.border),
+                border: Border.all(
+                  color: t.border,
+                  width: AppStroke.thin,
+                ),
               ),
               child: Row(
                 children: [
@@ -895,7 +938,8 @@ class _FiltersSkeleton extends StatelessWidget {
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
                       itemCount: EntryColors.all.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm*1.5),
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(width: AppSpacing.sm * 1.5),
                       itemBuilder: (_, __) {
                         return Container(
                           width: AppComponentSize.colorDotChip,

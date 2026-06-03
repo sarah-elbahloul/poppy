@@ -50,7 +50,7 @@ class AppIcons {
   // ── Auth & account ─────────────────────────────────────
   static const IconData person     = Iconsax.user;
   static const IconData email      = Iconsax.sms;
-  static const IconData emailUnread = Iconsax.sms_notification;
+  static const IconData emailUnread = Iconsax.notification_status;
   static const IconData password   = Iconsax.password_check;
   static const IconData logout     = Iconsax.logout;
   static const IconData visibilityOn  = Iconsax.eye;

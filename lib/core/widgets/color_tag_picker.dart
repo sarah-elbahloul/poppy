@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/style/style.dart';
+import 'package:poppy/providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:poppy/core/widgets/color_dot.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -20,13 +22,14 @@ class ColorTagPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
 
     return Row(
       children: [
         Text(
           'Tag',
-          style: AppTextStyles.labelLargeSerif(t.textTertiary),
+          style: AppTextStyles.labelLargeSerif(t.textTertiary, fp),
         ),
         ...EntryColors.all.map((colorData) => ColorDot(
           colorData:  colorData,

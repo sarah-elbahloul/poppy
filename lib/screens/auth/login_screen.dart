@@ -7,6 +7,8 @@ import 'package:poppy/core/widgets/poppy_logo.dart';
 import 'package:poppy/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/theme_provider.dart';
+
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Login Screen
 //  Location: lib/screens/auth/login_screen.dart
@@ -83,6 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -100,20 +103,20 @@ class _LoginScreenState extends State<LoginScreen> {
               Center(child: Text(kAppName,
                   style: AppTextStyles.displayLarge(t.textPrimary))),
               Center(child: Text(kAppTagline,
-                  style: AppTextStyles.bodySmallSerif(t.textTertiary))),
+                  style: AppTextStyles.bodySmallSerif(t.textTertiary, fp))),
               SizedBox(height: AppSpacing.xl * 1.5),
 
               // ── Title ──────────────────────────────────────
               Text(
                 _forgotMode ? 'Reset password' : 'Welcome back',
-                style: AppTextStyles.headlineSmall(t.textPrimary),
+                style: AppTextStyles.headlineSmall(t.textPrimary, fp),
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 _forgotMode
                     ? "We'll email you a link. Tap it and you'll be prompted to set a new password."
                     : 'Sign in to your diary.',
-                style: AppTextStyles.bodySmallSans(t.textTertiary)
+                style: AppTextStyles.bodySmallSans(t.textTertiary, fp)
                     .copyWith(height: 1.6),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -181,7 +184,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () => _setMode(!_forgotMode),
                     child: Text(
                       _forgotMode ? 'Back to sign in' : 'Forgot password?',
-                      style: AppTextStyles.bodySmallSans(t.textTertiary),
+                      style: AppTextStyles.bodySmallSans(t.textTertiary, fp),
                     ),
                   ),
                   if (!_forgotMode)
@@ -189,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: () =>
                           Navigator.of(context).pushNamed(AppRoutes.register),
                       child: Text('Create account',
-                          style: AppTextStyles.bodySmallSans(t.accent)),
+                          style: AppTextStyles.bodySmallSans(t.accent, fp)),
                     ),
                 ],
               ),
@@ -217,6 +220,8 @@ class _Field extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Container(
       decoration: BoxDecoration(
         color: t.surface,
@@ -226,10 +231,10 @@ class _Field extends StatelessWidget {
       child: TextField(
         controller: controller, obscureText: obscureText,
         keyboardType: keyboardType,
-        style: AppTextStyles.bodyMedium(t.textPrimary),
+        style: AppTextStyles.bodyMedium(t.textPrimary, fp),
         decoration: InputDecoration(
           labelText:  label,
-          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary),
+          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary, fp),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -266,6 +271,8 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -280,7 +287,7 @@ class _ErrorBanner extends StatelessWidget {
           Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
           const SizedBox(width: AppSpacing.sm),
           Expanded(child: Text(message,
-              style: AppTextStyles.bodySmallSans(t.accent))),
+              style: AppTextStyles.bodySmallSans(t.accent, fp))),
         ],
       ),
     );

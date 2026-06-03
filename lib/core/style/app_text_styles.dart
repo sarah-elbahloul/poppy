@@ -1,136 +1,128 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:poppy/providers/theme_provider.dart';
 
 // ─────────────────────────────────────────────────────────────
-//  POPPY — Standardized Text Styles
+//  POPPY — Text Styles
 //  Location: lib/core/style/app_text_styles.dart
 //
-//  Lora (Serif)  — Diary content, identity, editorial headings
-//  Inter (Sans)  — All UI chrome, settings, labels, inputs
+//  Font roles:
+//    Title font — entry titles, app bar, display text
+//    Body font  — diary writing, previews, editorial body
+//
+//  The active fonts come from ThemeProvider via FontPairData.
+//  Pass `fp` from ThemeProvider into all methods except display.
+//
+//  LOCKED: Display styles (app name, branding) always use Lora.
+//  UNLOCKED: All other styles respect the user's font choice.
+//
+//  Font size scaling:
+//    Scalable methods accept an optional `scale` parameter
+//    (from tp.currentFontSize.scale) so the whole reading
+//    experience grows/shrinks together.
 // ─────────────────────────────────────────────────────────────
 
 class AppTextStyles {
   AppTextStyles._();
 
-  // ── Display ────────────────────────────────────────────
+  // ── Display (LOCKED — always Lora) ───────────────────────
 
+  // App name
   static TextStyle displayLarge(Color color) => GoogleFonts.lora(
     fontSize: 28,
     color: color,
     letterSpacing: -0.5,
     fontWeight: FontWeight.w700,
-  ); // App name
+  );
 
-  // ── Headlines ──────────────────────────────────────────
-
-  static TextStyle headlineLarge(Color color) => GoogleFonts.lora(
-    fontSize: 22,
-    color: color,
-    letterSpacing: -0.4,
-    height: 1.3,
-  ); // Screen title, Legal heading
-
-  static TextStyle headlineMedium(Color color) => GoogleFonts.lora(
-    fontSize: 18,
-    color: color,
-    letterSpacing: -0.3,
-    height: 1.3,
-  ); // Entry detail title, Legal heading (smaller)
-
-  static TextStyle headlineSmall(Color color) => GoogleFonts.inter(
-    fontSize: 20,
-    color: color,
-    letterSpacing: -0.3,
-    fontWeight: FontWeight.w600,
-  ); // Auth heading
-
-  // ── Titles ─────────────────────────────────────────────
-
-  static TextStyle titleLarge(Color color) => GoogleFonts.lora(
+  // App name (compact)
+  static TextStyle displayMedium(Color color) => GoogleFonts.lora(
     fontSize: 17,
     color: color,
-    letterSpacing: -0.2,
-    fontWeight: FontWeight.w600,
-  ); // App bar title
+    letterSpacing: -0.5,
+    fontWeight: FontWeight.w700,
+  );
 
-  static TextStyle titleMedium(Color color) => GoogleFonts.inter(
-    fontSize: 15,
-    color: color,
-    letterSpacing: -0.3,
-  ); // Write screen title, Theme name
+  // ── Headlines ────────────────────────────────────────────
 
-  static TextStyle titleSmallSerif(Color color) => GoogleFonts.lora(
-    fontSize: 14,
-    color: color,
-    fontWeight: FontWeight.w500,
-  ); // Entry card title
+  // Screen title, Legal heading
+  static TextStyle headlineLarge(Color color, FontPairData fp,
+      {double scale = 1.0}) =>
+      fp.titleFont.bold(color, size: 22 * scale, height: 1.3);
 
-  static TextStyle titleSmallSans(Color color) => GoogleFonts.inter(
-    fontSize: 14,
-    color: color,
-  ); // Settings row label, Pin label
+  // Entry detail title, Legal heading (smaller)
+  static TextStyle headlineMedium(Color color, FontPairData fp,
+      {double scale = 1.0}) =>
+      fp.titleFont.style(color, size: 18 * scale, height: 1.3);
 
-  // ── Body ───────────────────────────────────────────────
+  // Auth heading
+  static TextStyle headlineSmall(Color color, FontPairData fp) =>
+      fp.titleFont.style(color, size: 20, height: 1.3);
 
-  static TextStyle bodyLarge(Color color) => GoogleFonts.lora(
-    fontSize: 16,
-    color: color,
-    height: 1.8,
-  ); // Write screen body, Entry detail body, Empty state title
+  // ── Titles ───────────────────────────────────────────────
 
-  static TextStyle bodyMedium(Color color) => GoogleFonts.inter(
-    fontSize: 15,
-    color: color,
-  ); // Search hint, Field text, Legal body text
+  // App bar title
+  static TextStyle titleLarge(Color color, FontPairData fp,
+      {double scale = 1.0}) =>
+      fp.titleFont.bold(color, size: 17 * scale, height: 1.2);
 
-  static TextStyle bodySmallSerif(Color color) => GoogleFonts.lora(
-    fontSize: 13,
-    color: color,
-    fontWeight: FontWeight.w600,
-  ); // App tagline
+  // Write screen title, Theme name
+  static TextStyle titleMedium(Color color, FontPairData fp) =>
+      fp.titleFont.style(color, size: 15);
 
-  static TextStyle bodySmallSans(Color color) => GoogleFonts.inter(
-    fontSize: 13,
-    color: color,
-  ); // Auth subtitle, Field label, Error text, Link, Settings email, Empty subtitle, Legal section title
+  // Entry card title
+  static TextStyle titleSmallSerif(Color color, FontPairData fp,
+      {double scale = 1.0}) =>
+      fp.titleFont.bold(color, size: 14 * scale, height: 1.3);
 
-  // ── Labels ─────────────────────────────────────────────
+  // Settings row label, Pin label
+  static TextStyle titleSmallSans(Color color, FontPairData fp) =>
+      fp.titleFont.style(color, size: 14);
 
-  static TextStyle labelLargeSerif(Color color) => GoogleFonts.lora(
-    fontSize: 12,
-    color: color,
-    height: 1.4,
-  ); // Entry preview text, Entry meta data (date/time)
+  // ── Body ─────────────────────────────────────────────────
 
-  static TextStyle labelLargeSans(Color color) => GoogleFonts.inter(
-    fontSize: 12,
-    color: color,
-    letterSpacing: 0.5,
-  ); // Section label, Settings row sublabel, Theme note, Search filter chip
+  // Write screen body, Entry detail body, Empty state title
+  static TextStyle bodyLarge(Color color, FontPairData fp,
+      {double scale = 1.0, double height = 1.8}) =>
+      fp.bodyFont.style(color, size: 16 * scale, height: height);
 
-  static TextStyle labelMedium(Color color) => GoogleFonts.inter(
-    fontSize: 11,
-    color: color,
-  ); // Version text
+  // Search hint, Field text, Legal body text
+  static TextStyle bodyMedium(Color color, FontPairData fp) =>
+      fp.bodyFont.style(color, size: 15);
 
-  static TextStyle labelSmall(Color color) => GoogleFonts.inter(
-    fontSize: 10,
-    color: color,
-    letterSpacing: 0.3,
-  ); // Entry month abbreviation, Entry day label, Word count
+  // App tagline
+  static TextStyle bodySmallSerif(Color color, FontPairData fp) =>
+      fp.bodyFont.style(color, size: 13, height: 1.5);
 
-  // ── Specialized UI ─────────────────────────────────────
+  // Auth subtitle, Field label, Error text, Link, Settings email, Empty subtitle, Legal section title
+  static TextStyle bodySmallSans(Color color, FontPairData fp) =>
+      fp.bodyFont.style(color, size: 13);
 
-  static TextStyle calendarDay(Color color) => GoogleFonts.inter(
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-    color: color,
-    height: 1,
-  ); // Entry card day number (calendar widget style)
+  // ── Labels ───────────────────────────────────────────────
 
-  static TextStyle pinDigit(Color color) => GoogleFonts.inter(
-    fontSize: 20,
-    fontWeight: FontWeight.w300,
-    color: color,
-  ); // PIN pad digit button
+  // Entry preview text, Entry meta data (date/time)
+  static TextStyle labelLargeSerif(Color color, FontPairData fp) =>
+      fp.bodyFont.style(color, size: 12, height: 1.4);
+
+  // Section label, Settings row sublabel, Theme note, Search filter chip
+  static TextStyle labelLargeSans(Color color, FontPairData fp) =>
+      fp.bodyFont.style(color, size: 12, height: 1.4);
+
+  // Version text
+  static TextStyle labelMedium(Color color, FontPairData fp) =>
+      fp.bodyFont.style(color, size: 11);
+
+  // Entry month abbreviation, Entry day label, Word count
+  static TextStyle labelSmall(Color color, FontPairData fp) =>
+      fp.bodyFont.style(color, size: 10, height: 1.4);
+
+  // ── Specialised UI ───────────────────────────────────────
+
+  // Entry card day number (calendar widget style)
+  static TextStyle calendarDay(Color color, FontPairData fp) =>
+      fp.bodyFont.style(color, size: 14, height: 1);
+
+  // PIN pad digit button
+  static TextStyle pinDigit(Color color, FontPairData fp) =>
+      fp.bodyFont.style(color, size: 20);
 }

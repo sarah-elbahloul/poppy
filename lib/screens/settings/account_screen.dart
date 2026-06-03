@@ -4,6 +4,8 @@ import 'package:poppy/core/style/style.dart';
 import 'package:poppy/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/theme_provider.dart';
+
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Account Screen
 //  Location: lib/screens/settings/account_screen.dart
@@ -91,6 +93,7 @@ class _AccountScreenState extends State<AccountScreen> {
   Widget build(BuildContext context) {
     final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -102,17 +105,17 @@ class _AccountScreenState extends State<AccountScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text('Account',
-            style: AppTextStyles.titleLarge(t.textPrimary)),
+            style: AppTextStyles.titleLarge(t.textPrimary, fp)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           Text('Signed in as',
-              style: AppTextStyles.labelLargeSans(t.textTertiary)),
+              style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
           const SizedBox(height: AppSpacing.xs),
           Text(
             auth.user?.email ?? '—',
-            style: AppTextStyles.headlineSmall(t.textPrimary)
+            style: AppTextStyles.headlineSmall(t.textPrimary,fp)
                 .copyWith(fontSize: 15),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -225,6 +228,8 @@ class _ExpandablePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return AnimatedContainer(
       duration: AppDuration.normal,
       decoration: BoxDecoration(
@@ -249,7 +254,7 @@ class _ExpandablePanel extends StatelessWidget {
                   Icon(icon, size: AppIconSize.sm, color: t.textTertiary),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(child: Text(title,
-                      style: AppTextStyles.titleSmallSans(t.textPrimary))),
+                      style: AppTextStyles.titleSmallSans(t.textPrimary,fp))),
                   Icon(
                     isOpen ? AppIcons.chevronUp : AppIcons.chevronDown,
                     size: AppIconSize.sm, color: t.textTertiary,
@@ -288,11 +293,12 @@ class _ErrorText extends StatelessWidget {
   const _ErrorText({required this.message});
   @override
   Widget build(BuildContext context) {
+    final fp = context.read<ThemeProvider>().currentFontPairData;
     final t = context.poppyTheme;
     return Align(
       alignment: Alignment.centerLeft,
       child: Text(message,
-          style: AppTextStyles.bodySmallSans(t.accent)),
+          style: AppTextStyles.bodySmallSans(t.accent,fp)),
     );
   }
 }
@@ -311,6 +317,8 @@ class _Field extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Container(
       decoration: BoxDecoration(
         color: t.background,
@@ -320,10 +328,10 @@ class _Field extends StatelessWidget {
       child: TextField(
         controller: controller, obscureText: obscureText,
         keyboardType: keyboardType,
-        style: AppTextStyles.bodyMedium(t.textPrimary),
+        style: AppTextStyles.bodyMedium(t.textPrimary,fp),
         decoration: InputDecoration(
           labelText:  label,
-          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary),
+          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary,fp),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(

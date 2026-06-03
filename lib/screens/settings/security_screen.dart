@@ -6,6 +6,8 @@ import 'package:poppy/providers/auth_provider.dart';
 import 'package:poppy/services/pin_service.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/theme_provider.dart';
+
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Security Screen
 //  Location: lib/screens/settings/security_screen.dart
@@ -171,6 +173,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
   Widget build(BuildContext context) {
     final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -187,7 +190,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
           }),
         ),
         title: Text('Security',
-            style: AppTextStyles.titleLarge(t.textPrimary)),
+            style: AppTextStyles.titleLarge(t.textPrimary,fp)),
       ),
       body: _step == _PinStep.idle
           ? _buildIdleView(context, t, auth)
@@ -202,6 +205,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
       PoppyThemeExtension t,
       AuthProvider auth,
       ) {
+    final fp = context.read<ThemeProvider>().currentFontPairData;
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
@@ -214,10 +218,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
           ),
           child: SwitchListTile(
             title: Text('PIN lock',
-                style: AppTextStyles.titleSmallSans(t.textPrimary)),
+                style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
             subtitle: Text(
               'Require a 4-digit PIN when opening Poppy.',
-              style: AppTextStyles.labelLargeSans(t.textTertiary),
+              style: AppTextStyles.labelLargeSans(t.textTertiary, fp),
             ),
             value:       auth.pinEnabled,
             activeColor: t.accent,
@@ -251,7 +255,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     Expanded(
                       child: Text('Change PIN',
                           style: AppTextStyles.titleSmallSans(
-                              t.textPrimary)),
+                              t.textPrimary, fp)),
                     ),
                     Icon(AppIcons.chevronRight,
                         size: AppIconSize.xs, color: t.textTertiary),
@@ -284,7 +288,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 child: Text(
                   'The PIN protects access to the app on this device. '
                       'Your entries are encrypted separately with your account password.',
-                  style: AppTextStyles.labelLargeSans(t.accent),
+                  style: AppTextStyles.labelLargeSans(t.accent, fp),
                 ),
               ),
             ],
@@ -297,6 +301,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
   // ── PIN pad view ──────────────────────────────────────────
 
   Widget _buildPinView(BuildContext context, PoppyThemeExtension t) {
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
@@ -308,7 +314,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
               Text(
                 _stepSubtitle,
                 textAlign: TextAlign.center,
-                style: AppTextStyles.bodySmallSans(t.textTertiary),
+                style: AppTextStyles.bodySmallSans(t.textTertiary, fp),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],

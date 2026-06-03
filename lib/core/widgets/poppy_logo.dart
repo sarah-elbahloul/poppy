@@ -23,8 +23,8 @@ class PoppyLogo extends StatelessWidget {
     return CustomPaint(
       size: Size(size, size),
       painter: _PoppyPainter(
-        petalColor:     prominent ? t.accent : t.accentMuted,
-        centreColor:    AppColors.logoCentre,
+        petalColor: prominent ? t.accent : t.accentMuted,
+        centreColor: AppColors.logoCentre,
         highlightColor: AppColors.logoHighlight,
       ),
     );
@@ -42,119 +42,130 @@ class _PoppyPainter extends CustomPainter {
     required this.highlightColor,
   });
 
+  /// Organic petal shape using cubic beziers — wider in the
+  /// upper-middle, tapering softly to a rounded tip.
+  Path _petalPath(double length, double width, {double drift = 0.0}) {
+    return Path()
+      ..moveTo(0, 0)
+      ..cubicTo(
+        -width * 0.65, -length * 0.25,
+        -width * 0.55 + drift, -length * 0.72,
+        0, -length,
+      )
+      ..cubicTo(
+        width * 0.55 + drift, -length * 0.72,
+        width * 0.65, -length * 0.25,
+        0, 0,
+      );
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
     final cy = size.height / 2;
     final r = size.width / 2;
 
-    // Move canvas origin to flower center
     canvas.translate(cx, cy);
 
-    // Shared petal shape
-    final petalRect = Rect.fromCenter(
-      center: Offset(0, -r * 0.35),
-      width: r * 0.7,
-      height: r * 0.9,
-    );
+    // ── Warm ambient glow ──────────────────────
+    final glow = Paint()
+      ..color = petalColor.withOpacity(0.07)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.5);
+    canvas.drawCircle(Offset.zero, r * 0.95, glow);
 
-    // ── Light petals ───────────────────────────
-    final lightPaint = Paint()
-      ..style = PaintingStyle.fill
-      ..shader = RadialGradient(
-        colors: [
-          petalColor.withOpacity(0.8),
-          petalColor.withOpacity(0.35),
-        ],
-      ).createShader(petalRect)
-      ..maskFilter = const MaskFilter.blur(
-        BlurStyle.normal,
-        0.4,
-      );
+    // ── Back petal layer (5, offset rotation) ──
+    const backCount = 5;
+    for (int i = 0; i < backCount; i++) {
+      final angle = (i * 2 * math.pi) / backCount + math.pi / backCount;
+      final path = _petalPath(r * 0.76, r * 0.40, drift: r * 0.025);
 
-    // ── Dark petals ────────────────────────────
-    final darkPaint = Paint()
-      ..style = PaintingStyle.fill
-      ..shader = RadialGradient(
-        colors: [
-          petalColor.withOpacity(1.0),
-          petalColor.withOpacity(0.5),
-        ],
-      ).createShader(petalRect)
-      ..maskFilter = const MaskFilter.blur(
-        BlurStyle.normal,
-        0.4,
-      );
-
-    const petalCount = 10;
-
-    for (int i = 0; i < petalCount; i++) {
-      final angle = (i * 2 * math.pi) / petalCount;
-
-      final paint = i.isEven
-          ? darkPaint
-          : lightPaint;
+      final paint = Paint()
+        ..style = PaintingStyle.fill
+        ..color = petalColor.withOpacity(0.22);
 
       canvas.save();
       canvas.rotate(angle);
-      canvas.drawOval(petalRect, paint);
+      canvas.drawPath(path, paint);
       canvas.restore();
     }
 
-    // ── Centre circle ──────────────────────────
-    final centrePaint = Paint()
-      ..color = centreColor
-      ..style = PaintingStyle.fill;
+    // ── Front petal layer (5) ──────────────────
+    const frontCount = 5;
+    for (int i = 0; i < frontCount; i++) {
+      final angle = (i * 2 * math.pi) / frontCount;
+      final path = _petalPath(r * 0.66, r * 0.34, drift: -r * 0.012);
 
-    canvas.drawCircle(
-      Offset.zero,
-      r * 0.28,
-      centrePaint,
+      // Gradient runs tip → base so the tip is richest
+      final gradRect = Rect.fromCenter(
+        center: Offset(0, -r * 0.33),
+        width: r * 0.70,
+        height: r * 0.66,
+      );
+
+      final paint = Paint()
+        ..style = PaintingStyle.fill
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            petalColor.withOpacity(0.92),
+            petalColor.withOpacity(0.58),
+            petalColor.withOpacity(0.28),
+          ],
+          stops: const [0.0, 0.45, 1.0],
+        ).createShader(gradRect);
+
+      canvas.save();
+      canvas.rotate(angle);
+      canvas.drawPath(path, paint);
+      canvas.restore();
+    }
+
+    // ── Soft shadow under centre ───────────────
+    final shadowPaint = Paint()
+      ..color = Colors.black.withOpacity(0.05)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+    canvas.drawCircle(const Offset(0, 1.2), r * 0.19, shadowPaint);
+
+    // ── Centre disc with subtle radial light ───
+    final centreRadius = r * 0.18;
+    final centreGrad = RadialGradient(
+      center: const Alignment(-0.25, -0.25),
+      radius: 0.8,
+      colors: [
+        centreColor.withOpacity(1.0),
+        centreColor.withOpacity(0.75),
+      ],
     );
 
-    // ── Highlight dots ─────────────────────────
-    final dotPaint = Paint()
-      ..color = highlightColor
-      ..style = PaintingStyle.fill;
+    final centrePaint = Paint()
+      ..style = PaintingStyle.fill
+      ..shader = centreGrad.createShader(
+        Rect.fromCircle(center: Offset.zero, radius: centreRadius),
+      );
 
-    final dots = [
-      Offset(-r * 0.10, -r * 0.08),
-      Offset(r * 0.08, -r * 0.09),
+    canvas.drawCircle(Offset.zero, centreRadius, centrePaint);
 
-      Offset(-r * 0.14, 0),
-      Offset(r * 0.12, r * 0.02),
+    // ── Stamen dots (organic scatter) ──────────
+    final rng = math.Random(42);
+    final dotPaint = Paint()..style = PaintingStyle.fill;
 
-      Offset(-r * 0.05, r * 0.10),
-      Offset(r * 0.05, r * 0.12),
-    ];
+    for (int i = 0; i < 14; i++) {
+      final a = rng.nextDouble() * 2 * math.pi;
+      final dist = rng.nextDouble() * r * 0.14;
+      final dotR = r * (0.014 + rng.nextDouble() * 0.010);
 
-    final sizes = [
-      0.032,
-      0.026,
-      0.030,
-      0.024,
-      0.028,
-      0.025,
-    ];
-
-    for (int i = 0; i < dots.length; i++) {
+      dotPaint.color = highlightColor.withOpacity(0.45 + rng.nextDouble() * 0.55);
       canvas.drawCircle(
-        dots[i],
-        r * sizes[i],
+        Offset(math.cos(a) * dist, math.sin(a) * dist),
+        dotR,
         dotPaint,
       );
     }
 
-    // Center highlight dot
-    final centerDotPaint = Paint()
-      ..color = highlightColor.withOpacity(0.9)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(
-      Offset.zero,
-      r * 0.04,
-      centerDotPaint,
-    );
+    // Tiny bright centre dot
+    dotPaint.color = highlightColor.withOpacity(0.85);
+    canvas.drawCircle(Offset.zero, r * 0.028, dotPaint);
   }
 
   @override

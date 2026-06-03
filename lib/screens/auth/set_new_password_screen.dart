@@ -5,6 +5,8 @@ import 'package:poppy/core/widgets/poppy_logo.dart';
 import 'package:poppy/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../providers/theme_provider.dart';
+
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Set New Password Screen
 //  Location: lib/screens/auth/set_new_password_screen.dart
@@ -64,6 +66,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
   Widget build(BuildContext context) {
     final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -79,11 +82,11 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
               Center(child: const PoppyLogo(size: AppIconSize.logo)),
               SizedBox(height: AppSpacing.xl * 1.5),
               Text('Set new password',
-                  style: AppTextStyles.headlineSmall(t.textPrimary)),
+                  style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Choose a strong password. Your diary entries will stay intact.',
-                style: AppTextStyles.bodySmallSans(t.textTertiary)
+                style: AppTextStyles.bodySmallSans(t.textTertiary, fp)
                     .copyWith(height: 1.6),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -154,6 +157,8 @@ class _Field extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Container(
       decoration: BoxDecoration(
         color: t.surface,
@@ -162,10 +167,10 @@ class _Field extends StatelessWidget {
       ),
       child: TextField(
         controller: controller, obscureText: obscureText,
-        style: AppTextStyles.bodyMedium(t.textPrimary),
+        style: AppTextStyles.bodyMedium(t.textPrimary, fp),
         decoration: InputDecoration(
           labelText:  label,
-          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary),
+          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary, fp),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -202,6 +207,8 @@ class _ErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -216,7 +223,7 @@ class _ErrorBanner extends StatelessWidget {
           Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
           const SizedBox(width: AppSpacing.sm),
           Expanded(child: Text(message,
-              style: AppTextStyles.bodySmallSans(t.accent))),
+              style: AppTextStyles.bodySmallSans(t.accent, fp))),
         ],
       ),
     );

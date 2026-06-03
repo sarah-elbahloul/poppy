@@ -37,14 +37,15 @@ class SettingsDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t         = context.poppyTheme;
+    final t         = context.watch<ThemeProvider>().currentThemeData;
+    final fp        = context.watch<ThemeProvider>().currentFontPairData;
     final auth      = context.watch<AuthProvider>();
-    final entries   = context.watch<EntriesProvider>().entries;
-    final themeData = context.watch<ThemeProvider>().currentThemeData;
-
-    final email    = auth.user?.email ?? '';
-    final initial  = email.isNotEmpty ? email[0].toUpperCase() : 'P';
-    final count    = entries.length;
+    final email     = context.read<AuthProvider>().user?.email;
+    final username  = (email != null && email.contains('@'))
+        ? email.split('@')[0]
+        : email ?? 'User';
+    final initial   = username.isNotEmpty ? username[0].toUpperCase() : 'U';
+    final count     = context.read<EntriesProvider>().entries.length;
 
     return Drawer(
       backgroundColor: t.surface,
@@ -55,9 +56,7 @@ class SettingsDrawer extends StatelessWidget {
 
             // ── Header ────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, AppSpacing.lg,
-                AppSpacing.lg, AppSpacing.md,
+              padding: const EdgeInsets.all(AppSpacing.lg
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -72,7 +71,7 @@ class SettingsDrawer extends StatelessWidget {
                     child: Center(
                       child: Text(
                         initial,
-                        style: AppTextStyles.titleLarge(t.accent)
+                        style: AppTextStyles.titleLarge(t.accent, fp)
                             .copyWith(fontSize: 18),
                       ),
                     ),
@@ -83,43 +82,39 @@ class SettingsDrawer extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          email,
-                          style: AppTextStyles.bodySmallSans(t.textPrimary),
+                          username,
+                          style: AppTextStyles.titleLarge(t.textPrimary, fp),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
                         const SizedBox(height: 2),
                         Text(
                           '$count ${count == 1 ? 'entry' : 'entries'}',
-                          style: AppTextStyles.labelLargeSans(t.textTertiary),
+                          style: AppTextStyles.labelLargeSans(t.textTertiary, fp),
                         ),
                       ],
                     ),
-                  ),
-                  // Close button
-                  IconButton(
-                    icon: Icon(AppIcons.close,
-                        size: AppIconSize.xs, color: t.textTertiary),
-                    onPressed: () => _close(context),
-                    splashRadius: 18,
                   ),
                 ],
               ),
             ),
 
-            Divider(height: 1, thickness: AppStroke.hairline,
-                color: t.border),
+            Divider(
+              indent: AppSpacing.lg,
+                height: AppStroke.hairline,
+                thickness: AppStroke.hairline,
+                color: t.border
+            ),
 
             // ── Scrollable content ────────────────────────
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(
-                    vertical: AppSpacing.sm),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 children: [
 
                   // ── New entry shortcut ─────────────────
                   _DrawerItem(
-                    icon:    AppIcons.write,
+                    icon:    AppIcons.add,
                     label:   'New entry',
                     accent:  true,
                     onTap:   () {
@@ -128,13 +123,13 @@ class SettingsDrawer extends StatelessWidget {
                     },
                   ),
 
-                  _DrawerDivider(label: 'Quick access'),
+                  const _DrawerDivider(label: 'Quick access'),
 
                   // ── Most-used settings shortcuts ───────
                   _DrawerItem(
                     icon:     AppIcons.appearance,
-                    label:    'Theme',
-                    trailing: '${themeData.emoji} ${themeData.name}',
+                    label:    'Appearance',
+                    trailing: 'Custom',
                     onTap:    () => _go(context, AppRoutes.appearance),
                   ),
                   _DrawerItem(
@@ -143,7 +138,7 @@ class SettingsDrawer extends StatelessWidget {
                     trailing: auth.pinEnabled ? 'PIN on' : null,
                     onTap:    () => _go(context, AppRoutes.security),
                   ),
-                  _DrawerDivider(label: 'More'),
+                  const _DrawerDivider(label: 'More'),
 
                   // ── Full settings hub ──────────────────
                   _DrawerItem(
@@ -176,7 +171,7 @@ class SettingsDrawer extends StatelessWidget {
               child: Center(
                 child: Text(
                   'Poppy · v1.0.0',
-                  style: AppTextStyles.labelSmall(t.textTertiary),
+                  style: AppTextStyles.labelSmall(t.textTertiary, fp),
                 ),
               ),
             ),
@@ -188,6 +183,8 @@ class SettingsDrawer extends StatelessWidget {
 
   Future<void> _onSignOut(BuildContext context) async {
     final t         = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -195,11 +192,11 @@ class SettingsDrawer extends StatelessWidget {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: Text('Sign out?',
-            style: AppTextStyles.headlineSmall(t.textPrimary)),
+            style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
         content: Text(
           'Your diary is safely stored in the cloud and will be '
               'here when you sign back in.',
-          style: AppTextStyles.bodySmallSans(t.textSecondary)
+          style: AppTextStyles.bodySmallSans(t.textSecondary, fp)
               .copyWith(height: 1.6),
         ),
         actions: [
@@ -259,6 +256,7 @@ class _DrawerItem extends StatelessWidget {
         : accent
         ? t.accent
         : t.textTertiary;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return InkWell(
       onTap: onTap,
@@ -273,11 +271,11 @@ class _DrawerItem extends StatelessWidget {
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Text(label,
-                  style: AppTextStyles.titleSmallSans(labelColor)),
+                  style: AppTextStyles.titleSmallSans(labelColor, fp)),
             ),
             if (trailing != null) ...[
               Text(trailing!,
-                  style: AppTextStyles.labelLargeSans(t.textTertiary)),
+                  style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
               const SizedBox(width: AppSpacing.xs),
             ],
             if (!isDestructive)
@@ -296,7 +294,8 @@ class _DrawerDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg, AppSpacing.md,
@@ -304,8 +303,7 @@ class _DrawerDivider extends StatelessWidget {
       ),
       child: Text(
         label.toUpperCase(),
-        style: AppTextStyles.labelSmall(t.textTertiary)
-            .copyWith(letterSpacing: 0.8),
+        style: AppTextStyles.labelSmall(t.textTertiary, fp).copyWith(letterSpacing: 0.8),
       ),
     );
   }

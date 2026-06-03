@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:poppy/models/entry.dart';
+import 'package:poppy/providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Entry Card Widget
@@ -26,7 +28,8 @@ class EntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
     final monthColor = MonthColors.of(entry.entryDate.month);
 
     return SizedBox(
@@ -64,13 +67,13 @@ class EntryCard extends StatelessWidget {
                     children: [
                       Text(
                         entry.entryDate.day.toString(),
-                        style: AppTextStyles.calendarDay(monthColor),
+                        style: AppTextStyles.calendarDay(monthColor,fp),
                       ),
                       Text(
                         DateFormat('MMM')
                             .format(entry.entryDate)
                             .toUpperCase(),
-                        style: AppTextStyles.labelSmall(monthColor),
+                        style: AppTextStyles.labelSmall(monthColor,fp),
                       ),
                     ],
                   ),
@@ -102,6 +105,7 @@ class EntryCard extends StatelessWidget {
                           entry.title.isEmpty
                               ? t.textTertiary
                               : t.textPrimary,
+                          fp,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -113,7 +117,7 @@ class EntryCard extends StatelessWidget {
                       Flexible(
                         child: Text(
                           entry.contentPreview,
-                          style: AppTextStyles.labelLargeSerif(t.textTertiary),
+                          style: AppTextStyles.labelLargeSerif(t.textTertiary, fp),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -160,7 +164,7 @@ class EntryCard extends StatelessWidget {
                     child: Text(
                       '${entry.wordCount}w',
                       style: AppTextStyles.labelSmall(
-                          t.textTertiary),
+                          t.textTertiary,fp),
                     ),
                   ),
                 ),

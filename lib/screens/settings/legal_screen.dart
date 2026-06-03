@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/style/style.dart';
+import 'package:provider/provider.dart';
+
+import '../../providers/theme_provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Legal Screen
@@ -15,6 +18,7 @@ class LegalScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     final title = switch (doc) {
       LegalDoc.privacy    => 'Privacy Policy',
@@ -32,7 +36,7 @@ class LegalScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(title,
-            style: AppTextStyles.titleLarge(t.textPrimary)),
+            style: AppTextStyles.titleLarge(t.textPrimary, fp)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -52,13 +56,15 @@ class _PrivacyContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Privacy Policy', style: AppTextStyles.headlineLarge(t.textPrimary)),
+        Text('Privacy Policy', style: AppTextStyles.headlineLarge(t.textPrimary, fp)),
         const SizedBox(height: AppSpacing.xs),
         Text('Last updated: January 2025',
-            style: AppTextStyles.labelLargeSerif(t.textTertiary)),
+            style: AppTextStyles.labelLargeSerif(t.textTertiary, fp)),
         const SizedBox(height: AppSpacing.lg),
 
         _Section(title: 'What we collect', body:
@@ -111,13 +117,15 @@ class _TermsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Terms of Use', style: AppTextStyles.headlineLarge(t.textPrimary)),
+        Text('Terms of Use', style: AppTextStyles.headlineLarge(t.textPrimary, fp)),
         const SizedBox(height: AppSpacing.xs),
         Text('Last updated: January 2025',
-            style: AppTextStyles.labelLargeSerif(t.textTertiary)),
+            style: AppTextStyles.labelLargeSerif(t.textTertiary, fp)),
         const SizedBox(height: AppSpacing.lg),
 
         _Section(title: 'Acceptance', body:
@@ -170,6 +178,7 @@ class _OpenSourceContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     final packages = [
       ('supabase_flutter', 'MIT License', 'Supabase Inc.'),
@@ -192,11 +201,11 @@ class _OpenSourceContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Open Source Licenses',
-            style: AppTextStyles.headlineLarge(t.textPrimary)),
+            style: AppTextStyles.headlineLarge(t.textPrimary, fp)),
         const SizedBox(height: AppSpacing.sm),
         Text(
           'Poppy is built on the shoulders of these open source projects.',
-          style: AppTextStyles.bodyMedium(t.textSecondary),
+          style: AppTextStyles.bodyMedium(t.textSecondary,fp),
         ),
         const SizedBox(height: AppSpacing.lg),
         ...packages.map((p) => Padding(
@@ -218,9 +227,9 @@ class _OpenSourceContent extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(p.$1,
-                        style: AppTextStyles.bodySmallSans(t.textPrimary)),
+                        style: AppTextStyles.bodySmallSans(t.textPrimary,fp)),
                     Text('${p.$3} · ${p.$2}',
-                        style: AppTextStyles.labelLargeSerif(t.textTertiary)),
+                        style: AppTextStyles.labelLargeSerif(t.textTertiary, fp)),
                   ],
                 ),
               ),
@@ -232,7 +241,7 @@ class _OpenSourceContent extends StatelessWidget {
           onPressed: () => showLicensePage(context: context),
           icon: Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
           label: Text('View all Flutter licenses',
-              style: AppTextStyles.bodySmallSans(t.accent)),
+              style: AppTextStyles.bodySmallSans(t.accent,fp)),
         ),
       ],
     );
@@ -249,14 +258,16 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: AppTextStyles.bodySmallSans(t.textPrimary)),
+          Text(title, style: AppTextStyles.bodySmallSans(t.textPrimary,fp)),
           const SizedBox(height: AppSpacing.xs),
-          Text(body, style: AppTextStyles.bodyMedium(t.textSecondary)),
+          Text(body, style: AppTextStyles.bodyMedium(t.textSecondary,fp)),
         ],
       ),
     );

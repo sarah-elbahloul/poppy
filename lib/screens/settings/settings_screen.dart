@@ -32,22 +32,22 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
     final td   = context.watch<ThemeProvider>().currentThemeData;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
-      backgroundColor: t.background,
+      backgroundColor: td.background,
       appBar: AppBar(
-        backgroundColor: t.background,
+        backgroundColor: td.background,
         elevation: 0,
         leading: IconButton(
           icon: Icon(AppIcons.back,
-              size: AppIconSize.xs, color: t.textSecondary),
+              size: AppIconSize.xs, color: td.textSecondary),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text('Settings',
-            style: AppTextStyles.titleLarge(t.textPrimary)),
+            style: AppTextStyles.titleLarge(td.textPrimary, fp)),
       ),
       body: ListView(
         padding: const EdgeInsets.only(bottom: AppSpacing.xl),
@@ -59,18 +59,18 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
 
           // ── Personalisation ──────────────────────────────
-          _SectionLabel('Personalisation'),
+          const _SectionLabel('Personalisation'),
           _Card(children: [
             _SettingsRow(
-              icon:     AppIcons.appearance,
-              label:    'Theme',
-              value:    '${td.emoji} ${td.name}',
-              onTap:    () => _push(context, AppRoutes.appearance),
+              icon:  AppIcons.appearance,
+              label: 'Appearance',
+              value: '${PoppyFonts.fromId(context.read<ThemeProvider>().currentTitleFont).displayName} · ${PoppyFonts.fromId(context.read<ThemeProvider>().currentBodyFont).displayName}',
+              onTap: () => _push(context, AppRoutes.appearance),
             ),
           ]),
 
           // ── Account & Security ───────────────────────────
-          _SectionLabel('Account & Security'),
+          const _SectionLabel('Account & Security'),
           _Card(children: [
             _SettingsRow(
               icon:  AppIcons.person,
@@ -95,7 +95,7 @@ class SettingsScreen extends StatelessWidget {
           ]),
 
           // ── Data ─────────────────────────────────────────
-          _SectionLabel('Data'),
+          const _SectionLabel('Data'),
           _Card(children: [
             _SettingsRow(
               icon:  AppIcons.export_,
@@ -113,7 +113,7 @@ class SettingsScreen extends StatelessWidget {
           ]),
 
           // ── Support ──────────────────────────────────────
-          _SectionLabel('Support'),
+          const _SectionLabel('Support'),
           _Card(children: [
             _SettingsRow(
               icon:  AppIcons.info,
@@ -131,7 +131,7 @@ class SettingsScreen extends StatelessWidget {
           ]),
 
           // ── Legal ─────────────────────────────────────────
-          _SectionLabel('Legal'),
+          const _SectionLabel('Legal'),
           _Card(children: [
             _SettingsRow(
               icon:  AppIcons.privacyPolicy,
@@ -153,7 +153,7 @@ class SettingsScreen extends StatelessWidget {
           ]),
 
           // ── Danger zone ───────────────────────────────────
-          _SectionLabel('Account actions'),
+          const _SectionLabel('Account actions'),
           _Card(children: [
             _SettingsRow(
               icon:  AppIcons.logout,
@@ -184,13 +184,15 @@ class SettingsScreen extends StatelessWidget {
   // Redesigned flow:
   //   1. Dialog with clear visual distinction between plain (⚠ red) and
   //      encrypted options (change #6).
-  //   2. File saved directly to Downloads / Documents; snackbar confirms
+  //   2. File saved directly to Downloads / Documents; snack bar confirms
   //      the path with an optional "Share" action (change #2).
   //   3. Filename is timestamped (change #3 — handled in ExportConfig).
   //   4. user_id no longer embedded in payload (change #4 — in service).
 
   Future<void> _onExport(BuildContext context) async {
     final entries = context.read<EntriesProvider>().entries;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     if (entries.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No entries to export.')),
@@ -209,7 +211,7 @@ class SettingsScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: Text('Export diary',
-            style: AppTextStyles.headlineSmall(t.textPrimary)),
+            style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,7 +238,7 @@ class SettingsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _ExportOption(
+                  const _ExportOption(
                     icon:  AppIcons.export_,
                     title: 'Plain text',
                     desc:  'Readable by anyone who opens the file.',
@@ -245,14 +247,14 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: AppSpacing.xs),
                   Row(
                     children: [
-                      Icon(AppIcons.info,
+                      const Icon(AppIcons.info,
                           size: 13, color: AppColors.error),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           'Your diary entries will be unprotected. '
                               'Only use if you need to open the file outside Poppy.',
-                          style: AppTextStyles.labelSmall(AppColors.error)
+                          style: AppTextStyles.labelSmall(AppColors.error, fp)
                               .copyWith(height: 1.5),
                         ),
                       ),
@@ -271,8 +273,8 @@ class SettingsScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Plain text',
-                style: TextStyle(color: AppColors.error)),
+            child: const Text('Plain text',
+                style: const TextStyle(color: AppColors.error)),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
@@ -285,7 +287,7 @@ class SettingsScreen extends StatelessWidget {
 
     if (choice == null || !context.mounted) return;
 
-    // ── Step 2: run export, show result snackbar ──────────
+    // ── Step 2: run export, show result snack bar ──────────
     try {
       final svc      = ExportService();
       final savedPath = await svc.exportEntries(entries, encrypted: choice);
@@ -299,10 +301,10 @@ class SettingsScreen extends StatelessWidget {
           SnackBar(
             content: Text('Saved to Downloads/$filename'),
             duration: const Duration(seconds: 5),
-            /*action: SnackBarAction(
+            action: SnackBarAction(
               label: 'Share',
               onPressed: () => svc.shareExportFile(savedPath),
-            ),*/
+            ),
           ),
         );
       } else {
@@ -354,6 +356,8 @@ class SettingsScreen extends StatelessWidget {
 
     // ── Step 2: show confirmation dialog ──────────────────
     final entryWord = preview.entryCount == 1 ? 'entry' : 'entries';
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -361,7 +365,7 @@ class SettingsScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: Text('Import entries?',
-            style: AppTextStyles.headlineSmall(t.textPrimary)),
+            style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -388,7 +392,7 @@ class SettingsScreen extends StatelessWidget {
                       const SizedBox(width: AppSpacing.sm),
                       Text(
                         '${preview.entryCount} $entryWord found',
-                        style: AppTextStyles.titleSmallSans(t.textPrimary),
+                        style: AppTextStyles.titleSmallSans(t.textPrimary, fp),
                       ),
                     ],
                   ),
@@ -398,7 +402,7 @@ class SettingsScreen extends StatelessWidget {
                       padding: const EdgeInsets.only(left: 20),
                       child: Text(
                         'Exported ${preview.exportedAtFormatted}',
-                        style: AppTextStyles.labelLargeSans(t.textTertiary),
+                        style: AppTextStyles.labelLargeSans(t.textTertiary, fp),
                       ),
                     ),
                   ],
@@ -407,7 +411,7 @@ class SettingsScreen extends StatelessWidget {
                     padding: const EdgeInsets.only(left: 20),
                     child: Text(
                       preview.isEncrypted ? 'Encrypted backup' : 'Plain text backup',
-                      style: AppTextStyles.labelLargeSans(t.textTertiary),
+                      style: AppTextStyles.labelLargeSans(t.textTertiary, fp),
                     ),
                   ),
                 ],
@@ -416,7 +420,7 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(
               'New entries will be added. Existing entries with the same ID will be skipped.',
-              style: AppTextStyles.bodySmallSans(t.textSecondary)
+              style: AppTextStyles.bodySmallSans(t.textSecondary, fp)
                   .copyWith(height: 1.5),
             ),
           ],
@@ -475,9 +479,9 @@ class SettingsScreen extends StatelessWidget {
   // ── Feedback ──────────────────────────────────────────────
 
   Future<void> _onFeedback(BuildContext context) async {
-    // todo: change the email
     const email = 'hello@poppy.app';
     final t     = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     await showDialog<void>(
       context: context,
@@ -486,7 +490,7 @@ class SettingsScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: Text('Send feedback',
-            style: AppTextStyles.headlineSmall(t.textPrimary)),
+            style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,7 +498,7 @@ class SettingsScreen extends StatelessWidget {
             Text(
               'We read every message. Bugs, ideas, or just to say hi — '
                   'all welcome.',
-              style: AppTextStyles.bodySmallSans(t.textSecondary)
+              style: AppTextStyles.bodySmallSans(t.textSecondary, fp)
                   .copyWith(height: 1.6),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -530,7 +534,7 @@ class SettingsScreen extends StatelessWidget {
                     Expanded(
                       child: Text(email,
                           style: AppTextStyles.bodySmallSans(
-                              t.accent)),
+                              t.accent, fp)),
                     ),
                     Icon(AppIcons.copy,
                         size: AppIconSize.xs,
@@ -556,6 +560,8 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _onSignOut(BuildContext context) async {
     final t         = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -563,11 +569,11 @@ class SettingsScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg)),
         title: Text('Sign out?',
-            style: AppTextStyles.headlineSmall(t.textPrimary)),
+            style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
         content: Text(
           'Your diary is safely stored in the cloud. '
               'You can sign back in any time.',
-          style: AppTextStyles.bodySmallSans(t.textSecondary)
+          style: AppTextStyles.bodySmallSans(t.textSecondary, fp)
               .copyWith(height: 1.6),
         ),
         actions: [
@@ -600,6 +606,7 @@ class SettingsScreen extends StatelessWidget {
   Future<void> _onDeleteAccount(BuildContext context) async {
     final t       = context.poppyTheme;
     final entries = context.read<EntriesProvider>().entries;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     // ─── Step 1: Warning + export offer ───
     final proceed = await showDialog<bool>(
@@ -614,8 +621,8 @@ class SettingsScreen extends StatelessWidget {
               color: t.accent, size: AppIconSize.sm),
           const SizedBox(width: AppSpacing.sm),
           Text('Delete account',
-              style: AppTextStyles.headlineSmall(t.textPrimary)),
-          Spacer(),
+              style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
+          const Spacer(),
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text('Cancel',
@@ -629,7 +636,7 @@ class SettingsScreen extends StatelessWidget {
             Text(
               'This permanently deletes your Poppy account and every '
                   'diary entry you have written. It cannot be undone.',
-              style: AppTextStyles.bodySmallSans(t.textSecondary)
+              style: AppTextStyles.bodySmallSans(t.textSecondary, fp)
                   .copyWith(height: 1.6),
             ),
             if (entries.isNotEmpty) ...[
@@ -657,7 +664,7 @@ class SettingsScreen extends StatelessWidget {
                             '${entries.length == 1 ? 'entry' : 'entries'}. '
                             'Export a backup before you go — once deleted, '
                             'your entries are gone forever.',
-                        style: AppTextStyles.labelLargeSans(t.accent)
+                        style: AppTextStyles.labelLargeSans(t.accent, fp)
                             .copyWith(height: 1.5),
                       ),
                     ),
@@ -736,6 +743,7 @@ class _ProfileChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final t       = context.poppyTheme;
     final initial = email.isNotEmpty ? email[0].toUpperCase() : 'P';
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -760,7 +768,7 @@ class _ProfileChip extends StatelessWidget {
               child: Center(
                 child: Text(
                   initial,
-                  style: AppTextStyles.titleLarge(t.accent)
+                  style: AppTextStyles.titleLarge(t.accent, fp)
                       .copyWith(fontSize: 18),
                 ),
               ),
@@ -772,12 +780,12 @@ class _ProfileChip extends StatelessWidget {
                 children: [
                   Text(email,
                       style:
-                      AppTextStyles.bodySmallSans(t.textPrimary),
+                      AppTextStyles.bodySmallSans(t.textPrimary, fp),
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 2),
                   Text('Signed in',
                       style: AppTextStyles.labelLargeSans(
-                          t.textTertiary)),
+                          t.textTertiary, fp)),
                 ],
               ),
             ),
@@ -802,7 +810,8 @@ class _ExportOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -813,9 +822,9 @@ class _ExportOption extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title,
-                  style: AppTextStyles.titleSmallSans(t.textPrimary)),
+                  style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
               Text(desc,
-                  style: AppTextStyles.labelLargeSans(t.textTertiary)),
+                  style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
             ],
           ),
         ),
@@ -832,7 +841,8 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg, AppSpacing.lg,
@@ -840,7 +850,7 @@ class _SectionLabel extends StatelessWidget {
       ),
       child: Text(
         text.toUpperCase(),
-        style: AppTextStyles.labelSmall(t.textTertiary)
+        style: AppTextStyles.labelSmall(t.textTertiary, fp)
             .copyWith(letterSpacing: 0.8),
       ),
     );
@@ -855,7 +865,7 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       decoration: BoxDecoration(
@@ -890,6 +900,7 @@ class _SettingsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final t     = context.poppyTheme;
     final color = isDestructive ? AppColors.error : t.textPrimary;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return InkWell(
       onTap: onTap,
@@ -912,12 +923,12 @@ class _SettingsRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(label,
-                      style: AppTextStyles.titleSmallSans(color)),
+                      style: AppTextStyles.titleSmallSans(color, fp)),
                   if (value != null) ...[
                     const SizedBox(height: 2),
                     Text(value!,
                         style: AppTextStyles.labelLargeSans(
-                            t.textTertiary)),
+                            t.textTertiary, fp)),
                   ],
                 ],
               ),
@@ -936,7 +947,7 @@ class _SettingsRow extends StatelessWidget {
 class _RowLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
     return Divider(
       height:    AppStroke.hairline,
       thickness: AppStroke.hairline,
@@ -976,7 +987,8 @@ class _DeleteAccountConfirmDialogState
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
 
     return AlertDialog(
       backgroundColor: t.surface,
@@ -985,7 +997,7 @@ class _DeleteAccountConfirmDialogState
       ),
       title: Text(
         'Are you absolutely sure?',
-        style: AppTextStyles.headlineSmall(t.textPrimary),
+        style: AppTextStyles.headlineSmall(t.textPrimary, fp),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -993,7 +1005,7 @@ class _DeleteAccountConfirmDialogState
         children: [
           Text(
             'Type DELETE in capitals to confirm.',
-            style: AppTextStyles.bodySmallSans(t.textSecondary),
+            style: AppTextStyles.bodySmallSans(t.textSecondary, fp),
           ),
 
           const SizedBox(height: AppSpacing.md),
@@ -1012,11 +1024,11 @@ class _DeleteAccountConfirmDialogState
               controller: _ctrl,
               autofocus: true,
               onChanged: (_) => setState(() {}),
-              style: AppTextStyles.bodyMedium(t.textPrimary),
+              style: AppTextStyles.bodyMedium(t.textPrimary, fp),
               decoration: InputDecoration(
                 hintText: 'DELETE',
                 hintStyle:
-                AppTextStyles.bodyMedium(t.textTertiary),
+                AppTextStyles.bodyMedium(t.textTertiary, fp),
                 border: InputBorder.none,
                 contentPadding:
                 const EdgeInsets.symmetric(
