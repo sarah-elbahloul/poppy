@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/core/style/style.dart';
+import 'package:poppy/core/core.dart';
 import 'package:poppy/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 

@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/core/error_messages.dart';
-import 'package:poppy/core/style/style.dart';
-import 'package:poppy/providers/auth_provider.dart';
+import 'package:poppy/core/core.dart';
 import 'package:provider/provider.dart';
-
-import '../../providers/theme_provider.dart';
+import 'package:poppy/providers/providers.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Account Screen
@@ -27,6 +24,7 @@ class AccountScreen extends StatefulWidget {
 class _AccountScreenState extends State<AccountScreen> {
   String? _openPanel;
 
+  final _displayNameController = TextEditingController();
   final _emailController       = TextEditingController();
   final _currentPassController = TextEditingController();
   final _newPassController     = TextEditingController();
@@ -38,11 +36,26 @@ class _AccountScreenState extends State<AccountScreen> {
 
   @override
   void dispose() {
+    _displayNameController.dispose();
     _emailController.dispose();
     _currentPassController.dispose();
     _newPassController.dispose();
     _confirmPassController.dispose();
     super.dispose();
+  }
+
+  Future<void> _onUpdateDisplayName() async {
+    final name = _displayNameController.text.trim();
+    if (name.isEmpty) { _showSnack('Please enter a display name.'); return; }
+    final auth = context.read<AuthProvider>();
+    auth.clearError();
+    final ok = await auth.updateDisplayName(name);
+    if (!mounted) return;
+    if (ok) {
+      setState(() => _openPanel = null);
+      _displayNameController.clear();
+      _showSnack('Display name updated.');
+    }
   }
 
   Future<void> _onUpdateEmail() async {
@@ -110,6 +123,11 @@ class _AccountScreenState extends State<AccountScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
+          Text(
+            auth.displayName,
+            style: AppTextStyles.headlineSmall(t.textPrimary, fp),
+          ),
+          const SizedBox(height: AppSpacing.lg),
           Text('Signed in as',
               style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
           const SizedBox(height: AppSpacing.xs),
@@ -119,7 +137,39 @@ class _AccountScreenState extends State<AccountScreen> {
                 .copyWith(fontSize: 15),
           ),
           const SizedBox(height: AppSpacing.lg),
+          // ── Change display name ───────────────────────────
+          _ExpandablePanel(
+            icon:  AppIcons.person,
+            title: 'Change display name',
+            isOpen: _openPanel == 'displayName',
+            onToggle: () => setState(() {
+              if (_openPanel != 'displayName') {
+                _displayNameController.text = auth.displayName;
+              }
+              _openPanel = _openPanel == 'displayName' ? null : 'displayName';
+            }),
+            child: Column(
+              children: [
+                _Field(
+                  controller:   _displayNameController,
+                  label:        'Display name',
+                  keyboardType: TextInputType.name,
+                ),
+                if (auth.errorMessage != null && _openPanel == 'displayName') ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  _ErrorText(message: auth.errorMessage!),
+                ],
+                const SizedBox(height: AppSpacing.md),
+                _SubmitButton(
+                  label:     'Update name',
+                  isLoading: auth.isLoading,
+                  onPressed: _onUpdateDisplayName,
+                ),
+              ],
+            ),
+          ),
 
+          const SizedBox(height: AppSpacing.sm),
           // ── Change email ──────────────────────────────────
           _ExpandablePanel(
             icon:  AppIcons.email,
@@ -253,8 +303,7 @@ class _ExpandablePanel extends StatelessWidget {
                 children: [
                   Icon(icon, size: AppIconSize.sm, color: t.textTertiary),
                   const SizedBox(width: AppSpacing.md),
-                  Expanded(child: Text(title,
-                      style: AppTextStyles.titleSmallSans(t.textPrimary,fp))),
+                  Expanded(child: Text(title, style: AppTextStyles.titleSmallSans(t.textPrimary,fp))),
                   Icon(
                     isOpen ? AppIcons.chevronUp : AppIcons.chevronDown,
                     size: AppIconSize.sm, color: t.textTertiary,
@@ -275,8 +324,8 @@ class _ExpandablePanel extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  Divider(height: AppSpacing.md,
-                      color: t.border, thickness: AppStroke.hairline),
+                  Divider(height: AppSpacing.md, color: t.border, thickness: AppStroke.hairline),
+                  const SizedBox(height: AppSpacing.xs),
                   child,
                 ],
               ),

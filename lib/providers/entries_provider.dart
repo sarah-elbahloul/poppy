@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/models/entry.dart';
-import 'package:poppy/services/entries_service.dart';
-import 'package:poppy/services/photos_service.dart';
+import 'package:poppy/services/services.dart';
 
 enum EntriesStatus { initial, loading, loaded, error }
 

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:poppy/core/constants.dart';
-import 'package:poppy/core/style/app_colors.dart';
-import 'package:poppy/core/style/app_theme.dart';
+import 'package:poppy/core/core.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Appearance Provider  (v4)

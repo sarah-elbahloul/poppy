@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/core/constants.dart';
-import 'package:poppy/core/error_messages.dart';
-import 'package:poppy/core/style/style.dart';
-import 'package:poppy/core/widgets/poppy_logo.dart';
-import 'package:poppy/providers/auth_provider.dart';
+import 'package:poppy/core/core.dart';
 import 'package:provider/provider.dart';
-
-import '../../providers/theme_provider.dart';
+import 'package:poppy/providers/providers.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Register Screen

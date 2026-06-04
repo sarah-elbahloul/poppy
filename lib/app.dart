@@ -1,21 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/core/app_routes.dart';
-import 'package:poppy/providers/auth_provider.dart';
-import 'package:poppy/providers/theme_provider.dart';
-import 'package:poppy/screens/auth/login_screen.dart';
-import 'package:poppy/screens/auth/register_screen.dart';
-import 'package:poppy/screens/auth/set_new_password_screen.dart';
-import 'package:poppy/screens/home/home_screen.dart';
-import 'package:poppy/screens/lock_screen.dart';
-import 'package:poppy/screens/settings/about_screen.dart';
-import 'package:poppy/screens/settings/account_screen.dart';
-import 'package:poppy/screens/settings/appearance_screen.dart';
-import 'package:poppy/screens/settings/legal_screen.dart';
-import 'package:poppy/screens/settings/notifications_screen.dart';
-import 'package:poppy/screens/settings/security_screen.dart';
-import 'package:poppy/screens/settings/settings_drawer.dart';
-import 'package:poppy/screens/settings/settings_screen.dart';
-import 'package:poppy/screens/write/write_screen.dart';
+import 'package:poppy/providers/providers.dart';
+import 'package:poppy/screens/screens.dart';
+import 'package:poppy/core/core.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────

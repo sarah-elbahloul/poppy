@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/core/style/style.dart';
 import 'package:provider/provider.dart';
-
-import '../../providers/theme_provider.dart';
+import 'package:poppy/core/core.dart';
+import 'package:poppy/providers/theme_provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Legal Screen
@@ -67,42 +66,42 @@ class _PrivacyContent extends StatelessWidget {
             style: AppTextStyles.labelLargeSerif(t.textTertiary, fp)),
         const SizedBox(height: AppSpacing.lg),
 
-        _Section(title: 'What we collect', body:
+        const _Section(title: 'What we collect', body:
         'Poppy collects only what is necessary to run the app. '
             'This includes your email address for account authentication, '
             'the diary entries and photos you choose to create, '
             'and basic device information used to deliver the service.',
         ),
-        _Section(title: 'How we use your data', body:
+        const _Section(title: 'How we use your data', body:
         'Your data is used solely to provide the Poppy diary service. '
             'We do not sell, rent, or share your personal information '
             'with third parties for marketing purposes. '
             'Your entries are stored securely and are accessible only to you.',
         ),
-        _Section(title: 'Data storage', body:
+        const _Section(title: 'Data storage', body:
         'Your entries and account data are stored on Supabase, '
             'a secure cloud database provider. Photos are stored in '
             'Supabase Storage with private access — only you can access your photos. '
             'Data is encrypted in transit and at rest.',
         ),
-        _Section(title: 'Your rights', body:
+        const _Section(title: 'Your rights', body:
         'You have the right to access, correct, or delete your data at any time. '
             'You can export all your entries from the Settings screen. '
             'To permanently delete your account and all associated data, '
             'contact us at support@poppydiary.app.', // todo: change the email
         ),
-        _Section(title: 'Data retention', body:
+        const _Section(title: 'Data retention', body:
         'We retain your data for as long as your account is active. '
             'When you delete your account, all data including entries, '
             'photos, and account information is permanently deleted '
             'within 30 days.',
         ),
-        _Section(title: 'Children\'s privacy', body:
+        const _Section(title: 'Children\'s privacy', body:
         'Poppy is not directed at children under the age of 13. '
             'We do not knowingly collect personal information from '
             'children under 13.',
         ),
-        _Section(title: 'Contact', body:
+        const _Section(title: 'Contact', body:
         'If you have questions about this privacy policy, '
             'please contact us at support@poppydiary.app.', // todo:change the email
         ),
@@ -128,43 +127,43 @@ class _TermsContent extends StatelessWidget {
             style: AppTextStyles.labelLargeSerif(t.textTertiary, fp)),
         const SizedBox(height: AppSpacing.lg),
 
-        _Section(title: 'Acceptance', body:
+        const _Section(title: 'Acceptance', body:
         'By using Poppy, you agree to these terms. '
             'If you do not agree, please do not use the app.',
         ),
-        _Section(title: 'Your account', body:
+        const _Section(title: 'Your account', body:
         'You are responsible for maintaining the security of your account '
             'and password. You are responsible for all activity that occurs '
             'under your account.',
         ),
-        _Section(title: 'Your content', body:
+        const _Section(title: 'Your content', body:
         'You retain full ownership of all diary entries and photos '
             'you create in Poppy. By using the service, you grant us '
             'a limited license to store and display your content '
             'solely for the purpose of providing the service to you.',
         ),
-        _Section(title: 'Acceptable use', body:
+        const _Section(title: 'Acceptable use', body:
         'You agree not to use Poppy to store or transmit content '
             'that is unlawful, harmful, or violates the rights of others. '
             'You agree not to attempt to gain unauthorised access to '
             'other users\' data.',
         ),
-        _Section(title: 'Service availability', body:
+        const _Section(title: 'Service availability', body:
         'We aim to keep Poppy available at all times but cannot '
             'guarantee uninterrupted service. We are not liable for '
             'any loss of data or interruption of service.',
         ),
-        _Section(title: 'Termination', body:
+        const _Section(title: 'Termination', body:
         'We reserve the right to terminate or suspend access '
             'to Poppy for violations of these terms. '
             'You may delete your account at any time.',
         ),
-        _Section(title: 'Changes to terms', body:
+        const _Section(title: 'Changes to terms', body:
         'We may update these terms from time to time. '
             'We will notify you of significant changes via the app. '
             'Continued use of Poppy after changes constitutes acceptance.',
         ),
-        _Section(title: 'Contact', body:
+        const _Section(title: 'Contact', body:
         'Questions about these terms? Contact us at support@poppydiary.app.', // todo: change the emal
         ),
       ],

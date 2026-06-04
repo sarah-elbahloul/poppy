@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/core/error_messages.dart';
-import 'package:poppy/core/style/style.dart';
-import 'package:poppy/core/widgets/poppy_logo.dart';
-import 'package:poppy/providers/auth_provider.dart';
+import 'package:poppy/core/core.dart';
+import 'package:poppy/providers/providers.dart';
 import 'package:provider/provider.dart';
-
-import '../../providers/theme_provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Set New Password Screen
@@ -79,8 +75,8 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSpacing.xl),
-              Center(child: const PoppyLogo(size: AppIconSize.logo)),
-              SizedBox(height: AppSpacing.xl * 1.5),
+              const Center(child: PoppyLogo(size: AppIconSize.logo)),
+              const SizedBox(height: AppSpacing.xl * 1.5),
               Text('Set new password',
                   style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
               const SizedBox(height: AppSpacing.xs),

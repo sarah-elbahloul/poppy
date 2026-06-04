@@ -1,17 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:poppy/core/app_routes.dart';
-import 'package:poppy/core/constants.dart';
-import 'package:poppy/core/style/style.dart';
-import 'package:poppy/core/widgets/entry_card.dart';
-import 'package:poppy/core/widgets/poppy_logo.dart';
-import 'package:poppy/models/entry.dart';
-import 'package:poppy/providers/entries_provider.dart';
-import 'package:poppy/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:poppy/core/widgets/color_dot.dart';
-import 'package:poppy/providers/theme_provider.dart';
-import 'package:poppy/screens/settings/settings_drawer.dart';
+import 'package:poppy/models/entry.dart';
+import 'package:poppy/providers/providers.dart';
+import 'package:poppy/core/core.dart';
+import 'package:poppy/screens/home/settings_drawer.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Home Screen
@@ -316,10 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   AppBar _normalAppBar(PoppyThemeExtension t, EntriesProvider provider) {
     final fp = context.read<ThemeProvider>().currentFontPairData;
-    final email = context.read<AuthProvider>().user?.email;
-    final username = (email != null && email.contains('@'))
-        ? email.split('@')[0]
-        : email ?? 'User';
+    final username = context.read<AuthProvider>().displayName;
 
     return AppBar(
         actionsPadding: const EdgeInsets.all(AppSpacing.sm),

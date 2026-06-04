@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:poppy/app.dart';
 import 'package:poppy/core/supabase_client.dart';
-import 'package:poppy/providers/auth_provider.dart';
-import 'package:poppy/providers/entries_provider.dart';
-import 'package:poppy/providers/theme_provider.dart';
+import 'package:poppy/providers/providers.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────

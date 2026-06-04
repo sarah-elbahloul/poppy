@@ -1,14 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/core/app_routes.dart';
-import 'package:poppy/core/constants.dart';
-import 'package:poppy/core/style/style.dart';
-import 'package:poppy/core/widgets/pin_pad.dart';
-import 'package:poppy/core/widgets/poppy_logo.dart';
-import 'package:poppy/providers/auth_provider.dart';
+import 'package:poppy/core/core.dart';
 import 'package:poppy/services/pin_service.dart';
 import 'package:provider/provider.dart';
-
-import '../providers/theme_provider.dart';
+import 'package:poppy/providers/providers.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Lock Screen

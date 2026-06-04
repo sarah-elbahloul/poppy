@@ -1,21 +1,15 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bidi_text/bidi_text_field.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:poppy/core/app_routes.dart';
-import 'package:poppy/core/constants.dart';
-import 'package:poppy/core/style/style.dart';
-import 'package:poppy/core/widgets/color_tag_picker.dart';
+import 'package:poppy/core/core.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/models/photo.dart';
-import 'package:poppy/providers/entries_provider.dart';
-import 'package:poppy/providers/theme_provider.dart';
+import 'package:poppy/providers/providers.dart';
 import 'package:poppy/services/photos_service.dart';
 import 'package:provider/provider.dart';
 
@@ -572,7 +566,7 @@ class _WriteScreenState extends State<WriteScreen> {
                                           style: AppTextStyles.labelLargeSerif(color, fp),
                                         ),
                                         if (over) ...[
-                                          SizedBox(width: AppSpacing.sm,),
+                                          const SizedBox(width: AppSpacing.sm,),
                                           const Icon(
                                             AppIcons.info,
                                             color: AppColors.error,
@@ -833,7 +827,7 @@ class _PhotoPendingThumb extends StatelessWidget {
           child: Container(
             width: AppSpacing.sm,
             height: AppSpacing.sm,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.error,
               shape: BoxShape.circle,
             ),

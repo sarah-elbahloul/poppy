@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/core/app_routes.dart';
-import 'package:poppy/core/style/style.dart';
-import 'package:poppy/core/widgets/poppy_logo.dart';
-import 'package:poppy/providers/auth_provider.dart';
-import 'package:poppy/providers/entries_provider.dart';
-import 'package:poppy/providers/theme_provider.dart';
+import 'package:poppy/core/core.dart';
+import 'package:poppy/providers/providers.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -40,10 +36,7 @@ class SettingsDrawer extends StatelessWidget {
     final t         = context.watch<ThemeProvider>().currentThemeData;
     final fp        = context.watch<ThemeProvider>().currentFontPairData;
     final auth      = context.watch<AuthProvider>();
-    final email     = context.read<AuthProvider>().user?.email;
-    final username  = (email != null && email.contains('@'))
-        ? email.split('@')[0]
-        : email ?? 'User';
+    final username = context.read<AuthProvider>().displayName;
     final initial   = username.isNotEmpty ? username[0].toUpperCase() : 'U';
     final count     = context.read<EntriesProvider>().entries.length;
 

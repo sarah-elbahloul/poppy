@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:poppy/core/constants.dart';
-import 'package:poppy/core/style/style.dart';
+import 'package:poppy/core/core.dart';
 import 'package:provider/provider.dart';
-
-import '../../providers/theme_provider.dart';
+import 'package:poppy/providers/providers.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Notifications Screen

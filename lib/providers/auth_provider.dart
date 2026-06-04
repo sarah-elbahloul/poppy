@@ -2,11 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:poppy/core/constants.dart';
-import 'package:poppy/core/error_messages.dart';
-import 'package:poppy/core/supabase_client.dart';
-import 'package:poppy/services/encryption_service.dart';
-import 'package:poppy/services/key_service.dart';
+import 'package:poppy/core/core.dart';
+import 'package:poppy/services/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -60,6 +57,19 @@ class AuthProvider extends ChangeNotifier {
   bool       get isLoading       => _isLoading;
   bool       get isAuthenticated => _status == AuthStatus.authenticated;
   bool       get encryptionReady => _encryptionReady;
+
+  /// Display name from Supabase user_metadata, fallback to email prefix
+  String get displayName {
+    final meta = _user?.userMetadata;
+    if (meta != null) {
+      final name = meta['display_name'] as String?;
+      if (name != null && name.trim().isNotEmpty) return name.trim();
+      final full = meta['full_name'] as String?;
+      if (full != null && full.trim().isNotEmpty) return full.trim();
+    }
+    final email = _user?.email ?? '';
+    return email.contains('@') ? email.split('@')[0] : email;
+  }
 
   AuthProvider() { _init(); }
 
@@ -306,6 +316,26 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on AuthException catch (e) {
       _errorMessage = AppErrors.updatePassword(e.message);
+      _safeNotify(); return false;
+    } catch (e) {
+      _errorMessage = AppErrors.fromException(e);
+      _safeNotify(); return false;
+    } finally { _setLoading(false); }
+  }
+
+  // ── Update display name ───────────────────────────────────
+
+  Future<bool> updateDisplayName(String name) async {
+    _setLoading(true); _clearError();
+    try {
+      final response = await SupabaseConfig.client.auth.updateUser(
+        UserAttributes(data: {'display_name': name.trim()}),
+      );
+      _user = response.user;
+      _safeNotify();
+      return true;
+    } on AuthException catch (e) {
+      _errorMessage = AppErrors.fromException(e);
       _safeNotify(); return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);

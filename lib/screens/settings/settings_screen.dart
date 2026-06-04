@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:poppy/core/app_routes.dart';
-import 'package:poppy/core/style/style.dart';
-import 'package:poppy/providers/auth_provider.dart';
-import 'package:poppy/providers/entries_provider.dart';
-import 'package:poppy/providers/theme_provider.dart';
+import 'package:poppy/core/core.dart';
+import 'package:poppy/providers/providers.dart';
 import 'package:poppy/services/export_service.dart';
 import 'package:provider/provider.dart';
 
