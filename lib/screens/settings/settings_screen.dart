@@ -61,7 +61,7 @@ class SettingsScreen extends StatelessWidget {
             _SettingsRow(
               icon:  AppIcons.appearance,
               label: 'Appearance',
-              value: '${PoppyFonts.fromId(context.read<ThemeProvider>().currentTitleFont).displayName} · ${PoppyFonts.fromId(context.read<ThemeProvider>().currentBodyFont).displayName}',
+              value: 'Fonts · Colors',
               onTap: () => _push(context, AppRoutes.appearance),
             ),
           ]),
@@ -72,7 +72,7 @@ class SettingsScreen extends StatelessWidget {
             _SettingsRow(
               icon:  AppIcons.person,
               label: 'Account',
-              value: 'Email · Password',
+              value: 'Name · Email · Password',
               onTap: () => _push(context, AppRoutes.account),
             ),
             _RowLine(),

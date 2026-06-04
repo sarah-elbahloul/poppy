@@ -133,8 +133,8 @@ class ThemeProvider extends ChangeNotifier {
       final tf = await _storage.read(key: StorageKeys.selectedTitleFont);
       final bf = await _storage.read(key: StorageKeys.selectedBodyFont);
 
-      _titleFont = PoppyFont.values.firstWhere((f) => f.name == tf, orElse: () => PoppyFont.lora);
-      _bodyFont  = PoppyFont.values.firstWhere((f) => f.name == bf, orElse: () => PoppyFont.lora);
+      _titleFont = PoppyFont.values.firstWhere((f) => f.name == tf, orElse: () => PoppyFont.literata);
+      _bodyFont  = PoppyFont.values.firstWhere((f) => f.name == bf, orElse: () => PoppyFont.kalam);
     } catch (_) {}
     notifyListeners();
   }

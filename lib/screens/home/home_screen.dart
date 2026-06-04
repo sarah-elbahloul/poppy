@@ -340,7 +340,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _searching
               ? SizedBox(
                   key: const ValueKey('searchField'),
-                  width: AppComponentSize.searchFieldWidth,
+                  width: AppComponentSize.searchFieldWidth(context),
                   height: AppComponentSize.filterBarHeight,
                   child: TextField(
                     controller: _searchController,
@@ -524,7 +524,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Flexible(
               child: Container(
                 height: AppComponentSize.filterBarHeight,
-                width: AppComponentSize.searchFieldWidth,
+                width: AppComponentSize.searchFieldWidth(context),
                 margin: const EdgeInsets.only(
                   left: AppSpacing.md,
                   right: AppSpacing.sm,
@@ -553,24 +553,28 @@ class _HomeScreenState extends State<HomeScreen> {
                         alignmentOffset:
                             const Offset(-AppSpacing.sm, AppSpacing.xs),
                         style: MenuStyle(
-                          minimumSize: const WidgetStatePropertyAll(Size(
-                              AppComponentSize.searchFieldWidth / 2.7, 50)),
-                          maximumSize: const WidgetStatePropertyAll(
-                              Size(AppComponentSize.searchFieldWidth / 2, 300)),
+                          minimumSize: WidgetStatePropertyAll(Size(
+                              AppComponentSize.searchFieldWidth(context) / 2.7, 50)),
+                          maximumSize: WidgetStatePropertyAll(
+                              Size(AppComponentSize.searchFieldWidth(context) / 2, 300)),
                           backgroundColor: WidgetStatePropertyAll(t.surface),
-                          shape: const WidgetStatePropertyAll(RoundedRectangleBorder(
-                            borderRadius: BorderRadius.only(topLeft: Radius.circular(0), topRight: Radius.circular(0), bottomLeft: Radius.circular(AppRadius.sm), bottomRight: Radius.circular(AppRadius.sm))
-                          )),
-
+                          shape: const WidgetStatePropertyAll(
+                              RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.only(
+                                      topLeft: Radius.circular(0),
+                                      topRight: Radius.circular(0),
+                                      bottomLeft: Radius.circular(AppRadius.sm),
+                                      bottomRight:
+                                          Radius.circular(AppRadius.sm)))),
                         ),
                         menuChildren: years.map((year) {
                           final isSelected = year == _selectedYear;
 
                           return MenuItemButton(
-                            style: const ButtonStyle(
+                            style: ButtonStyle(
                               alignment: AlignmentDirectional.centerStart,
                               minimumSize: WidgetStatePropertyAll(Size(
-                                  AppComponentSize.searchFieldWidth / 2.7,
+                                  AppComponentSize.searchFieldWidth(context) / 2.7,
                                   AppComponentSize.filterBarHeight / 2)),
                             ),
                             onPressed: () {
@@ -646,7 +650,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Flexible(
               child: Container(
                 height: AppComponentSize.filterBarHeight,
-                width: AppComponentSize.searchFieldWidth,
+                width: AppComponentSize.searchFieldWidth(context),
                 margin: const EdgeInsets.only(right: AppSpacing.md),
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                 decoration: BoxDecoration(
@@ -776,19 +780,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 final entry = displayedEntries[i];
                 final isSelected = _selectedIds.contains(entry.id);
 
-                return Stack(
+                return Column(
                   children: [
-                    if (isSelected)
-                      Positioned.fill(
-                        child: Container(color: t.accentLight),
-                      ),
-                    EntryCard(
-                      entry: entry,
-                      onTap: () => _onEntryTap(entry),
-                      onLongPress: () => _onEntryLongPress(entry),
-                      isBatchMode: _isBatchMode,
-                      isSelected: isSelected,
+                    Stack(
+                      children: [
+                        if (isSelected)
+                          Positioned.fill(
+                            child: Container(color: t.accentLight),
+                          ),
+                        EntryCard(
+                          entry: entry,
+                          onTap: () => _onEntryTap(entry),
+                          onLongPress: () => _onEntryLongPress(entry),
+                          isBatchMode: _isBatchMode,
+                          isSelected: isSelected,
+                        ),
+                      ],
                     ),
+                    if (i == displayedEntries.length - 1) ...[
+                      Divider(
+                        height: AppStroke.hairline,
+                        thickness: AppStroke.hairline,
+                        color: t.border,
+                      )
+                    ]
                   ],
                 );
               },
@@ -891,7 +906,7 @@ class _FiltersSkeleton extends StatelessWidget {
           Flexible(
             child: Container(
               height: AppComponentSize.filterBarHeight,
-              width: AppComponentSize.searchFieldWidth,
+              width: AppComponentSize.searchFieldWidth(context),
               margin: const EdgeInsets.only(right: AppSpacing.sm),
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
               decoration: BoxDecoration(
@@ -945,7 +960,7 @@ class _FiltersSkeleton extends StatelessWidget {
           Flexible(
             child: Container(
               height: AppComponentSize.filterBarHeight,
-              width: AppComponentSize.searchFieldWidth,
+              width: AppComponentSize.searchFieldWidth(context),
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               decoration: BoxDecoration(
                 color: t.surface,

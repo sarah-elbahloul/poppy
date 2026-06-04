@@ -91,7 +91,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
 
           // 5 ── Colours ─────────────────────────────────────
           _SectionRow(
-            label: 'App Colours',
+            label: 'App Colors',
             trailing: tp.hasAnyCustomColor
                 ? _ResetAllButton(tp: tp)
                 : null,
@@ -264,71 +264,6 @@ class _FontRow extends StatelessWidget {
           );
         },
       ),
-    );
-  }
-}
-
-class _SegmentRow<T> extends StatelessWidget {
-  final String             label;
-  final List<T>            options;
-  final T                  current;
-  final String Function(T) labelOf;
-  final void   Function(T) onSelect;
-  const _SegmentRow({required this.label, required this.options,
-    required this.current, required this.labelOf,
-    required this.onSelect});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.poppyTheme;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-      child: Row(children: [
-        SizedBox(width: 64,
-            child: Text(label,
-                style: AppTextStyles.titleSmallSans(t.textPrimary, fp))),
-        Expanded(
-          child: Container(
-            height: 34,
-            decoration: BoxDecoration(
-              color:        t.background,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              border: Border.all(
-                  color: t.border, width: AppStroke.hairline),
-            ),
-            child: Row(
-              children: options.map((opt) {
-                final sel = opt == current;
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => onSelect(opt),
-                    child: AnimatedContainer(
-                      duration: AppDuration.fast,
-                      margin: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: sel ? t.accent : Colors.transparent,
-                        borderRadius:
-                        BorderRadius.circular(AppRadius.xs),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(labelOf(opt),
-                          style: AppTextStyles.titleSmallSans(
-                            sel ? Colors.white : t.textSecondary, fp,
-                          ).copyWith(
-                              fontWeight: sel
-                                  ? FontWeight.w600
-                                  : FontWeight.w400)),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-      ]),
     );
   }
 }

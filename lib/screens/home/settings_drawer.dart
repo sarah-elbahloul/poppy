@@ -5,26 +5,11 @@ import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Settings Drawer
-//  Location: lib/screens/settings/settings_drawer.dart
-//
-//  PURPOSE: Quick-access sidebar opened from the ☰ button on
-//  HomeScreen. It is NOT a second settings screen — it shows
-//  profile context, entry stats, and direct shortcuts to the
-//  most common destinations. The full Settings screen
-//  (AppRoutes.settings) is where all configuration lives.
-//
-//  STRUCTURE:
-//    Header  — avatar initial, email, entry count
-//    Quick write — "New entry" shortcut
-//    Shortcuts — Appearance, Security, Export (most-used)
-//    All Settings — link to full settings hub
-//    Footer — version, sign out
+//  Location: lib/screens/home/settings_drawer.dart
 // ─────────────────────────────────────────────────────────────
 
 class SettingsDrawer extends StatelessWidget {
   const SettingsDrawer({super.key});
-
-  void _close(BuildContext context) => Navigator.pop(context);
 
   void _go(BuildContext context, String route) {
     Navigator.pop(context);
@@ -33,113 +18,114 @@ class SettingsDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t         = context.watch<ThemeProvider>().currentThemeData;
-    final fp        = context.watch<ThemeProvider>().currentFontPairData;
-    final auth      = context.watch<AuthProvider>();
-    final username = context.read<AuthProvider>().displayName;
-    final initial   = username.isNotEmpty ? username[0].toUpperCase() : 'U';
-    final count     = context.read<EntriesProvider>().entries.length;
+    final t = context.watch<ThemeProvider>().currentThemeData;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
+    final auth = context.watch<AuthProvider>();
+    final username = auth.displayName;
+    final initial = username.isNotEmpty ? username[0].toUpperCase() : 'U';
+    final count = context.read<EntriesProvider>().entries.length;
 
     return Drawer(
       backgroundColor: t.surface,
+      width: AppComponentSize.drawerWidth(context),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(AppRadius.lg),
+          bottomRight: Radius.circular(AppRadius.lg),
+        ),
+      ),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-
             // ── Header ────────────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg
-              ),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Avatar
                   Container(
-                    width: 42, height: 42,
+                    width: 54,
+                    height: 54,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: t.accentLight,
+                      border: Border.all(color: t.accent.withOpacity(0.1), width: 2),
                     ),
                     child: Center(
                       child: Text(
                         initial,
-                        style: AppTextStyles.titleLarge(t.accent, fp)
-                            .copyWith(fontSize: 18),
+                        style: AppTextStyles.headlineSmall(t.accent, fp).copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          username,
-                          style: AppTextStyles.titleLarge(t.textPrimary, fp),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '$count ${count == 1 ? 'entry' : 'entries'}',
-                          style: AppTextStyles.labelLargeSans(t.textTertiary, fp),
-                        ),
-                      ],
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        username,
+                        style: AppTextStyles.titleLarge(t.textPrimary, fp),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        '$count ${count == 1 ? 'entry' : 'entries'} in your diary',
+                        style: AppTextStyles.labelLargeSans(t.textTertiary, fp),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
 
-            Divider(
-                height: AppStroke.hairline,
-                thickness: AppStroke.hairline,
-                color: t.border
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              child: Divider(),
             ),
 
             // ── Scrollable content ────────────────────────
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppSpacing.md,
+                  horizontal: AppSpacing.md,
+                ),
                 children: [
-
-                  // ── New entry shortcut ─────────────────
-                  _DrawerItem(
-                    icon:    AppIcons.add,
-                    label:   'New entry',
-                    accent:  true,
-                    onTap:   () {
+                  // Primary Action: New Entry
+                  _NewEntryButton(
+                    onTap: () {
                       Navigator.pop(context);
                       Navigator.of(context).pushNamed(AppRoutes.write);
                     },
                   ),
+                  const SizedBox(height: AppSpacing.lg),
 
-                  const _DrawerDivider(label: 'Quick access'),
-
-                  // ── Most-used settings shortcuts ───────
+                  const _DrawerSectionHeader(label: 'Quick Access'),
                   _DrawerItem(
-                    icon:     AppIcons.appearance,
-                    label:    'Appearance',
+                    icon: AppIcons.appearance,
+                    label: 'Appearance',
                     trailing: 'Custom',
-                    onTap:    () => _go(context, AppRoutes.appearance),
+                    onTap: () => _go(context, AppRoutes.appearance),
                   ),
                   _DrawerItem(
-                    icon:     AppIcons.security,
-                    label:    'Security',
-                    trailing: auth.pinEnabled ? 'PIN on' : null,
-                    onTap:    () => _go(context, AppRoutes.security),
+                    icon: AppIcons.security,
+                    label: 'Security',
+                    trailing: auth.pinEnabled ? 'PIN On' : 'Off',
+                    onTap: () => _go(context, AppRoutes.security),
                   ),
-                  const _DrawerDivider(label: 'More'),
 
-                  // ── Full settings hub ──────────────────
+                  const SizedBox(height: AppSpacing.md),
+                  const _DrawerSectionHeader(label: 'Preferences'),
                   _DrawerItem(
-                    icon:    AppIcons.settings,
-                    label:   'All settings',
-                    onTap:   () => _go(context, AppRoutes.settings),
+                    icon: AppIcons.settings,
+                    label: 'All Settings',
+                    onTap: () => _go(context, AppRoutes.settings),
                   ),
                   _DrawerItem(
-                    icon:  AppIcons.info,
+                    icon: AppIcons.info,
                     label: 'About Poppy',
                     onTap: () => _go(context, AppRoutes.about),
                   ),
@@ -148,23 +134,22 @@ class SettingsDrawer extends StatelessWidget {
             ),
 
             // ── Footer ────────────────────────────────────
-            Divider(height: 1, thickness: AppStroke.hairline,
-                color: t.border),
-
-            _DrawerItem(
-              icon:          AppIcons.logout,
-              label:         'Sign out',
-              isDestructive: true,
-              onTap:         () => _onSignOut(context),
-            ),
-
             Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.md),
-              child: Center(
-                child: Text(
-                  'Poppy · v1.0.0',
-                  style: AppTextStyles.labelSmall(t.textTertiary, fp),
-                ),
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                children: [
+                  _DrawerItem(
+                    icon: AppIcons.logout,
+                    label: 'Sign Out',
+                    isDestructive: true,
+                    onTap: () => _onSignOut(context),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Poppy v1.0.0',
+                    style: AppTextStyles.labelSmall(t.textTertiary, fp),
+                  ),
+                ],
               ),
             ),
           ],
@@ -174,28 +159,21 @@ class SettingsDrawer extends StatelessWidget {
   }
 
   Future<void> _onSignOut(BuildContext context) async {
-    final t         = context.poppyTheme;
+    final t = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: t.surface,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg)),
-        title: Text('Sign out?',
-            style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
+        title: Text('Sign out?', style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
         content: Text(
-          'Your diary is safely stored in the cloud and will be '
-              'here when you sign back in.',
-          style: AppTextStyles.bodySmallSans(t.textSecondary, fp)
-              .copyWith(height: 1.6),
+          'Your diary is safely stored in the cloud and will be here when you return.',
+          style: AppTextStyles.bodySmallSans(t.textSecondary, fp),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel',
-                style: TextStyle(color: t.textTertiary)),
+            child: Text('Cancel', style: TextStyle(color: t.textTertiary)),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
@@ -205,25 +183,55 @@ class SettingsDrawer extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed != true) return;
-    if (!context.mounted) return;
-    context.read<EntriesProvider>().clear();
-    await context.read<AuthProvider>().signOut();
-    if (context.mounted) {
-      Navigator.of(context)
-          .pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
+
+    if (confirmed == true && context.mounted) {
+      context.read<EntriesProvider>().clear();
+      await context.read<AuthProvider>().signOut();
+      if (context.mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
+      }
     }
   }
 }
 
-// ── Private widgets ────────────────────────────────────────────
+class _NewEntryButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _NewEntryButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.poppyTheme;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: t.accent.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: t.accent.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+            Icon(AppIcons.add, color: t.accent, size: AppIconSize.sm),
+            const SizedBox(width: AppSpacing.md),
+            Text(
+              'Write new entry',
+              style: AppTextStyles.titleSmallSans(t.accent, fp).copyWith(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _DrawerItem extends StatelessWidget {
   final IconData icon;
-  final String   label;
-  final String?  trailing;
-  final bool     isDestructive;
-  final bool     accent;
+  final String label;
+  final String? trailing;
+  final bool isDestructive;
   final VoidCallback onTap;
 
   const _DrawerItem({
@@ -232,70 +240,47 @@ class _DrawerItem extends StatelessWidget {
     required this.onTap,
     this.trailing,
     this.isDestructive = false,
-    this.accent = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final t          = context.poppyTheme;
-    final labelColor = isDestructive
-        ? AppColors.error
-        : accent
-        ? t.accent
-        : t.textPrimary;
-    final iconColor  = isDestructive
-        ? AppColors.error
-        : accent
-        ? t.accent
-        : t.textTertiary;
+    final t = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
+    final color = isDestructive ? AppColors.error : t.textPrimary;
 
-    return InkWell(
+    return ListTile(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.md,
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: AppIconSize.sm, color: iconColor),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Text(label,
-                  style: AppTextStyles.titleSmallSans(labelColor, fp)),
-            ),
-            if (trailing != null) ...[
-              Text(trailing!,
-                  style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
-              const SizedBox(width: AppSpacing.xs),
-            ],
-            if (!isDestructive)
-              Icon(AppIcons.chevronRight,
-                  size: AppIconSize.xs, color: t.textTertiary),
-          ],
-        ),
-      ),
+      dense: true,
+      visualDensity: VisualDensity.compact,
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
+      leading: Icon(icon, size: AppIconSize.sm, color: isDestructive ? color : t.textTertiary),
+      title: Text(label, style: AppTextStyles.titleSmallSans(color, fp)),
+      trailing: trailing != null
+          ? Text(trailing!, style: AppTextStyles.labelLargeSans(t.textTertiary, fp))
+          : !isDestructive
+          ? Icon(AppIcons.chevronRight, size: AppIconSize.xs, color: t.textTertiary.withOpacity(0.5))
+          : null,
     );
   }
 }
 
-class _DrawerDivider extends StatelessWidget {
+class _DrawerSectionHeader extends StatelessWidget {
   final String label;
-  const _DrawerDivider({required this.label});
+  const _DrawerSectionHeader({required this.label});
 
   @override
   Widget build(BuildContext context) {
-    final t  = context.poppyTheme;
+    final t = context.poppyTheme;
     final fp = context.watch<ThemeProvider>().currentFontPairData;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg, AppSpacing.md,
-        AppSpacing.lg, AppSpacing.xs,
-      ),
+      padding: const EdgeInsets.only(left: AppSpacing.sm, bottom: AppSpacing.xs, top: AppSpacing.sm),
       child: Text(
         label.toUpperCase(),
-        style: AppTextStyles.labelSmall(t.textTertiary, fp).copyWith(letterSpacing: 0.8),
+        style: AppTextStyles.labelSmall(t.textTertiary, fp).copyWith(
+          letterSpacing: 1.2,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

@@ -66,16 +66,16 @@ class _AboutScreenState extends State<AboutScreen> {
               children: [
                 const SizedBox(height: AppSpacing.lg),
                 const PoppyLogo(size: AppIconSize.logo, prominent: true),
-                const SizedBox(height: AppSpacing.md),
+                const SizedBox(height: AppSpacing.sm),
                 Text('Poppy',
                     style: AppTextStyles.titleLarge(t.textPrimary, fp)),
-                const SizedBox(height: AppSpacing.xs),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   'Version $_version (build $_build)',
                   style:
                   AppTextStyles.labelLargeSans(t.textTertiary, fp),
                 ),
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.md),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
@@ -83,8 +83,9 @@ class _AboutScreenState extends State<AboutScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: t.accentLight,
-                    borderRadius:
-                    BorderRadius.circular(AppRadius.full),
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                    border:
+                    Border.all(color: t.border, width: AppStroke.hairline),
                   ),
                   child: Text(
                     'End-to-end encrypted diary',

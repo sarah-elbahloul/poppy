@@ -29,6 +29,10 @@ dependencies:
   file_picker: ^8.1.2
   flutter_image_compress: ^2.3.0
 
+  # ── Notifications ─────────────────────────────────────────────
+  flutter_local_notifications: ^17.2.4
+  timezone: ^0.9.4
+
   # ── Icons ──────────────────────────────────────────────────
   iconsax: ^0.0.8
 

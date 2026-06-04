@@ -5,3 +5,4 @@ export 'key_service.dart';
 export 'pin_service.dart';
 export 'photos_service.dart';
 export 'export_service.dart';
+export 'notification_service.dart';

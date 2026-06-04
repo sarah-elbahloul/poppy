@@ -27,7 +27,7 @@ class AppTextStyles {
   // ── Display (LOCKED — always Lora) ───────────────────────
 
   // App name
-  static TextStyle displayLarge(Color color) => GoogleFonts.lora(
+  static TextStyle displayLarge(Color color) => GoogleFonts.literata(
     fontSize: 28,
     color: color,
     letterSpacing: -0.5,
@@ -35,7 +35,7 @@ class AppTextStyles {
   );
 
   // App name (compact)
-  static TextStyle displayMedium(Color color) => GoogleFonts.lora(
+  static TextStyle displayMedium(Color color) => GoogleFonts.literata(
     fontSize: 17,
     color: color,
     letterSpacing: -0.5,

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:poppy/app.dart';
 import 'package:poppy/core/supabase_client.dart';
 import 'package:poppy/providers/providers.dart';
+import 'package:poppy/services/services.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ Future<void> main() async {
   );
 
   await SupabaseConfig.init();
+  await NotificationService.init();
 
   runApp(
     MultiProvider(

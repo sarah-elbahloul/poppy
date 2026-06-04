@@ -7,6 +7,8 @@
 //  Use these everywhere instead of raw numbers.
 // ─────────────────────────────────────────────────────────────
 
+import 'package:flutter/cupertino.dart';
+
 class AppSpacing {
   AppSpacing._();
 
@@ -109,9 +111,6 @@ class AppComponentSize {
   /// Compact filter bar / search input height
   static const double filterBarHeight = 40.0;
 
-  /// Search field width in app bar
-  static const double searchFieldWidth = 280.0;
-
   /// Height of a compact entry card row
   static const double entryCardHeight = 58.0;
 
@@ -153,5 +152,12 @@ class AppComponentSize {
 
   /// Confirmation icon circle (e.g. email sent screen)
   static const double confirmIconCircle = 72.0;
+
+  /// Search field width in app bar relative to the screen width
+  static double searchFieldWidth(BuildContext context) => MediaQuery.sizeOf(context).width * 0.7;
+
+  /// Drawer width in relative to the screen width
+  static double drawerWidth(BuildContext context) => MediaQuery.sizeOf(context).width * 0.7;
+
 }
 

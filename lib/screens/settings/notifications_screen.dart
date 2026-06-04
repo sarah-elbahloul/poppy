@@ -1,27 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:poppy/core/core.dart';
-import 'package:provider/provider.dart';
 import 'package:poppy/providers/providers.dart';
+import 'package:poppy/services/services.dart';
+import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Notifications Screen
 //  Location: lib/screens/settings/notifications_screen.dart
-//
-//  Manages writing reminder preferences. The actual scheduling
-//  is handled by flutter_local_notifications (add to pubspec
-//  when ready to implement — see TODO below).
-//
-//  TODO: to activate real notifications:
-//    1. Add `flutter_local_notifications: ^17.0.0` to pubspec.yaml
-//    2. Add Android permissions to AndroidManifest.xml:
-//         <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-//         <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-//    3. Add iOS permissions to Info.plist (NSUserNotificationUsageDescription)
-//    4. Implement NotificationService and replace the _save() stub below.
-//
-//  Until then: preferences are persisted to secure storage so
-//  the UI is fully functional and ready for the integration.
 // ─────────────────────────────────────────────────────────────
 
 class NotificationsScreen extends StatefulWidget {
@@ -37,10 +23,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool      _enabled    = false;
   TimeOfDay _reminderAt = const TimeOfDay(hour: 21, minute: 0);
   bool      _loading    = true;
+  bool      _saving     = false;
 
-  static const _kEnabled    = 'poppy_notif_enabled';
-  static const _kHour       = 'poppy_notif_hour';
-  static const _kMinute     = 'poppy_notif_minute';
+  static const _kEnabled = 'poppy_notif_enabled';
+  static const _kHour    = 'poppy_notif_hour';
+  static const _kMinute  = 'poppy_notif_minute';
 
   @override
   void initState() {
@@ -52,7 +39,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final enabled = await _storage.read(key: _kEnabled);
     final hour    = await _storage.read(key: _kHour);
     final minute  = await _storage.read(key: _kMinute);
-
     if (mounted) {
       setState(() {
         _enabled    = enabled == 'true';
@@ -65,23 +51,41 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  Future<void> _save() async {
-    await _storage.write(key: _kEnabled,    value: _enabled.toString());
-    await _storage.write(key: _kHour,       value: _reminderAt.hour.toString());
-    await _storage.write(key: _kMinute,     value: _reminderAt.minute.toString());
-
-    // TODO: schedule / cancel local notification here using
-    // flutter_local_notifications. Example:
-    //   if (_enabled) {
-    //     await NotificationService.scheduleDailyReminder(_reminderAt);
-    //   } else {
-    //     await NotificationService.cancelReminders();
-    //   }
+  Future<void> _persist() async {
+    await _storage.write(key: _kEnabled, value: _enabled.toString());
+    await _storage.write(key: _kHour,    value: _reminderAt.hour.toString());
+    await _storage.write(key: _kMinute,  value: _reminderAt.minute.toString());
   }
 
   Future<void> _onToggle(bool value) async {
-    setState(() => _enabled = value);
-    await _save();
+    if (_saving) return;
+    setState(() => _saving = true);
+
+    if (value) {
+      // Ask for permission first
+      final granted = await NotificationService.requestPermission();
+      if (!mounted) return;
+
+      if (!granted) {
+        setState(() { _saving = false; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Please allow notifications for Poppy in your device settings.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      await NotificationService.scheduleDailyReminder(_reminderAt);
+    } else {
+      await NotificationService.cancelReminders();
+    }
+
+    setState(() { _enabled = value; _saving = false; });
+    await _persist();
+
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -96,23 +100,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final picked = await showTimePicker(
       context: context,
       initialTime: _reminderAt,
-      helpText:    'Choose reminder time',
+      helpText: 'Choose reminder time',
     );
     if (picked == null || !mounted) return;
+
     setState(() => _reminderAt = picked);
-    await _save();
+    await _persist();
+
+    // Reschedule with new time
+    if (_enabled) {
+      await NotificationService.scheduleDailyReminder(picked);
+    }
+
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Reminder updated to ${picked.format(context)}.'),
-      ),
+      SnackBar(content: Text('Reminder updated to ${picked.format(context)}.')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
+    final t  = context.poppyTheme;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -120,8 +129,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         backgroundColor: t.background,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(AppIcons.back,
-              size: AppIconSize.xs, color: t.textSecondary),
+          icon: Icon(AppIcons.back, size: AppIconSize.xs, color: t.textSecondary),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text('Notifications',
@@ -133,15 +141,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
 
-          // ── Daily reminder toggle ───────────────
+          // ── Daily reminder toggle ─────────────────────
           Container(
             decoration: BoxDecoration(
               color: t.surface,
-              borderRadius:
-              BorderRadius.circular(AppRadius.md),
-              border: Border.all(
-                  color: t.border,
-                  width: AppStroke.hairline),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: t.border, width: AppStroke.hairline),
             ),
             child: SwitchListTile(
               contentPadding: const EdgeInsets.symmetric(
@@ -149,35 +154,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 vertical:   AppSpacing.xs,
               ),
               title: Text('Daily writing reminder',
-                  style:
-                  AppTextStyles.titleSmallSans(t.textPrimary,fp)),
+                  style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
               subtitle: Text(
                 'A gentle nudge to write in your diary.',
-                style: AppTextStyles.labelLargeSans(
-                    t.textTertiary,fp),
+                style: AppTextStyles.labelLargeSans(t.textTertiary, fp),
               ),
               value:       _enabled,
               activeColor: t.accent,
-              onChanged:   _onToggle,
+              onChanged:   _saving ? null : _onToggle,
             ),
           ),
 
-          // ── Time picker — only when enabled ────
+          // ── Time picker — only when enabled ──────────
           if (_enabled) ...[
             const SizedBox(height: AppSpacing.sm),
             Container(
               decoration: BoxDecoration(
                 color: t.surface,
-                borderRadius:
-                BorderRadius.circular(AppRadius.md),
-                border: Border.all(
-                    color: t.border,
-                    width: AppStroke.hairline),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: t.border, width: AppStroke.hairline),
               ),
               child: InkWell(
                 onTap: _pickTime,
-                borderRadius:
-                BorderRadius.circular(AppRadius.md),
+                borderRadius: BorderRadius.circular(AppRadius.md),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
@@ -191,19 +190,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Column(
-                          crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('Reminder time',
-                                style:
-                                AppTextStyles.titleSmallSans(
-                                    t.textPrimary,fp)),
+                                style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
                             const SizedBox(height: 2),
                             Text(
                               _reminderAt.format(context),
-                              style:
-                              AppTextStyles.labelLargeSans(
-                                  t.accent,fp),
+                              style: AppTextStyles.labelLargeSans(t.accent, fp),
                             ),
                           ],
                         ),
@@ -220,13 +214,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
           const SizedBox(height: AppSpacing.xl),
 
-          // ── Info note ───────────────────────────
+          // ── Info note ─────────────────────────────────
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
               color: t.accentLight,
-              borderRadius:
-              BorderRadius.circular(AppRadius.sm),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
               border: Border.all(
                 color: t.accent.withOpacity(0.2),
                 width: AppStroke.hairline,
@@ -235,15 +228,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(AppIcons.info,
-                    size: AppIconSize.xs, color: t.accent),
+                Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
                     'Your device must allow notifications from Poppy. '
                         'You can manage this in your system settings.',
-                    style: AppTextStyles.labelLargeSans(
-                        t.accent,fp),
+                    style: AppTextStyles.labelLargeSans(t.accent, fp),
                   ),
                 ),
               ],
