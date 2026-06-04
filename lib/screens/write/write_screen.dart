@@ -445,12 +445,12 @@ class _WriteScreenState extends State<WriteScreen> {
                     textAlign: TextAlign.center,
                     textAlignVertical: TextAlignVertical.center,
                     textCapitalization: TextCapitalization.words,
-                    style: AppTextStyles.headlineMedium(t.textPrimary, fp),
+                    style: AppTextStyles.headlineSmall(t.textPrimary, fp),
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: t.surface,
                       hintText: 'Title',
-                      hintStyle: AppTextStyles.headlineMedium(t.textTertiary, fp)
+                      hintStyle: AppTextStyles.headlineSmall(t.textTertiary, fp)
                           .copyWith(fontSize: 15),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.sm),

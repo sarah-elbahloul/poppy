@@ -1,12 +1,16 @@
-import 'package:flutter/material.dart';
-
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Animation Durations & Curves
 //  Location: lib/core/style/app_durations.dart
 // ─────────────────────────────────────────────────────────────
 
+
+import 'package:flutter/animation.dart';
+
 class AppDuration {
   AppDuration._();
+
+  /// 50ms — instant feedback (tap highlight, dot fill)
+  static const instant   = Duration(milliseconds: 50);
 
   /// 100ms — instant feedback (tap highlight, dot fill)
   static const fast   = Duration(milliseconds: 100);

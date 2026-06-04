@@ -96,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _startSearch() {
     setState(() => _searching = true);
 
-    Future.delayed(const Duration(milliseconds: 50), () {
+    Future.delayed(AppDuration.instant, () {
       _searchFocusNode.requestFocus();
     });
   }

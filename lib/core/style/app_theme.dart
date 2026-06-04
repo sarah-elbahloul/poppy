@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/core/style/app_colors.dart';
-import 'package:poppy/core/style/app_sizes.dart';
+import 'package:poppy/core/core.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Flower Theme System
@@ -157,10 +156,6 @@ class PoppyThemeData {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Theme Extension — context.poppyTheme
-// ─────────────────────────────────────────────────────────────
-
 class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
   final Color accent;
   final Color accentLight;
@@ -198,7 +193,6 @@ class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
     Color? textTertiary,
     Color? border,
     String? themeName,
-    String? themeEmoji,
   }) =>
       PoppyThemeExtension(
         accent: accent ?? this.accent,
@@ -234,87 +228,4 @@ class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
 extension PoppyThemeContext on BuildContext {
   PoppyThemeExtension get poppyTheme =>
       Theme.of(this).extension<PoppyThemeExtension>()!;
-}
-
-// ─────────────────────────────────────────────────────────────
-//  The 5 Flower Themes
-// ─────────────────────────────────────────────────────────────
-
-class PoppyThemes {
-  PoppyThemes._();
-
-  static const poppy = PoppyThemeData(
-    id: PoppyTheme.poppy,
-    name: 'Poppy',
-    accent: AppColors.poppyAccent,
-    accentLight: AppColors.poppyAccentLight,
-    accentMuted: AppColors.poppyAccentMuted,
-    surface: AppColors.poppySurface,
-    background: AppColors.poppyBackground,
-    textPrimary: Color(0xFF1A1212),
-    textSecondary: Color(0xFF5C4444),
-    textTertiary: Color(0xFFAA8888),
-    border: AppColors.poppyBorder,
-  );
-
-  static const iris = PoppyThemeData(
-    id: PoppyTheme.iris,
-    name: 'Iris',
-    accent: AppColors.irisAccent,
-    accentLight: AppColors.irisAccentLight,
-    accentMuted: AppColors.irisAccentMuted,
-    surface: AppColors.irisSurface,
-    background: AppColors.irisBackground,
-    textPrimary: Color(0xFF12141A),
-    textSecondary: Color(0xFF3A4460),
-    textTertiary: Color(0xFF8090B8),
-    border: AppColors.irisBorder,
-  );
-
-  static const lily = PoppyThemeData(
-    id: PoppyTheme.lily,
-    name: 'Lily',
-    accent: AppColors.lilyAccent,
-    accentLight: AppColors.lilyAccentLight,
-    accentMuted: AppColors.lilyAccentMuted,
-    surface: AppColors.lilySurface,
-    background: AppColors.lilyBackground,
-    textPrimary: Color(0xFF121A14),
-    textSecondary: Color(0xFF324A38),
-    textTertiary: Color(0xFF80AA8A),
-    border: AppColors.lilyBorder,
-  );
-
-  static const marigold = PoppyThemeData(
-    id: PoppyTheme.marigold,
-    name: 'Marigold',
-    accent: AppColors.marigoldAccent,
-    accentLight: AppColors.marigoldAccentLight,
-    accentMuted: AppColors.marigoldAccentMuted,
-    surface: AppColors.marigoldSurface,
-    background: AppColors.marigoldBackground,
-    textPrimary: Color(0xFF1A1510),
-    textSecondary: Color(0xFF5A4020),
-    textTertiary: Color(0xFFAA8858),
-    border: AppColors.marigoldBorder,
-  );
-
-  static const lavender = PoppyThemeData(
-    id: PoppyTheme.lavender,
-    name: 'Lavender',
-    accent: AppColors.lavenderAccent,
-    accentLight: AppColors.lavenderAccentLight,
-    accentMuted: AppColors.lavenderAccentMuted,
-    surface: AppColors.lavenderSurface,
-    background: AppColors.lavenderBackground,
-    textPrimary: Color(0xFF16121A),
-    textSecondary: Color(0xFF483055),
-    textTertiary: Color(0xFFA080B0),
-    border: AppColors.lavenderBorder,
-  );
-
-  static const all = [poppy, iris, lily, marigold, lavender];
-
-  static PoppyThemeData fromId(PoppyTheme id) =>
-      all.firstWhere((t) => t.id == id);
 }

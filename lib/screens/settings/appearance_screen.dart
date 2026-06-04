@@ -89,10 +89,6 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
             onSelect: tp.setBodyFont,
           ),
 
-          // 4 ── Size & spacing ──────────────────────────────
-          const _SectionRow(label: 'Size & spacing'),
-          _TextSettingsCard(tp: tp),
-
           // 5 ── Colours ─────────────────────────────────────
           _SectionRow(
             label: 'App Colours',
@@ -130,8 +126,6 @@ class _PreviewCanvas extends StatelessWidget {
   Widget build(BuildContext context) {
     final t     = context.poppyTheme;
     final fp    = tp.currentFontPairData;
-    final scale = tp.currentFontSize.scale;
-    final lh    = tp.currentLineHeight.value;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(
@@ -175,8 +169,7 @@ class _PreviewCanvas extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(
                 AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
             child: Text('A quiet morning',
-                style: fp.titleFont.bold(t.textPrimary,
-                    size: 18 * scale, height: 1.3)),
+                style: fp.titleFont.bold(t.textPrimary)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(
@@ -189,16 +182,14 @@ class _PreviewCanvas extends StatelessWidget {
                 AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
             child: TextField(
               controller:   ctrl,
-              style:        fp.bodyFont.style(t.textPrimary,
-                  size: 16 * scale, height: lh),
+              style:        fp.bodyFont.style(t.textPrimary),
               maxLines:     null,
               keyboardType: TextInputType.multiline,
               decoration: InputDecoration(
                 border:         InputBorder.none,
                 contentPadding: EdgeInsets.zero,
                 hintText:       'Tap to write a sample…',
-                hintStyle:      fp.bodyFont.style(t.textTertiary,
-                    size: 16 * scale, height: lh),
+                hintStyle:      fp.bodyFont.style(t.textTertiary),
               ),
             ),
           ),
@@ -273,48 +264,6 @@ class _FontRow extends StatelessWidget {
           );
         },
       ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-//  Text settings card
-// ─────────────────────────────────────────────────────────────
-
-class _TextSettingsCard extends StatelessWidget {
-  final ThemeProvider tp;
-  const _TextSettingsCard({required this.tp});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.poppyTheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      decoration: BoxDecoration(
-        color:        t.surface,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(
-            color: t.border, width: AppStroke.hairline),
-      ),
-      child: Column(children: [
-        _SegmentRow<PoppyFontSize>(
-          label:    'Size',
-          options:  PoppyFontSize.values,
-          current:  tp.currentFontSize,
-          labelOf:  (s) => s.label,
-          onSelect: tp.setFontSize,
-        ),
-        Divider(height: AppStroke.hairline,
-            thickness: AppStroke.hairline,
-            color: t.border, indent: AppSpacing.md),
-        _SegmentRow<PoppyLineHeight>(
-          label:    'Spacing',
-          options:  PoppyLineHeight.values,
-          current:  tp.currentLineHeight,
-          labelOf:  (l) => l.label,
-          onSelect: tp.setLineHeight,
-        ),
-      ]),
     );
   }
 }
@@ -720,7 +669,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                   ),
                 ),
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 120),
+                  duration: AppDuration.fast,
                   width: 38, height: 38,
                   decoration: BoxDecoration(
                     shape:  BoxShape.circle,
@@ -745,7 +694,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                     return GestureDetector(
                       onTap: () => _pick(c),
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 100),
+                        duration: AppDuration.fast,
                         width:  cellSize,
                         height: cellSize,
                         decoration: BoxDecoration(

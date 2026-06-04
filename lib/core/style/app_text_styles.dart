@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:poppy/providers/theme_provider.dart';
-
+import 'package:poppy/core/style/style.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Text Styles
 //  Location: lib/core/style/app_text_styles.dart
@@ -53,11 +52,11 @@ class AppTextStyles {
   // Entry detail title, Legal heading (smaller)
   static TextStyle headlineMedium(Color color, FontPairData fp,
       {double scale = 1.0}) =>
-      fp.titleFont.style(color, size: 18 * scale, height: 1.3, weight: FontWeight.w500);
+      fp.titleFont.style(color, size: 20 * scale, height: 1.3, weight: FontWeight.w500);
 
   // Auth heading
   static TextStyle headlineSmall(Color color, FontPairData fp) =>
-      fp.titleFont.style(color, size: 20, height: 1.3);
+      fp.titleFont.style(color, size: 18, height: 1.3);
 
   // ── Titles ───────────────────────────────────────────────
 

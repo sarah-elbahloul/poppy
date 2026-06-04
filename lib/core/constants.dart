@@ -1,5 +1,3 @@
-import 'package:poppy/core/style/style.dart';
-
 // ─────────────────────────────────────────────────────────────
 //  POPPY — App-wide Constants
 //  Location: lib/core/constants.dart
@@ -7,41 +5,6 @@ import 'package:poppy/core/style/style.dart';
 
 const String kAppName    = 'Poppy';
 const String kAppTagline = 'where every day finds its petal';
-
-// ─────────────────────────────────────────────────────────────
-//  ENTRY COLOR TAG SYSTEM
-// ─────────────────────────────────────────────────────────────
-
-enum EntryColor { poppy, iris, lily, marigold, lavender, stone }
-
-class EntryColorData {
-  final EntryColor id;
-  final String     name;
-  final dynamic    color;
-  final String     dbValue;
-  const EntryColorData({
-    required this.id, required this.name,
-    required this.color, required this.dbValue,
-  });
-}
-
-class EntryColors {
-  EntryColors._();
-  static const poppy    = EntryColorData(id: EntryColor.poppy,    name: 'Poppy',    color: AppColors.tagPoppy,    dbValue: 'poppy');
-  static const iris     = EntryColorData(id: EntryColor.iris,     name: 'Iris',     color: AppColors.tagIris,     dbValue: 'iris');
-  static const lily     = EntryColorData(id: EntryColor.lily,     name: 'Lily',     color: AppColors.tagLily,     dbValue: 'lily');
-  static const marigold = EntryColorData(id: EntryColor.marigold, name: 'Marigold', color: AppColors.tagMarigold, dbValue: 'marigold');
-  static const lavender = EntryColorData(id: EntryColor.lavender, name: 'Lavender', color: AppColors.tagLavender, dbValue: 'lavender');
-  static const stone    = EntryColorData(id: EntryColor.stone,    name: 'Stone',    color: AppColors.tagStone,    dbValue: 'stone');
-
-  static const all          = [poppy, iris, lily, marigold, lavender, stone];
-  static const defaultColor = stone;
-
-  static EntryColorData fromDbValue(String value) =>
-      all.firstWhere((c) => c.dbValue == value, orElse: () => stone);
-  static EntryColorData fromId(EntryColor id) =>
-      all.firstWhere((c) => c.id == id);
-}
 
 // ─────────────────────────────────────────────────────────────
 //  SECURE STORAGE KEYS

@@ -185,7 +185,10 @@ class AuthProvider extends ChangeNotifier {
       }
 
       _encryptionReady = _enc.hasKey;
-      await _checkPinLock(resetLock: true);
+
+      await _checkPinLock();
+      _isLocked = false;
+
       _status          = AuthStatus.authenticated;
       _safeNotify();
       return true;

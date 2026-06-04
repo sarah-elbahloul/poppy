@@ -154,3 +154,4 @@ class AppComponentSize {
   /// Confirmation icon circle (e.g. email sent screen)
   static const double confirmIconCircle = 72.0;
 }
+
