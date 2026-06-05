@@ -14,7 +14,7 @@ class AppColors {
   static const accentMuted   = Color(0xFFE8A0A0);
   static const surface       = Color(0xFFFDF8F8);
   static const background    = Color(0xFFFFFBFB);
-  static const textPrimary   = Color(0xFF1A1212);
+  static const textPrimary   = Color(0xFF2B0E0E);
   static const textSecondary = Color(0xFF5C4444);
   static const textTertiary  = Color(0xFFAA8888);
   static const border        = Color(0xFFEDD8D8);

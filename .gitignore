@@ -1,46 +1,100 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+# ─────────────────────────────────────────────────────────────
+#  POPPY — .gitignore
+# ─────────────────────────────────────────────────────────────
+
+
+# ── Secrets & credentials ─────────────────────────────────────
+# Never commit these. Use --dart-define or CI environment vars.
 .env
+.env.*
+*.env
+dart_defines/
+secrets.dart
+lib/core/secrets.dart
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
+# Android signing — if you ever add a keystore for release
+android/key.properties
+*.keystore
+*.jks
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# Google services (if you add Firebase later)
+google-services.json
+GoogleService-Info.plist
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+
+# ── Machine-local Android config ─────────────────────────────
+# Contains your local SDK path (e.g. D:\SWDevelopment\SDKs\...)
+# Every developer/machine has a different one.
+android/local.properties
+
+
+# ── Flutter / Dart generated files ───────────────────────────
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
 /coverage/
+**/doc/api/
+**/ios/Flutter/.last_build_id
 
-# Symbolication related
+
+# ── Android build artifacts ───────────────────────────────────
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+android/.gradle/
+android/.kotlin/
+*.apk
+*.aab
+
+
+# ── iOS build artifacts ───────────────────────────────────────
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
+*.ipa
+
+
+# ── macOS ─────────────────────────────────────────────────────
+.DS_Store
+macos/Pods/
+macos/Flutter/GeneratedPluginRegistrant.swift
+macos/Flutter/ephemeral/
+
+
+# ── IDE ───────────────────────────────────────────────────────
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+.atom/
+.history/
+.svn/
+.swiftpm/
+
+
+# ── Logs & misc ───────────────────────────────────────────────
+*.log
+*.class
+*.pyc
+migrate_working_dir/
+.buildlog/
+.build/
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+
+# ── Crash / debug outputs ─────────────────────────────────────
+*.hprof
+nohup.out

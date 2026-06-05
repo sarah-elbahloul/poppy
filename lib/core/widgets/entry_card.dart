@@ -113,7 +113,7 @@ class EntryCard extends StatelessWidget {
                     ),
 
                     if (entry.contentPreview.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.xs),
                       Flexible(
                         child: Text(
                           entry.contentPreview,
