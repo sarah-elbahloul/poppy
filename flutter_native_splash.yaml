@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────
+#  POPPY — Native Splash Screen config
+#  Location: project root / flutter_native_splash.yaml
+#
+#  To regenerate after changing the logo:
+#    1. Export the mark as a PNG (transparent bg, any size ≥ 200px)
+#       and save to assets/images/splash_logo.png
+#    2. Run: dart run flutter_native_splash:create
+#
+#  Package: flutter_native_splash (add to dev_dependencies)
+# ─────────────────────────────────────────────────────────────
+
+flutter_native_splash:
+
+  # ── Background colour ──────────────────────────────────────
+  # Warm cream — matches #FFFBFB from AppColors.background
+  color: "#FFFBFB"
+
+  # ── Dark mode background ───────────────────────────────────
+  # If you add a dark theme later, set this to your dark bg
+  # color_dark: "#1A1212"
+
+  # ── Splash logo image ──────────────────────────────────────
+  # The mark only — no background baked in (transparent PNG).
+  # The package centres it and the colour above fills the rest.
+  image: assets/images/splash_logo.png
+
+  # ── Dark mode image (optional) ────────────────────────────
+  # image_dark: assets/images/splash_logo_dark.png
+
+  # ── Logo size on screen ────────────────────────────────────
+  # Percentage of the shorter screen dimension (portrait width)
+  # 30% puts it at roughly 120dp on a standard phone — feels
+  # balanced with breathing room above and below.
+  android_gravity: center
+  ios_content_mode: center
+
+  # ── Platforms ─────────────────────────────────────────────
+  android: true
+  ios: true
+  web: false
+
+  # ── Android 12+ splash (API 31+) ──────────────────────────
+  # Android 12 introduced a new splash API. The package handles
+  # it automatically but you can customise the icon size here.
+  android_12:
+    color: "#FFFBFB"
+    image: assets/images/splash_logo.png
+    # icon_background_color is the colour behind the icon circle
+    # on Android 12. Matches the cream bg so it blends in.
+    icon_background_color: "#FFFBFB" #was FDF0F0
+    # color_dark: "#1A1212"

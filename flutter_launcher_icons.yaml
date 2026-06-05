@@ -1,0 +1,54 @@
+# ─────────────────────────────────────────────────────────────
+#  POPPY — App Icon config
+#  Location: project root / flutter_launcher_icons.yaml
+#
+#  To regenerate after changing the logo:
+#    1. Export the mark as a 1024×1024 PNG (transparent bg)
+#       and save to assets/images/app_icon.png
+#    2. Run: dart run flutter_launcher_icons
+#
+#  Package: flutter_launcher_icons (add to dev_dependencies)
+#
+#  NOTE: The package does NOT apply rounded corners on Android —
+#  the OS does that automatically per launcher. On iOS the OS
+#  also clips to the squircle. So export a flat square PNG,
+#  no rounded corners, no padding needed.
+# ─────────────────────────────────────────────────────────────
+
+flutter_launcher_icons:
+
+  # ── Source image ───────────────────────────────────────────
+  # 1024×1024 PNG. Transparent background — the adaptive icon
+  # background colour below fills behind it on Android.
+  # iOS bakes the background into the icon itself.
+  image_path: "assets/images/app_icon.png"
+
+  # ── iOS ────────────────────────────────────────────────────
+  ios: true
+  # Background colour baked into every iOS icon size.
+  # Matches AppColors.accentLight (#FDF0F0 — warm cream).
+  # The mark sits centred on this, no padding needed since
+  # the mark geometry already has internal breathing room.
+  background_color_ios: "#FDF0F0"
+
+  # ── Android ────────────────────────────────────────────────
+  android: true
+
+  # Adaptive icon (Android 8.0+, API 26+):
+  # Foreground = the mark, background = solid cream.
+  # The OS applies its own shape (circle, squircle, etc.)
+  # per launcher — we don't enforce a shape.
+  adaptive_icon_foreground: "assets/images/app_icon.png"
+  adaptive_icon_background: "#FDF0F0"
+
+  # Legacy icon (Android < 8.0):
+  # Falls back to the flat image_path above with the bg baked in.
+  # Most devices you'll care about are 8.0+ but good to have.
+
+  # ── Min SDK ────────────────────────────────────────────────
+  min_sdk_android: 21   # matches your build.gradle.kts
+
+  # ── Remove alpha channel on iOS ────────────────────────────
+  # iOS icons must not have transparency — the package handles
+  # this by compositing the image over background_color_ios.
+  remove_alpha_ios: true

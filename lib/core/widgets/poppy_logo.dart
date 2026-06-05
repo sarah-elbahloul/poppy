@@ -1,155 +1,140 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:poppy/core/style/style.dart';
+import 'package:poppy/core/core.dart';
+
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Logo mark
+//  Location: lib/core/widgets/poppy_logo.dart
+//
+//  Design: four-petal bloom, each petal a vesica (lens) shape
+//  rotated 45 ° and 135 °. The two rotated vesicas overlap at
+//  the diagonals to produce a four-fold bloom. A large cream
+//  void punches through the centre, with a small stamen dot.
+//
+//  The form is:
+//    · Recognisable as a poppy at every size
+//    · Stable in a rounded-square (app icon) or circle crop
+//    · One colour + background — no gradients, no strokes
+//    · Scales cleanly from 1024 px down to 16 px
+//
+//  Usage:
+//    PoppyLogo(size: 80)               // accent on transparent
+//    PoppyLogo(size: 80, background: t.surface)   // icon tile
+//    PoppyLogo(size: 200, background: t.background) // splash
+// ─────────────────────────────────────────────────────────────
 
 class PoppyLogo extends StatelessWidget {
-  final double size;
-  final bool prominent;
-
-  final Color? background;
+  final double  size;
+  final Color?  color;
+  final Color?  background;
+  final double? borderRadius;
 
   const PoppyLogo({
     super.key,
-    this.size = AppIconSize.logo,
-    this.prominent = true,
+    this.size       = AppIconSize.logo,
+    this.color,
     this.background,
+    this.borderRadius,
   });
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t       = context.poppyTheme;
+    final inkColor = color ?? t.accent;
+    final bgColor  = background ?? t.background;
 
-    return CustomPaint(
+    Widget mark = CustomPaint(
       size: Size.square(size),
-      painter: _PoppyLogoPainter(
-        color: prominent ? t.accent : t.accentMuted,
-        background: background,
+      painter: _PoppyMarkPainter(
+        ink: inkColor,
+        bg:  bgColor,
       ),
     );
+
+    if (bgColor != null) {
+      final r = borderRadius ?? size * 0.24;
+      mark = Container(
+        width:  size,
+        height: size,
+        decoration: BoxDecoration(
+          color:        bgColor,
+          borderRadius: BorderRadius.circular(r),
+        ),
+        child: mark,
+      );
+    }
+
+    return mark;
   }
 }
 
-class _PoppyLogoPainter extends CustomPainter {
-  final Color color;
-  final Color? background;
+class _PoppyMarkPainter extends CustomPainter {
+  final Color ink;
+  final Color bg;
 
-  const _PoppyLogoPainter({
-    required this.color,
-    this.background,
-  });
-
-  Path _petalShape(double length, double width) {
-    return Path()
-      ..moveTo(0, 0)
-      ..cubicTo(
-        -width, -length * 0.30,
-        -width * 0.78, -length * 0.82,
-        0, -length,
-      )
-      ..cubicTo(
-        width * 0.78, -length * 0.82,
-        width, -length * 0.30,
-        0, 0,
-      );
-  }
-
-  Path _nibShape(double height) {
-    final w = height * 0.38;
-
-    return Path()
-      ..moveTo(0, height)
-      ..quadraticBezierTo(
-        -w * 0.55, height * 0.50,
-        -w, -height * 0.28,
-      )
-      ..quadraticBezierTo(
-        0, -height * 0.54,
-        w, -height * 0.28,
-      )
-      ..quadraticBezierTo(
-        w * 0.55, height * 0.50,
-        0, height,
-      );
-  }
+  const _PoppyMarkPainter({required this.ink, required this.bg});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
+    final cx = size.width  / 2;
     final cy = size.height / 2;
-    final r = size.width * 0.35;
+
+    // Proportions tuned so the mark sits with generous padding
+    // inside any container.  All values are fractions of `cx`.
+    final r  = cx * 0.72;   // half-length of each petal (centre→tip)
+    final pw = cx * 0.50;   // half-width of each petal at widest
+    final vr = cx * 0.30;   // centre void radius
+    final sr = cx * 0.11;   // stamen dot radius
+
+    final paint = Paint()
+      ..color     = ink
+      ..style     = PaintingStyle.fill
+      ..isAntiAlias = true;
 
     canvas.save();
     canvas.translate(cx, cy);
 
-    // Background
-    if (background != null) {
-      canvas.drawCircle(
-        Offset.zero,
-        size.width * 0.49,
-        Paint()..color = background!,
-      );
+    // ── Two vesica petals, each covers two opposing directions ──
+    // Vesica path: starts at (0,-r), curves out to (±pw,0),
+    // closes at (0,+r), curves back through (∓pw,0).
+    Path _vesica() {
+      return Path()
+        ..moveTo(0, -r)
+        ..cubicTo( pw, -r,  pw,  r,  0,  r)
+        ..cubicTo(-pw,  r, -pw, -r,  0, -r)
+        ..close();
     }
 
-    final petals = Path();
-    const petalCount = 4;
-    const sizeJitter = [0.00, 0.03, -0.018, 0.012];
+    // Petal pair A — rotated 45°
+    canvas.save();
+    canvas.rotate(math.pi / 4);
+    canvas.drawPath(_vesica(), paint);
+    canvas.restore();
 
-    Path _rotatePath(Path path, double angle) {
-      final m = Matrix4.identity()..rotateZ(angle);
-      return path.transform(m.storage);
-    }
+    // Petal pair B — rotated 135° (perpendicular to A)
+    canvas.save();
+    canvas.rotate(3 * math.pi / 4);
+    canvas.drawPath(_vesica(), paint);
+    canvas.restore();
 
-    for (int i = 0; i < petalCount; i++) {
-      final angle = (i * math.pi * 2 / petalCount) + math.pi / 4;
+    // ── Centre void — punches a hole through the petals ────────
+    canvas.drawCircle(Offset.zero, vr, Paint()
+      ..color = bg == Colors.transparent
+          ? (ink.withOpacity(0))   // let the container bg show
+          : bg
+      ..style = PaintingStyle.fill
+      ..blendMode = bg == Colors.transparent
+          ? BlendMode.clear
+          : BlendMode.srcOver
+      ..isAntiAlias = true);
 
-      final len = r * (0.97 + sizeJitter[i]);
-      final wid = r * 0.40;
-
-      final petal = _petalShape(len, wid);
-
-      final rotated = _rotatePath(petal, angle);
-
-      petals.addPath(rotated, Offset.zero);
-    }
-
-    final nib = _nibShape(r * 0.52);
-
-    final mark = Path.combine(
-      PathOperation.difference,
-      petals,
-      nib,
-    );
-
-    final paint = Paint()..color = color;
-    canvas.drawPath(mark, paint);
-
-    // Slit
-    final slitW = math.max(0.8, r * 0.038);
-
-    canvas.drawLine(
-      Offset(0, -r * 0.10),
-      Offset(0, r * 0.42),
-      Paint()
-        ..color = color
-        ..strokeWidth = slitW
-        ..strokeCap = StrokeCap.round,
-    );
-
-    // Hole
-    final holeR = math.max(0.6, r * 0.032);
-
-    canvas.drawCircle(
-      Offset(0, -r * 0.08),
-      holeR,
-      Paint()..color = color,
-    );
+    // ── Stamen dot ──────────────────────────────────────────────
+    canvas.drawCircle(Offset.zero, sr, paint);
 
     canvas.restore();
   }
 
   @override
-  bool shouldRepaint(covariant _PoppyLogoPainter oldDelegate) {
-    return oldDelegate.color != color ||
-        oldDelegate.background != background;
-  }
+  bool shouldRepaint(covariant _PoppyMarkPainter old) =>
+      old.ink != ink || old.bg != bg;
 }

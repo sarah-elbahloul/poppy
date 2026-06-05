@@ -65,7 +65,7 @@ class _AboutScreenState extends State<AboutScreen> {
             child: Column(
               children: [
                 const SizedBox(height: AppSpacing.lg),
-                const PoppyLogo(size: AppIconSize.logo, prominent: true),
+                const PoppyLogo(size: AppIconSize.logo),
                 const SizedBox(height: AppSpacing.sm),
                 Text('Poppy',
                     style: AppTextStyles.titleLarge(t.textPrimary, fp)),

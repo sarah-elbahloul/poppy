@@ -825,7 +825,7 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const PoppyLogo(size: AppIconSize.logo, prominent: false),
+          const PoppyLogo(size: AppIconSize.logo),
           const SizedBox(height: AppSpacing.lg),
           Text('Your diary is empty.',
               style: AppTextStyles.bodyLarge(t.textPrimary, fp)),
