@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bidi_text/bidi_text_field.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:poppy/models/entry.dart';
@@ -309,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   AppBar _normalAppBar(PoppyThemeExtension t, EntriesProvider provider) {
     final fp = context.read<ThemeProvider>().currentFontPairData;
-    final username = context.read<AuthProvider>().displayName;
+    final username = context.read<AuthProvider>().displayName.split(' ')[0];
 
     return AppBar(
         actionsPadding: const EdgeInsets.all(AppSpacing.sm),
@@ -342,12 +343,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   key: const ValueKey('searchField'),
                   width: AppComponentSize.searchFieldWidth(context),
                   height: AppComponentSize.filterBarHeight,
-                  child: TextField(
+                  child: BidiTextField(
                     controller: _searchController,
                     focusNode: _searchFocusNode,
                     autofocus: true,
                     style: AppTextStyles.bodyMedium(t.textPrimary, fp),
                     textAlignVertical: TextAlignVertical.center,
+                    textAlign: TextAlign.start,
                     onChanged: (_) => _applyAllFilters(),
                     decoration: InputDecoration(
                       fillColor: t.surface,

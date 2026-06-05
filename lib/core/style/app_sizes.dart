@@ -153,6 +153,15 @@ class AppComponentSize {
   /// Confirmation icon circle (e.g. email sent screen)
   static const double confirmIconCircle = 72.0;
 
+  /// Color picker wheel diameter
+  static const double colorPickerWheel = 180.0;
+
+  /// Color picker wheel ring thickness
+  static const double colorPickerRing = 24.0;
+
+  /// Color picker swatch size
+  static const double colorPickerSwatch = 42.0;
+
   /// Search field width in app bar relative to the screen width
   static double searchFieldWidth(BuildContext context) => MediaQuery.sizeOf(context).width * 0.7;
 
@@ -160,4 +169,3 @@ class AppComponentSize {
   static double drawerWidth(BuildContext context) => MediaQuery.sizeOf(context).width * 0.7;
 
 }
-

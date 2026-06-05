@@ -879,12 +879,15 @@ class _PhotoSavedThumb extends StatelessWidget {
                 width: AppStroke.hairline,
               ),
             ),
-            clipBehavior: Clip.antiAlias,
-            child: Image.network(
-              photo.signedUrl ?? '',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  Icon(AppIcons.imageBroken, color: t.textTertiary),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(
+                AppRadius.sm - AppStroke.hairline,
+              ),
+              child: Image.network(
+                photo.signedUrl ?? '',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Icon(AppIcons.imageBroken, color: t.textTertiary),
+              ),
             ),
           ),
 

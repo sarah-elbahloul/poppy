@@ -32,7 +32,9 @@ class PoppyApp extends StatelessWidget {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: themeProvider.currentThemeData.toThemeData(),
-            home: const SplashScreen(),
+            home: Scaffold(
+              backgroundColor: themeProvider.currentThemeData.toThemeData().scaffoldBackgroundColor,
+            ),
           );
         }
 

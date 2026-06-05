@@ -6,20 +6,6 @@ import 'package:provider/provider.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Appearance Screen
 //  Location: lib/screens/settings/appearance_screen.dart
-//
-//  Order:
-//    1. Editable preview canvas        ← font changes live here
-//    2. Title font  (horizontal chips)
-//    3. Body font   (horizontal chips)
-//    4. Size & Spacing (segment toggles)
-//    5. Colours  (3×3 circle swatches inside an app-style card)
-//
-//  Colour picker:
-//    Bottom sheet with a local StatefulWidget that holds its own
-//    HSVColor state.  The wheel and sliders only call setState on
-//    *themselves* — ThemeProvider.setColor() is called once, on
-//    "Apply", so the main ListView never rebuilds during dragging.
-//    This makes the picker buttery-smooth.
 // ─────────────────────────────────────────────────────────────
 
 class AppearanceScreen extends StatefulWidget {
@@ -30,9 +16,7 @@ class AppearanceScreen extends StatefulWidget {
 
 class _AppearanceScreenState extends State<AppearanceScreen> {
   late final TextEditingController _bodyCtrl;
-  static const _sampleBody =
-      'The afternoon stretched long and golden, '
-      'unhurried as a Sunday with nowhere to be.';
+  static const _sampleBody = 'The quick brown fox jumps over the lazy dog.';
 
   @override
   void initState() {
@@ -63,8 +47,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
               color: t.textSecondary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Appearance',
-            style: AppTextStyles.titleLarge(t.textPrimary, fp)),
+        title: Text('Appearance', style: AppTextStyles.titleLarge(t.textPrimary, fp)),
       ),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 28),
@@ -89,7 +72,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
             onSelect: tp.setBodyFont,
           ),
 
-          // 5 ── Colours ─────────────────────────────────────
+          // 4 ── Colours ─────────────────────────────────────
           _SectionRow(
             label: 'App Colors',
             trailing: tp.hasAnyCustomColor
@@ -138,7 +121,6 @@ class _PreviewCanvas extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // fake entry header
           Container(
             padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md, vertical: AppSpacing.sm),
@@ -269,8 +251,7 @@ class _FontRow extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  Colour card — Wrap of circle swatches, no surplus space
-//  3 per row, each cell sized tightly to circle + label.
+//  Colour card
 // ─────────────────────────────────────────────────────────────
 
 class _ColorCard extends StatelessWidget {
@@ -370,7 +351,6 @@ class _ColorSwatch extends StatelessWidget {
           Stack(
             alignment: Alignment.center,
             children: [
-              // Ring — only visible when customised
               AnimatedContainer(
                 duration: AppDuration.fast,
                 width: ringSize, height: ringSize,
@@ -384,7 +364,6 @@ class _ColorSwatch extends StatelessWidget {
                   ),
                 ),
               ),
-              // The colour circle
               Container(
                 width: swatchSize, height: swatchSize,
                 decoration: BoxDecoration(
@@ -396,7 +375,6 @@ class _ColorSwatch extends StatelessWidget {
                   ),
                 ),
               ),
-              // Tiny edited dot — top right
               if (isCustom)
                 Positioned(
                   right: 1, top: 1,
@@ -438,7 +416,7 @@ class _ResetAllButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
-  return GestureDetector(
+    return GestureDetector(
       onTap: () async {
         final ok = await showDialog<bool>(
           context: context,
@@ -468,19 +446,6 @@ class _ResetAllButton extends StatelessWidget {
 
 // ─────────────────────────────────────────────────────────────
 //  Color picker bottom sheet
-//
-//  UX design:
-//  Instead of an HSV wheel (complex, laggy, hard to learn),
-//  we show a curated palette of 40 handpicked colours grouped
-//  by hue — the same pattern as Notion, Linear, and iOS Notes.
-//  The user taps a swatch → instant, zero drag, zero lag.
-//
-//  Below the palette is a hex input field for power users who
-//  know their exact colour code.  The live preview circle in
-//  the header updates immediately on every tap or valid hex.
-//
-//  Performance: only this sheet's State rebuilds. ThemeProvider
-//  is called once on "Apply".
 // ─────────────────────────────────────────────────────────────
 
 class _ColorPickerSheet extends StatefulWidget {
@@ -502,8 +467,9 @@ class _ColorPickerSheet extends StatefulWidget {
 
 class _ColorPickerSheetState extends State<_ColorPickerSheet> {
   late Color _current;
-  late final TextEditingController _hexCtrl;
+  late TextEditingController _hexCtrl;
   bool _hexValid = true;
+  bool _showWheel = false;
 
   static const _cols = 9;
 
@@ -511,8 +477,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
   void initState() {
     super.initState();
     _current = widget.initial;
-    _hexCtrl = TextEditingController(
-        text: _colorToHex(_current));
+    _hexCtrl = TextEditingController(text: _colorToHex(_current));
   }
 
   @override
@@ -521,13 +486,12 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
     super.dispose();
   }
 
-  String _colorToHex(Color c) {
-    return '#${(c.value & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
-  }
+  String _colorToHex(Color c) =>
+      '#${(c.value & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
   void _pick(Color c) {
     setState(() {
-      _current  = c;
+      _current = c;
       _hexValid = true;
       _hexCtrl.text = _colorToHex(c);
     });
@@ -538,7 +502,10 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
     if (h.length == 6) {
       try {
         final c = Color(int.parse('FF$h', radix: 16));
-        setState(() { _current = c; _hexValid = true; });
+        setState(() {
+          _current = c;
+          _hexValid = true;
+        });
         return;
       } catch (_) {}
     }
@@ -547,12 +514,13 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
+    final onDark = _current.computeLuminance() < 0.35;
 
     return Container(
       decoration: BoxDecoration(
-        color:        t.surface,
+        color: t.surface,
         borderRadius: const BorderRadius.vertical(
             top: Radius.circular(AppRadius.lg)),
         border: Border(
@@ -572,10 +540,9 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Handle
               Center(
                 child: Container(
-                  width:  AppComponentSize.sheetHandle,
+                  width: AppComponentSize.sheetHandle,
                   height: AppComponentSize.sheetHandleHeight,
                   decoration: BoxDecoration(
                     color: t.border,
@@ -586,7 +553,6 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Header: slot label + description + live swatch
               Row(children: [
                 Expanded(
                   child: Column(
@@ -603,26 +569,60 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                     ],
                   ),
                 ),
-                AnimatedContainer(
-                  duration: AppDuration.fast,
-                  width: 38, height: 38,
-                  decoration: BoxDecoration(
-                    shape:  BoxShape.circle,
-                    color:  _current,
-                    border: Border.all(
-                        color: t.border,
-                        width: AppStroke.hairline),
+                GestureDetector(
+                  onTap: () =>
+                      setState(() => _showWheel = !_showWheel),
+                  child: AnimatedContainer(
+                    duration: AppDuration.fast,
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _current,
+                      border: Border.all(
+                        color: _showWheel
+                            ? t.accent
+                            : t.accent.withOpacity(0.4),
+                        width: _showWheel ? 2.5 : 1.5,
+                      ),
+                    ),
+                    child: Icon(
+                      AppIcons.color,
+                      size: 18,
+                      color: onDark ? Colors.white70 : Colors.black54,
+                    ),
                   ),
                 ),
               ]),
 
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
 
-              // ── Palette grid ────────────────────────────────
+              AnimatedSize(
+                duration: const Duration(milliseconds: 220),
+                curve: AppCurve.enter,
+                alignment: Alignment.topCenter,
+                child: _showWheel
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                        child: ColorWheel(
+                          initialColor: _current,
+                          onChanged: (c) {
+                            setState(() {
+                              _current = c;
+                              _hexCtrl.text = _colorToHex(c);
+                              _hexValid = true;
+                            });
+                          },
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+
               LayoutBuilder(builder: (_, box) {
-                final cellSize = (box.maxWidth - (_cols - 1) * 4) / _cols;
+                final cellSize =
+                    (box.maxWidth - (_cols - 1) * 4) / _cols;
                 return Wrap(
-                  spacing:    4,
+                  spacing: 4,
                   runSpacing: 4,
                   children: AppColors.colorPalette.map((c) {
                     final sel = c.value == _current.value;
@@ -630,10 +630,10 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                       onTap: () => _pick(c),
                       child: AnimatedContainer(
                         duration: AppDuration.fast,
-                        width:  cellSize,
+                        width: cellSize,
                         height: cellSize,
                         decoration: BoxDecoration(
-                          color:        c,
+                          color: c,
                           borderRadius: BorderRadius.circular(5),
                           border: Border.all(
                             color: sel
@@ -657,7 +657,6 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
 
               const SizedBox(height: AppSpacing.md),
 
-              // ── Hex input ────────────────────────────────────
               Row(children: [
                 Container(
                   width: 32, height: 32,
@@ -674,36 +673,43 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                   child: TextField(
                     controller:  _hexCtrl,
                     onChanged:   _onHexChanged,
-                    style:       AppTextStyles.bodySmallSans(t.textPrimary, fp),
+                    style: AppTextStyles.bodySmallSans(
+                        t.textPrimary, fp),
                     decoration: InputDecoration(
-                      hintText:     '#RRGGBB',
-                      hintStyle:    AppTextStyles.bodySmallSans(
+                      hintText: '#RRGGBB',
+                      hintStyle: AppTextStyles.bodySmallSans(
                           t.textTertiary, fp),
-                      isDense:      true,
+                      isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.sm,
                           vertical:   AppSpacing.sm),
-                      filled:       true,
-                      fillColor:    t.background,
+                      filled: true,
+                      fillColor: t.background,
                       border: OutlineInputBorder(
                         borderRadius:
                         BorderRadius.circular(AppRadius.sm),
                         borderSide: BorderSide(
-                            color: _hexValid ? t.border : AppColors.error,
+                            color: _hexValid
+                                ? t.border
+                                : AppColors.error,
                             width: AppStroke.hairline),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius:
                         BorderRadius.circular(AppRadius.sm),
                         borderSide: BorderSide(
-                            color: _hexValid ? t.border : AppColors.error,
+                            color: _hexValid
+                                ? t.border
+                                : AppColors.error,
                             width: AppStroke.hairline),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius:
                         BorderRadius.circular(AppRadius.sm),
                         borderSide: BorderSide(
-                            color: _hexValid ? t.accent : AppColors.error,
+                            color: _hexValid
+                                ? t.accent
+                                : AppColors.error,
                             width: AppStroke.medium),
                       ),
                     ),
@@ -713,7 +719,6 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
 
               const SizedBox(height: AppSpacing.md),
 
-              // ── Buttons ──────────────────────────────────────
               Row(children: [
                 Expanded(
                   child: OutlinedButton(
@@ -723,7 +728,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                     },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: t.textSecondary,
-                      side: BorderSide(color: t.border),
+                      side: BorderSide(color: t.textSecondary),
                       padding: const EdgeInsets.symmetric(
                           vertical: AppSpacing.sm),
                       shape: RoundedRectangleBorder(
@@ -742,11 +747,8 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                       Navigator.pop(context);
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor: _current,
-                      foregroundColor:
-                      _current.computeLuminance() > 0.35
-                          ? Colors.black87
-                          : Colors.white,
+                      backgroundColor: t.accent,
+                      foregroundColor: t.background,
                       padding: const EdgeInsets.symmetric(
                           vertical: AppSpacing.sm),
                       shape: RoundedRectangleBorder(
