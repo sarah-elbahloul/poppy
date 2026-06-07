@@ -14,12 +14,16 @@ import 'package:poppy/services/photos_service.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
-// POPPY — Write Screen
-// Location: lib/screens/write/write_screen.dart
+//  POPPY — Write Screen
+//  Location: lib/screens/write/write_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 const int kWordLimit = 10000;
 
+/// The primary interface for creating and editing diary entries.
+/// 
+/// Handles text input, title, date selection, color tagging, and photo 
+/// management. Automatically saves changes when the user navigates back.
 class WriteScreen extends StatefulWidget {
   final String? entryId;
 
@@ -49,20 +53,17 @@ class _WriteScreenState extends State<WriteScreen> {
   DateTime? _lastLimitSnackbarTime;
 
   bool get _isEditing => _existingEntry != null;
-
   int get _totalPhotos => _savedPhotos.length + _pendingPhotos.length;
-
   int get _liveWordCount => Entry.countWords(_contentController.text);
 
+  /// Determines if there are unsaved changes in the current session.
   bool get _hasChanges {
-    // Safely handle new entries where _existingEntry is null
     if (_existingEntry == null) {
       return _titleController.text.trim().isNotEmpty ||
           _contentController.text.trim().isNotEmpty ||
           _pendingPhotos.isNotEmpty;
     }
 
-    // Compare against existing entry data
     return _titleController.text.trim() != _existingEntry!.title ||
         _contentController.text.trim() != _existingEntry!.content ||
         _entryDate != _existingEntry!.entryDate ||
@@ -87,6 +88,8 @@ class _WriteScreenState extends State<WriteScreen> {
     super.dispose();
   }
 
+  // ─── Persistence ───
+
   Future<void> _loadExistingEntry() async {
     final entry = context.read<EntriesProvider>().getById(widget.entryId!);
     if (entry == null) return;
@@ -110,16 +113,19 @@ class _WriteScreenState extends State<WriteScreen> {
     } catch (_) {}
   }
 
+  /// Saves the current entry to the database.
+  /// 
+  /// Returns [true] if the save was successful or not required, 
+  /// [false] if blocked by validation (e.g., word limit).
   Future<bool> _save() async {
-    if (!_hasChanges || _isSaving) return true; // allow pop if nothing changed
+    if (!_hasChanges || _isSaving) return true;
 
     final content = _contentController.text.trim();
     final wordCount = Entry.countWords(content);
 
-    // BLOCK: over limit
     if (wordCount > kWordLimit) {
       _maybeShowLimitSnackBar();
-      return false; // do NOT save, do NOT allow pop
+      return false;
     }
 
     _isSaving = true;
@@ -163,7 +169,7 @@ class _WriteScreenState extends State<WriteScreen> {
         _existingEntry = updatedEntry;
       });
 
-      // Upload photos...
+      // Handle photo uploads
       if (_pendingPhotos.isNotEmpty) {
         for (int i = 0; i < _pendingPhotos.length; i++) {
           final p = _pendingPhotos[i];
@@ -177,9 +183,7 @@ class _WriteScreenState extends State<WriteScreen> {
         }
 
         _pendingPhotos.clear();
-
-        final photos =
-        await _photosService.fetchForEntry(_existingEntry!.id);
+        final photos = await _photosService.fetchForEntry(_existingEntry!.id);
 
         if (mounted) {
           setState(() {
@@ -188,7 +192,7 @@ class _WriteScreenState extends State<WriteScreen> {
         }
       }
 
-      return true; // success → allow pop
+      return true;
     } catch (e) {
       return false;
     } finally {
@@ -199,6 +203,8 @@ class _WriteScreenState extends State<WriteScreen> {
       }
     }
   }
+
+  // ─── Actions ───
 
   Future<void> _pickDate() async {
     final t = context.poppyTheme;
@@ -326,7 +332,6 @@ class _WriteScreenState extends State<WriteScreen> {
 
   void _maybeShowLimitSnackBar() {
     final now = DateTime.now();
-    // Throttle to prevent spamming the UI when holding down a key
     if (_lastLimitSnackbarTime != null &&
         now.difference(_lastLimitSnackbarTime!).inSeconds < 3) {
       return;
@@ -345,6 +350,8 @@ class _WriteScreenState extends State<WriteScreen> {
     );
   }
 
+  // ─── Build ───
+
   @override
   Widget build(BuildContext context) {
     final t  = context.poppyTheme;
@@ -355,15 +362,12 @@ class _WriteScreenState extends State<WriteScreen> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
 
-        // nothing changed → allow leaving
         if (!_hasChanges) {
           Navigator.of(context).pop();
           return;
         }
 
-        // save first
         final success = await _save();
-
         if (success && mounted) {
           Navigator.of(context).pop();
         }
@@ -382,9 +386,7 @@ class _WriteScreenState extends State<WriteScreen> {
                 Navigator.of(context).pop();
                 return;
               }
-
               final success = await _save();
-
               if (success && mounted) {
                 Navigator.of(context).pop();
               }
@@ -523,7 +525,6 @@ class _WriteScreenState extends State<WriteScreen> {
                 AppSpacing.sm, 0, AppSpacing.sm, AppSpacing.sm),
             child: Column(
               children: [
-                // Page
                 Expanded(
                   child: Container(
                     width: double.infinity,
@@ -592,9 +593,6 @@ class _WriteScreenState extends State<WriteScreen> {
                         // Writing area
                         Expanded(
                           child: BidiTextField(
-                            /*
-                            inputFormatters: [WordLimitFormatter(kWordLimit,onBlocked: _maybeShowLimitSnackBar,),],
-                            */
                             controller: _contentController,
                             autofocus: true,
                             style: AppTextStyles.bodyLarge(t.textPrimary, fp),
@@ -656,20 +654,16 @@ class WordLimitFormatter extends TextInputFormatter {
     final newCount = Entry.countWords(newValue.text);
     final oldCount = Entry.countWords(oldValue.text);
 
-    // Allow if at or under limit
     if (newCount <= maxWords) return newValue;
-
-    // Allow if word count decreased (deleting/editing down)
     if (newCount <= oldCount) return newValue;
 
-    // Block: adding words beyond limit (handles both typing & pasting safely)
     onBlocked?.call();
     return oldValue;
   }
 }
 
 // ─────────────────────────────────────────────────────────────
-// Photo Section
+// Photo Section Components
 // ─────────────────────────────────────────────────────────────
 
 class _PendingPhoto {
@@ -710,7 +704,6 @@ class _PhotoSection extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        /// HEADER (always visible)
         GestureDetector(
           onTap: onToggle,
           child: Container(
@@ -742,7 +735,6 @@ class _PhotoSection extends StatelessWidget {
           ),
         ),
 
-        /// CONTENT
         AnimatedCrossFade(
           duration: AppDuration.normal,
           crossFadeState:
@@ -759,23 +751,18 @@ class _PhotoSection extends StatelessWidget {
                 AppSpacing.md,
               ),
               children: [
-                /// Pending first (important UX)
                 ...pendingPhotos.map(
                       (p) => _PhotoPendingThumb(
                     pending: p,
                     onDelete: () => onDeletePending(p),
                   ),
                 ),
-
-                /// Saved photos
                 ...savedPhotos.map(
                       (p) => _PhotoSavedThumb(
                     photo: p,
                     onDelete: () => onDeleteSaved(p),
                   ),
                 ),
-
-                /// Add button
                 if (totalCount < maxPhotos) _AddPhotoButton(onTap: onAdd),
               ],
             ),
@@ -819,8 +806,6 @@ class _PhotoPendingThumb extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: image,
         ),
-
-        /// Upload indicator dot
         Positioned(
           top: AppSpacing.xs,
           left: AppSpacing.xs,
@@ -833,8 +818,6 @@ class _PhotoPendingThumb extends StatelessWidget {
             ),
           ),
         ),
-
-        /// Delete button
         Positioned(
           top: AppSpacing.xs,
           right: AppSpacing.md,
@@ -890,8 +873,6 @@ class _PhotoSavedThumb extends StatelessWidget {
               ),
             ),
           ),
-
-          /// Delete button
           Positioned(
             top: AppSpacing.xs,
             right: AppSpacing.md,

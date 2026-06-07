@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/style/style.dart';
 
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Color Dot Widget
-//  Location: lib/core/widgets/color_dot.dart
-// ─────────────────────────────────────────────────────────────
-
+/// A simple circular widget used to represent an [EntryColorData].
+///
+/// It can indicate selection with a border and is typically used in color pickers
+/// or entry metadata displays.
 class ColorDot extends StatelessWidget {
   final EntryColorData colorData;
   final bool isSelected;
@@ -29,10 +27,10 @@ class ColorDot extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: colorData.color as Color,
+        color: colorData.color,
         border: isSelected
             ? Border.all(
-          color: (Colors.black).withOpacity(0.35),
+          color: Colors.black.withOpacity(0.35),
           width: AppStroke.thick,
         )
             : null,
@@ -43,6 +41,7 @@ class ColorDot extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 0, 0, 0),
         child: dot,

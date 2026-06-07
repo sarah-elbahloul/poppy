@@ -4,21 +4,17 @@ import 'package:poppy/screens/screens.dart';
 import 'package:poppy/core/core.dart';
 import 'package:provider/provider.dart';
 
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Root App Widget
-//  Location: lib/app.dart
-//
-//  Navigation is driven EXCLUSIVELY by _RootRouter watching
-//  AuthProvider.status. There is no secondary _AuthListener.
-//  Having two navigation drivers caused races and blank screens.
-//
-//  Auth status → screen:
-//    unknown          → blank (initialising)
-//    unauthenticated  → LoginScreen
-//    passwordRecovery → SetNewPasswordScreen
-//    authenticated    → HomeScreen (or LockScreen if PIN set)
-// ─────────────────────────────────────────────────────────────
-
+/// Poppy — Root App Widget
+///
+/// Navigation is managed by [_RootRouter] which responds to [AuthProvider.status].
+/// This approach ensures a single source of truth for the authentication flow,
+/// avoiding race conditions between multiple listeners.
+///
+/// Auth status mapping:
+/// - [AuthStatus.unknown]          => Splash/Blank screen (initialising)
+/// - [AuthStatus.unauthenticated]  => [LoginScreen]
+/// - [AuthStatus.passwordRecovery] => [SetNewPasswordScreen]
+/// - [AuthStatus.authenticated]    => [HomeScreen] (or [LockScreen] if PIN is enabled and locked)
 class PoppyApp extends StatelessWidget {
   const PoppyApp({super.key});
 
@@ -26,8 +22,7 @@ class PoppyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer2<ThemeProvider, AuthProvider>(
       builder: (context, themeProvider, auth, _) {
-        // While checking the session, show a blank splash so there
-        // is no flicker before we know where to send the user.
+        // While checking the session, show a blank splash to avoid flickering.
         if (auth.status == AuthStatus.unknown) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
@@ -39,12 +34,10 @@ class PoppyApp extends StatelessWidget {
         }
 
         return MaterialApp(
-          title:                     'Poppy',
+          title: 'Poppy',
           debugShowCheckedModeBanner: false,
-          theme:                     themeProvider.currentThemeData.toThemeData(),
-          // _RootRouter is the single source of truth for top-level
-          // navigation. All other routes are used by screens that
-          // push on top of the root (settings, write, etc.).
+          theme: themeProvider.currentThemeData.toThemeData(),
+          // _RootRouter is the single source of truth for top-level navigation.
           home: const _RootRouter(),
           routes: {
             AppRoutes.login:           (_) => const LoginScreen(),
@@ -78,17 +71,8 @@ class PoppyApp extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  _RootRouter
-//
-//  Watches AuthProvider and returns the correct widget for the
-//  current auth state. This is a pure function of auth.status —
-//  no imperative navigation, no pushNamed, no races.
-//
-//  When auth.status changes, Consumer rebuilds this widget and
-//  Flutter swaps the tree. Clean, predictable, no side-effects.
-// ─────────────────────────────────────────────────────────────
-
+/// A router widget that watches [AuthProvider] and returns the appropriate 
+/// screen based on the current authentication state.
 class _RootRouter extends StatelessWidget {
   const _RootRouter();
 

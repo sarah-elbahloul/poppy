@@ -6,24 +6,18 @@ import 'package:poppy/services/export_service.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
-//  POPPY — Settings Screen (full hub)
+//  POPPY — Settings Screen
 //  Location: lib/screens/settings/settings_screen.dart
-//
-//  This is the canonical settings destination. The drawer links
-//  here for "All Settings" and also shortcuts some sub-screens.
-//
-//  SECTIONS
-//  ─────────
-//  Personalisation  → Appearance (theme)
-//  Account          → email, password
-//  Security         → PIN, biometrics, auto-lock
-//  Notifications    → writing reminders (stub, future)
-//  Data             → export (plain/encrypted), import
-//  Support          → feedback, about
-//  Legal            → privacy, terms, open-source
-//  Danger zone      → sign out, delete account
 // ─────────────────────────────────────────────────────────────
 
+/// The central settings hub of the application.
+/// 
+/// Organizes all configuration options into logical sections:
+/// - Personalization (Appearance)
+/// - Account & Security
+/// - Data Management (Export/Import)
+/// - Support & Legal
+/// - Danger Zone (Sign out/Delete account)
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -49,7 +43,6 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.only(bottom: AppSpacing.xl),
         children: [
-
           // ── Profile chip ─────────────────────────────────
           _ProfileChip(email: auth.user?.email ?? ''),
 
@@ -171,21 +164,14 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  // ── Navigation ────────────────────────────────────────────
+  // ─── Navigation ───
 
   void _push(BuildContext context, String route) =>
       Navigator.of(context).pushNamed(route);
 
-  // ── Export ────────────────────────────────────────────────
-  //
-  // Redesigned flow:
-  //   1. Dialog with clear visual distinction between plain (⚠ red) and
-  //      encrypted options (change #6).
-  //   2. File saved directly to Downloads / Documents; snack bar confirms
-  //      the path with an optional "Share" action (change #2).
-  //   3. Filename is timestamped (change #3 — handled in ExportConfig).
-  //   4. user_id no longer embedded in payload (change #4 — in service).
+  // ─── Actions ───
 
+  /// Initiates the diary export process, offering choice between plain and encrypted files.
   Future<void> _onExport(BuildContext context) async {
     final entries = context.read<EntriesProvider>().entries;
     final fp = context.read<ThemeProvider>().currentFontPairData;
@@ -197,10 +183,8 @@ class SettingsScreen extends StatelessWidget {
       return;
     }
 
-    final t      = context.poppyTheme;
+    final t = context.poppyTheme;
 
-    // ── Step 1: choose export type ────────────────────────
-    // Returns true (encrypted), false (plain), or null (cancelled).
     final choice = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -213,7 +197,6 @@ class SettingsScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Encrypted option (recommended, shown first) ──
             _ExportOption(
               icon:  AppIcons.lock,
               title: 'Encrypted',
@@ -221,7 +204,6 @@ class SettingsScreen extends StatelessWidget {
               color: t.accent,
             ),
             const SizedBox(height: AppSpacing.sm),
-            // ── Plain option with ⚠ warning ──────────────────
             Container(
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
@@ -284,7 +266,6 @@ class SettingsScreen extends StatelessWidget {
 
     if (choice == null || !context.mounted) return;
 
-    // ── Step 2: run export, show result snack bar ──────────
     try {
       final svc      = ExportService();
       final savedPath = await svc.exportEntries(entries, encrypted: choice);
@@ -292,7 +273,6 @@ class SettingsScreen extends StatelessWidget {
       if (!context.mounted) return;
 
       if (savedPath != null) {
-        // Saved to local storage — show path with optional Share action
         final filename = savedPath.split('/').last;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -305,7 +285,6 @@ class SettingsScreen extends StatelessWidget {
           ),
         );
       } else {
-        // Web — share sheet was invoked; no local path to display
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Export ready to share.')),
         );
@@ -319,23 +298,16 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  // ── Import ────────────────────────────────────────────────
-  //
-  // Redesigned as a two-step flow (change #5):
-  //   1. previewImport() reads the file and returns metadata.
-  //   2. A confirmation dialog shows entry count + export date.
-  //   3. commitImport() upserts entries only after user confirms.
-
+  /// Handles the import of journal entries from a file.
   Future<void> _onImport(BuildContext context) async {
     final svc = ExportService();
     final t   = context.poppyTheme;
 
-    // ── Step 1: pick file and read preview ────────────────
     late ImportPreview preview;
     try {
       preview = await svc.previewImport();
     } on ImportCancelledException {
-      return; // user dismissed the picker — silent
+      return;
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -351,7 +323,6 @@ class SettingsScreen extends StatelessWidget {
 
     if (!context.mounted) return;
 
-    // ── Step 2: show confirmation dialog ──────────────────
     final entryWord = preview.entryCount == 1 ? 'entry' : 'entries';
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
@@ -367,7 +338,6 @@ class SettingsScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── File summary card ─────────────────────────
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.md),
@@ -439,7 +409,6 @@ class SettingsScreen extends StatelessWidget {
 
     if (confirmed != true || !context.mounted) return;
 
-    // ── Step 3: commit import ─────────────────────────────
     try {
       final count = await svc.commitImport(preview);
       if (!context.mounted) return;
@@ -472,8 +441,6 @@ class SettingsScreen extends StatelessWidget {
       }
     }
   }
-
-  // ── Feedback ──────────────────────────────────────────────
 
   Future<void> _onFeedback(BuildContext context) async {
     const email = 'hello@poppy.app';
@@ -512,7 +479,7 @@ class SettingsScreen extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
+                  vertical:   AppSpacing.sm,
                 ),
                 decoration: BoxDecoration(
                   color: t.accentLight,
@@ -552,8 +519,6 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
-
-  // ── Sign out ──────────────────────────────────────────────
 
   Future<void> _onSignOut(BuildContext context) async {
     final t         = context.poppyTheme;
@@ -597,15 +562,11 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  // ── Delete account ────────────────────────────────────────
-  //  Two-step: warn + offer export → then type DELETE to confirm.
-
   Future<void> _onDeleteAccount(BuildContext context) async {
     final t       = context.poppyTheme;
     final entries = context.read<EntriesProvider>().entries;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
-    // ─── Step 1: Warning + export offer ───
     final proceed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -698,7 +659,6 @@ class SettingsScreen extends StatelessWidget {
 
     if (proceed != true || !context.mounted) return;
 
-    // ─── Step 2: Type DELETE ───
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -730,7 +690,7 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-// ── Profile chip ──────────────────────────────────────────────
+// ─── Sub-widgets ───
 
 class _ProfileChip extends StatelessWidget {
   final String email;
@@ -793,8 +753,6 @@ class _ProfileChip extends StatelessWidget {
   }
 }
 
-// ── Export option ─────────────────────────────────────────────
-
 class _ExportOption extends StatelessWidget {
   final IconData icon;
   final String   title;
@@ -830,8 +788,6 @@ class _ExportOption extends StatelessWidget {
   }
 }
 
-// ── Section label ─────────────────────────────────────────────
-
 class _SectionLabel extends StatelessWidget {
   final String text;
   const _SectionLabel(this.text);
@@ -854,8 +810,6 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-// ── Card container ────────────────────────────────────────────
-
 class _Card extends StatelessWidget {
   final List<Widget> children;
   const _Card({required this.children});
@@ -875,8 +829,6 @@ class _Card extends StatelessWidget {
     );
   }
 }
-
-// ── Settings row ──────────────────────────────────────────────
 
 class _SettingsRow extends StatelessWidget {
   final IconData icon;
@@ -938,8 +890,6 @@ class _SettingsRow extends StatelessWidget {
     );
   }
 }
-
-// ── Row divider ───────────────────────────────────────────────
 
 class _RowLine extends StatelessWidget {
   @override
@@ -1004,9 +954,7 @@ class _DeleteAccountConfirmDialogState
             'Type DELETE in capitals to confirm.',
             style: AppTextStyles.bodySmallSans(t.textSecondary, fp),
           ),
-
           const SizedBox(height: AppSpacing.md),
-
           Container(
             decoration: BoxDecoration(
               color: t.background,
@@ -1030,7 +978,7 @@ class _DeleteAccountConfirmDialogState
                 contentPadding:
                 const EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
+                  vertical:   AppSpacing.sm,
                 ),
               ),
             ),
@@ -1045,7 +993,6 @@ class _DeleteAccountConfirmDialogState
             style: TextStyle(color: t.textTertiary),
           ),
         ),
-
         FilledButton(
           onPressed: _ctrl.text == 'DELETE'
               ? () => Navigator.pop(context, true)

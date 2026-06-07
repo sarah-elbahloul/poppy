@@ -1,12 +1,17 @@
 import 'package:poppy/core/constants.dart';
 
+/// Represents a photo attached to a journal entry.
 class Photo {
   final String id;
   final String entryId;
   final String userId;
-  final String storagePath; // saved in the way: userid/entryid/photo
+  
+  /// The path in Supabase Storage: `userid/entryid/filename`.
+  final String storagePath;
   final int orderIndex;
   final DateTime createdAt;
+  
+  /// A temporary signed URL for displaying the private image.
   final String? signedUrl;
 
   const Photo({
@@ -19,6 +24,7 @@ class Photo {
     this.signedUrl,
   });
 
+  /// Creates a [Photo] from a database map.
   factory Photo.fromMap(Map<String, dynamic> map) {
     return Photo(
       id:          map[DBColumn.id] as String,
@@ -30,6 +36,7 @@ class Photo {
     );
   }
 
+  /// Returns a map representation for database insertion.
   Map<String, dynamic> toInsertMap() {
     return {
       DBColumn.entryId:     entryId,
@@ -39,6 +46,7 @@ class Photo {
     };
   }
 
+  /// Constructs the storage path for a photo.
   static String buildStoragePath({
     required String userId,
     required String entryId,
@@ -47,11 +55,13 @@ class Photo {
     return '$userId/$entryId/$filename';
   }
 
+  /// Generates a unique filename for a new photo.
   static String generateFilename() {
     final ts = DateTime.now().millisecondsSinceEpoch;
     return 'photo_$ts.jpg';
   }
 
+  /// Creates a copy of this photo with the given fields replaced.
   Photo copyWith({
     String? id,
     String? entryId,

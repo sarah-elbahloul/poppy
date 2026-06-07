@@ -3,17 +3,12 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
 
-// ─────────────────────────────────────────────────────────────
-//  POPPY — NotificationService
-//  Location: lib/services/notification_service.dart
-//
-//  Handles initialisation, permission requests, and scheduling
-//  of the daily writing reminder.
-//
-//  Call NotificationService.init() once from main() before
-//  runApp().  Everything else is static.
-// ─────────────────────────────────────────────────────────────
-
+/// Poppy — Notification Service
+///
+/// Handles initialization, permission requests, and scheduling of daily 
+/// writing reminders using local notifications.
+///
+/// Call [NotificationService.init] once from `main()` before [runApp].
 class NotificationService {
   NotificationService._();
 
@@ -24,14 +19,15 @@ class NotificationService {
   static const _channelDesc = 'Daily nudge to write in your diary.';
   static const _notifId     = 0;
 
-  // ── Initialise ────────────────────────────────────────────
+  // --- Initialisation ---
 
+  /// Initializes the notification plugin and configures time zones.
   static Future<void> init() async {
     tz.initializeTimeZones();
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const ios     = DarwinInitializationSettings(
-      requestAlertPermission:  false,   // we ask explicitly later
+      requestAlertPermission:  false,   // Asked explicitly later.
       requestBadgePermission:  false,
       requestSoundPermission:  false,
     );
@@ -40,7 +36,7 @@ class NotificationService {
       const InitializationSettings(android: android, iOS: ios),
     );
 
-    // Create the Android notification channel (no-op on iOS / if exists)
+    // Create the Android notification channel.
     await _plugin
         .resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>()
@@ -54,10 +50,10 @@ class NotificationService {
     );
   }
 
-  // ── Permission request ────────────────────────────────────
+  // --- Permission Request ---
 
-  /// Call this when the user first enables notifications in settings.
-  /// Returns true if permission was granted (or was already granted).
+  /// Requests notification permissions from the user.
+  /// Returns true if permission was granted.
   static Future<bool> requestPermission() async {
     // Android 13+
     final android = _plugin.resolvePlatformSpecificImplementation<
@@ -79,13 +75,14 @@ class NotificationService {
       return granted ?? false;
     }
 
-    return true; // other platforms
+    return true; // Other platforms.
   }
 
-  // ── Schedule daily reminder ────────────────────────────────
+  // --- Schedule Daily Reminder ---
 
+  /// Schedules a recurring daily notification at the specified [time].
   static Future<void> scheduleDailyReminder(TimeOfDay time) async {
-    await _plugin.cancel(_notifId); // cancel any existing
+    await _plugin.cancel(_notifId); // Cancel existing reminders.
 
     final now = tz.TZDateTime.now(tz.local);
     var scheduled = tz.TZDateTime(
@@ -94,7 +91,7 @@ class NotificationService {
       time.hour, time.minute,
     );
 
-    // If that time has already passed today, start from tomorrow
+    // If the time has already passed today, schedule for tomorrow.
     if (scheduled.isBefore(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
@@ -120,13 +117,14 @@ class NotificationService {
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time, // repeat daily
+      matchDateTimeComponents: DateTimeComponents.time,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
-  // ── Cancel ────────────────────────────────────────────────
+  // --- Cancellation ---
 
+  /// Cancels all scheduled writing reminders.
   static Future<void> cancelReminders() async {
     await _plugin.cancel(_notifId);
   }

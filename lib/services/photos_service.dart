@@ -1,7 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,23 +9,21 @@ import 'package:poppy/core/supabase_client.dart';
 import 'package:poppy/models/photo.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Photos Service
-//  Location: lib/services/photos_service.dart
-//
-//  Works on both web and mobile.
-//  Web:    uploads raw bytes directly (no dart:io File).
-//  Mobile: compresses then uploads as File.
-// ─────────────────────────────────────────────────────────────
-
+/// Poppy — Photos Service
+///
+/// Manages the uploading, fetching, and deletion of photos associated 
+/// with journal entries. Supports both web and mobile platforms.
 class PhotosService {
   final _client = SupabaseConfig.client;
   final _picker = ImagePicker();
 
-  // ── Pick (mobile only — web uses ImagePicker directly) ────
+  // --- Mobile Image Picking ---
 
+  /// Launches the system image picker for mobile devices.
+  /// 
+  /// Returns a [File] representing the picked image, or null if cancelled.
   Future<File?> pickPhoto({bool fromCamera = false}) async {
-    if (kIsWeb) return null; // web callers use ImagePicker directly
+    if (kIsWeb) return null;
     final xFile = await _picker.pickImage(
       source:       fromCamera ? ImageSource.camera : ImageSource.gallery,
       imageQuality: 90,
@@ -35,7 +32,7 @@ class PhotosService {
     return File(xFile.path);
   }
 
-  // ── Compress (mobile only) ────────────────────────────────
+  // --- Image Compression ---
 
   Future<File?> _compressFile(File file) async {
     final outPath = '${file.path}_compressed.jpg';
@@ -46,13 +43,15 @@ class PhotosService {
     return result != null ? File(result.path) : file;
   }
 
-  // ── Upload — unified web + mobile ─────────────────────────
-  // Call this from WriteScreen which already has the XFile
-  // and optional bytes (bytes is non-null on web).
+  // --- Photo Uploads ---
 
+  /// Uploads an [XFile] to Supabase Storage and records it in the database.
+  /// 
+  /// Handles both binary data (for web) and file paths (for mobile).
+  /// Mobile images are compressed before upload.
   Future<Photo> uploadXFile({
     required XFile      xFile,
-    required Uint8List? bytes,    // non-null on web
+    required Uint8List? bytes,
     required String     entryId,
     required int        orderIndex,
   }) async {
@@ -63,7 +62,6 @@ class PhotosService {
     );
 
     if (kIsWeb) {
-      // Web: upload bytes directly
       final uploadBytes = bytes ?? await xFile.readAsBytes();
       await _client.storage
           .from(StorageBucket.photos)
@@ -73,7 +71,6 @@ class PhotosService {
         fileOptions: const FileOptions(contentType: 'image/jpeg'),
       );
     } else {
-      // Mobile: compress then upload as File
       final file       = File(xFile.path);
       final compressed = await _compressFile(file) ?? file;
       await _client.storage
@@ -95,8 +92,7 @@ class PhotosService {
     return Photo.fromMap(response as Map<String, dynamic>);
   }
 
-  // ── Legacy mobile-only upload (kept for compatibility) ────
-
+  /// Uploads a [File] to Supabase Storage. (Mobile only).
   Future<Photo> upload({
     required File   file,
     required String entryId,
@@ -126,8 +122,9 @@ class PhotosService {
     return Photo.fromMap(response as Map<String, dynamic>);
   }
 
-  // ── Fetch photos for an entry ─────────────────────────────
+  // --- Retrieval & Deletion ---
 
+  /// Fetches all photos for a given entry ID, including temporary signed URLs.
   Future<List<Photo>> fetchForEntry(String entryId) async {
     final response = await _client
         .from(DBTable.photos)
@@ -154,8 +151,7 @@ class PhotosService {
     return withUrls;
   }
 
-  // ── Delete a single photo ─────────────────────────────────
-
+  /// Deletes a photo from both storage and the database.
   Future<void> delete(Photo photo) async {
     await _client.storage
         .from(StorageBucket.photos)
@@ -166,13 +162,12 @@ class PhotosService {
         .eq(DBColumn.id, photo.id);
   }
 
-  // ── Delete all photos for an entry ───────────────────────
-
+  /// Deletes all photos associated with a specific entry.
   Future<void> deleteAllForEntry(String entryId) async {
     final photos = await fetchForEntry(entryId);
     if (photos.isEmpty) return;
     final paths = photos.map((p) => p.storagePath).toList();
-    log('deleting $paths');
+    log('Deleting photos: $paths');
     await _client.storage
         .from(StorageBucket.photos)
         .remove(paths);
@@ -182,8 +177,7 @@ class PhotosService {
         .eq(DBColumn.entryId, entryId);
   }
 
-  // ── Reorder ───────────────────────────────────────────────
-
+  /// Updates the order of photos in the database.
   Future<void> reorder(List<Photo> photos) async {
     await Future.wait(
       photos.asMap().entries.map((entry) async {

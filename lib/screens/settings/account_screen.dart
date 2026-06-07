@@ -6,14 +6,14 @@ import 'package:poppy/providers/providers.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Account Screen
 //  Location: lib/screens/settings/account_screen.dart
-//
-//  Password change (Option D):
-//    Requires current password + new password + confirm.
-//    KeyService.rewrapForPasswordChange() unwraps the data key
-//    with the old password and re-wraps it with the new one.
-//    ONE DB row update. No entry re-encryption. Instant.
 // ─────────────────────────────────────────────────────────────
 
+/// Allows users to manage their profile and account security.
+/// 
+/// Features:
+/// - Change display name.
+/// - Update email address (requires confirmation).
+/// - Change account password (handles data key re-wrapping).
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
 
@@ -43,6 +43,8 @@ class _AccountScreenState extends State<AccountScreen> {
     _confirmPassController.dispose();
     super.dispose();
   }
+
+  // ─── Actions ───
 
   Future<void> _onUpdateDisplayName() async {
     final name = _displayNameController.text.trim();
@@ -137,6 +139,7 @@ class _AccountScreenState extends State<AccountScreen> {
                 .copyWith(fontSize: 15),
           ),
           const SizedBox(height: AppSpacing.lg),
+          
           // ── Change display name ───────────────────────────
           _ExpandablePanel(
             icon:  AppIcons.person,
@@ -170,6 +173,7 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
 
           const SizedBox(height: AppSpacing.sm),
+          
           // ── Change email ──────────────────────────────────
           _ExpandablePanel(
             icon:  AppIcons.email,
@@ -262,7 +266,7 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 }
 
-// ── Expandable panel ───────────────────────────────────────────
+// ─── Sub-widgets ───
 
 class _ExpandablePanel extends StatelessWidget {
   final IconData icon;

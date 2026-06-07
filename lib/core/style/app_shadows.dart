@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
 
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Shadows
-//  Location: lib/core/style/app_shadows.dart
-//
-//  Poppy is intentionally flat and calm — shadows are
-//  used sparingly and are always very subtle.
-// ─────────────────────────────────────────────────────────────
-
+/// Poppy — Shadows
+///
+/// Defines the subtle shadow effects used across the app. 
+/// Poppy maintains a clean, flat aesthetic, using shadows sparingly for depth.
 class AppShadows {
   AppShadows._();
 
-  /// Barely-there lift — used on cards when elevated
+  /// Subtle lift used on cards when they are elevated.
   static List<BoxShadow> card = [
     BoxShadow(
       color: Colors.black.withOpacity(0.04),
@@ -20,7 +16,7 @@ class AppShadows {
     ),
   ];
 
-  /// FAB shadow
+  /// Shadow for Floating Action Buttons.
   static List<BoxShadow> fab = [
     BoxShadow(
       color: Colors.black.withOpacity(0.12),
@@ -29,7 +25,7 @@ class AppShadows {
     ),
   ];
 
-  /// Selected color dot glow — uses the dot's color, applied inline
+  /// A glow effect used for selected color dots.
   static List<BoxShadow> colorDotGlow(Color color) => [
     BoxShadow(
       color: color.withOpacity(0.9),
@@ -38,7 +34,7 @@ class AppShadows {
     ),
   ];
 
-  /// Bottom sheet lift
+  /// Shadow applied to bottom sheets.
   static List<BoxShadow> sheet = [
     BoxShadow(
       color: Colors.black.withOpacity(0.08),
@@ -47,6 +43,6 @@ class AppShadows {
     ),
   ];
 
-  /// No shadow — explicit zero for clarity
+  /// Represents no shadow.
   static const List<BoxShadow> none = [];
 }

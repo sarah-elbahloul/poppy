@@ -6,16 +6,13 @@ import 'package:poppy/providers/providers.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Register Screen
 //  Location: lib/screens/auth/register_screen.dart
-//
-//  Flow:
-//    1. Fill email + password + confirm
-//    2. signUp() → Supabase creates account (pending confirmation),
-//       generates data key, stores wrapped blob in secure storage
-//    3. Show confirmation message → user checks email
-//    4. User confirms → signs in → first sign-in flushes the
-//       pending blob to user_keys table in DB
 // ─────────────────────────────────────────────────────────────
 
+/// Handles the account creation flow:
+/// 1. User provides email and password.
+/// 2. [AuthProvider.signUp] is called, creating a pending account and 
+///    generating the initial encryption data key.
+/// 3. A confirmation screen is shown instructing the user to check their email.
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -40,6 +37,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  // ─── Logic ───
+
+  /// Validates the registration form input.
   String? _validate() {
     final e = AppErrors.validateEmail(_emailController.text);
     if (e != null) return e;
@@ -50,6 +50,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  /// Attempts to register a new account.
   Future<void> _onRegister() async {
     final err = _validate();
     if (err != null) { _showSnack(err); return; }
@@ -91,13 +92,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSpacing.xl),
-              Center(child: const PoppyLogo(size: AppIconSize.logo)),
+              const Center(child: PoppyLogo(size: AppIconSize.logo)),
               const SizedBox(height: AppSpacing.md),
               Center(child: Text(kAppName,
                   style: AppTextStyles.displayLarge(t.textPrimary))),
               Center(child: Text(kAppTagline,
                   style: AppTextStyles.bodySmallSerif(t.textTertiary, fp))),
-              SizedBox(height: AppSpacing.xl * 1.5),
+              const SizedBox(height: AppSpacing.xl * 1.5),
               Text('Create your diary',
                   style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
               const SizedBox(height: AppSpacing.xs),
@@ -173,8 +174,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-// ── Confirmation screen ────────────────────────────────────────
-
+/// Shown after successful registration, prompting the user to confirm their email.
 class _ConfirmationScreen extends StatelessWidget {
   final String email;
   const _ConfirmationScreen({required this.email});
@@ -239,8 +239,6 @@ class _ConfirmationScreen extends StatelessWidget {
     );
   }
 }
-
-// ── Shared private widgets ─────────────────────────────────────
 
 class _Field extends StatelessWidget {
   final TextEditingController controller;

@@ -6,18 +6,16 @@ import 'package:provider/provider.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Set New Password Screen
 //  Location: lib/screens/auth/set_new_password_screen.dart
-//
-//  Shown when AuthStatus == passwordRecovery (user tapped the
-//  Supabase reset email link). The user just enters a new password
-//  and taps confirm — that's the entire UX. No old-password prompt,
-//  no extra steps, works on any device.
-//
-//  completePasswordReset() handles key recovery silently:
-//    1. Key in memory (same device)  → re-wrap directly
-//    2. Recovery key in DB           → unwrap with uid, re-wrap with new pw
-//    3. Neither (legacy account)     → generate fresh key (last resort)
 // ─────────────────────────────────────────────────────────────
 
+/// Shown when AuthStatus == passwordRecovery (user tapped the
+/// Supabase reset email link).
+///
+/// The user enters a new password and confirms it.
+/// [completePasswordReset] handles key recovery silently:
+/// 1. Key in memory (same device)  → re-wrap directly.
+/// 2. Recovery key in DB           → unwrap with uid, re-wrap with new pw.
+/// 3. Neither (legacy account)     → generate fresh key (last resort).
 class SetNewPasswordScreen extends StatefulWidget {
   const SetNewPasswordScreen({super.key});
 
@@ -38,6 +36,8 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
     _confirmPassController.dispose();
     super.dispose();
   }
+
+  // ─── Actions ───
 
   Future<void> _onSubmit() async {
     final passErr = AppErrors.validatePassword(_newPassController.text);

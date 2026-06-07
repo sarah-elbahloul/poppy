@@ -10,6 +10,8 @@ import 'package:poppy/providers/theme_provider.dart';
 
 enum LegalDoc { privacy, terms, opensource }
 
+/// Displays legal documents such as Privacy Policy, Terms of Use, 
+/// or Open Source Licenses.
 class LegalScreen extends StatelessWidget {
   final LegalDoc doc;
   const LegalScreen({super.key, required this.doc});
@@ -49,7 +51,7 @@ class LegalScreen extends StatelessWidget {
   }
 }
 
-// ── Privacy Policy ─────────────────────────────────────────────
+// ─── Privacy Policy ───
 
 class _PrivacyContent extends StatelessWidget {
   @override
@@ -88,7 +90,7 @@ class _PrivacyContent extends StatelessWidget {
         'You have the right to access, correct, or delete your data at any time. '
             'You can export all your entries from the Settings screen. '
             'To permanently delete your account and all associated data, '
-            'contact us at support@poppydiary.app.', // todo: change the email
+            'contact us at support@poppydiary.app.',
         ),
         const _Section(title: 'Data retention', body:
         'We retain your data for as long as your account is active. '
@@ -103,14 +105,14 @@ class _PrivacyContent extends StatelessWidget {
         ),
         const _Section(title: 'Contact', body:
         'If you have questions about this privacy policy, '
-            'please contact us at support@poppydiary.app.', // todo:change the email
+            'please contact us at support@poppydiary.app.',
         ),
       ],
     );
   }
 }
 
-// ── Terms of Use ───────────────────────────────────────────────
+// ─── Terms of Use ───
 
 class _TermsContent extends StatelessWidget {
   @override
@@ -164,14 +166,14 @@ class _TermsContent extends StatelessWidget {
             'Continued use of Poppy after changes constitutes acceptance.',
         ),
         const _Section(title: 'Contact', body:
-        'Questions about these terms? Contact us at support@poppydiary.app.', // todo: change the emal
+        'Questions about these terms? Contact us at support@poppydiary.app.',
         ),
       ],
     );
   }
 }
 
-// ── Open Source Licenses ───────────────────────────────────────
+// ─── Open Source Licenses ───
 
 class _OpenSourceContent extends StatelessWidget {
   @override
@@ -246,8 +248,6 @@ class _OpenSourceContent extends StatelessWidget {
     );
   }
 }
-
-// ── Shared section widget ──────────────────────────────────────
 
 class _Section extends StatelessWidget {
   final String title;

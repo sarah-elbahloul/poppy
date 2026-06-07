@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 //  Location: lib/screens/home/settings_drawer.dart
 // ─────────────────────────────────────────────────────────────
 
+/// The side navigation drawer for the Home screen.
+/// Provides quick access to common settings, account info, and sign out.
 class SettingsDrawer extends StatelessWidget {
   const SettingsDrawer({super.key});
 
@@ -94,7 +96,6 @@ class SettingsDrawer extends StatelessWidget {
                   horizontal: AppSpacing.md,
                 ),
                 children: [
-                  // Primary Action: New Entry
                   _NewEntryButton(
                     onTap: () {
                       Navigator.pop(context);

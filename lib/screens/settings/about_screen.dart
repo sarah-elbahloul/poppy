@@ -7,11 +7,11 @@ import 'package:poppy/providers/theme_provider.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — About Screen
 //  Location: lib/screens/settings/about_screen.dart
-//
-//  Shows app version, build, a short description, and links to
-//  the legal screens.
 // ─────────────────────────────────────────────────────────────
 
+/// Displays application information, including version, build number, 
+/// and a brief description of the app's privacy focus. 
+/// Also provides links to legal documentation.
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
 
@@ -59,7 +59,6 @@ class _AboutScreenState extends State<AboutScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-
           // ── Logo + version ──────────────────────────────
           Center(
             child: Column(

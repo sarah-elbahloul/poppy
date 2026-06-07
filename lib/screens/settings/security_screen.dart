@@ -7,10 +7,6 @@ import 'package:provider/provider.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Security Screen
 //  Location: lib/screens/settings/security_screen.dart
-//
-//  PIN pad uses autoSubmit = false so the user must tap
-//  the Confirm button explicitly. This prevents accidental
-//  PIN setting from a mistyped 4th digit.
 // ─────────────────────────────────────────────────────────────
 
 enum _PinStep {
@@ -22,6 +18,11 @@ enum _PinStep {
   changeConfirm,
 }
 
+/// Manages the application-level PIN lock.
+/// 
+/// Allows users to enable, disable, and change their 4-digit PIN.
+/// The PIN is stored locally and used to prevent unauthorized access 
+/// to the app on the current device.
 class SecurityScreen extends StatefulWidget {
   const SecurityScreen({super.key});
 
@@ -36,8 +37,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
   String   _firstPin = '';
   bool     _hasError = false;
 
-  // ── Toggle PIN on/off ─────────────────────────────────────
+  // ─── PIN Lifecycle ───
 
+  /// Toggles the PIN lock on or off.
   Future<void> _onTogglePin(bool enabled) async {
     if (enabled) {
       setState(() => _step = _PinStep.setNew);
@@ -48,8 +50,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     }
   }
 
-  // ── Set PIN flow ──────────────────────────────────────────
-
+  /// Progresses through the "Set PIN" flow.
   Future<void> _onSetNewPin(String pin) async {
     if (_step == _PinStep.setNew) {
       setState(() {
@@ -67,7 +68,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
           _showSnack('PIN lock enabled.');
         }
       } else {
-        // Mismatch — show error, restart from setNew
         await _shake();
         if (mounted) {
           setState(() {
@@ -80,8 +80,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     }
   }
 
-  // ── Change PIN flow ───────────────────────────────────────
-
+  /// Progresses through the "Change PIN" flow.
   Future<void> _onChangePinStep(String pin) async {
     if (_step == _PinStep.changeOld) {
       final correct = await _pinService.verify(pin);
@@ -194,7 +193,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     );
   }
 
-  // ── Idle view ─────────────────────────────────────────────
+  // ─── Views ───
 
   Widget _buildIdleView(
       BuildContext context,
@@ -205,7 +204,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        // Toggle
         Container(
           decoration: BoxDecoration(
             color: t.surface,
@@ -225,7 +223,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
           ),
         ),
 
-        // Change PIN — only when enabled
         if (auth.pinEnabled) ...[
           const SizedBox(height: AppSpacing.sm),
           Container(
@@ -264,7 +261,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 
         const SizedBox(height: AppSpacing.xl),
 
-        // Info note
         Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
@@ -294,8 +290,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
     );
   }
 
-  // ── PIN pad view ──────────────────────────────────────────
-
   Widget _buildPinView(BuildContext context, PoppyThemeExtension t) {
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
@@ -305,7 +299,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Step subtitle for clarity
             if (_stepSubtitle.isNotEmpty) ...[
               Text(
                 _stepSubtitle,
@@ -318,7 +311,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
               label:       _pinLabel,
               hasError:    _hasError,
               onComplete:  _onPinComplete,
-              autoSubmit:  false, // ← user must tap Confirm explicitly
+              autoSubmit:  false, // Requires explicit confirmation.
             ),
           ],
         ),

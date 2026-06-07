@@ -1,10 +1,7 @@
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 
-// ─────────────────────────────────────────────────────────────
-//  Font catalogue
-// ─────────────────────────────────────────────────────────────
-
+/// Supported fonts in Poppy.
 enum PoppyFont {
   // Classic
   lora, merriweather, crimsonPro, sourceSerif, libreBaskerville,
@@ -18,6 +15,7 @@ enum PoppyFont {
   inter, outfit, spaceGrotesk, manrope, onest,
 }
 
+/// Metadata and styling logic for a [PoppyFont].
 class PoppyFontData {
   final PoppyFont id;
   final String    displayName;
@@ -31,6 +29,7 @@ class PoppyFontData {
     required this.tagline,
   });
 
+  /// Returns a [TextStyle] for this font using Google Fonts.
   TextStyle style(Color color, {double size = 16, double height = 1.8,
     FontWeight weight = FontWeight.w400}) {
     switch (id) {
@@ -70,14 +69,16 @@ class PoppyFontData {
     }
   }
 
+  /// Returns a bold version of the font style.
   TextStyle bold(Color color, {double size = 16, double height = 1.3}) =>
       style(color, size: size, height: height, weight: FontWeight.w600);
 }
 
+/// Registry for all available [PoppyFontData] instances.
 class PoppyFonts {
   PoppyFonts._();
 
-  // ── Classic ──────────────────────────────────────────────
+  // --- Classic ---
   static const lora = PoppyFontData(
     id: PoppyFont.lora,
     displayName: 'Lora',
@@ -109,7 +110,7 @@ class PoppyFonts {
     tagline: 'Timeless & grounding',
   );
 
-  // ── Expressive ───────────────────────────────────────────
+  // --- Expressive ---
   static const playfair = PoppyFontData(
     id: PoppyFont.playfair,
     displayName: 'Playfair',
@@ -153,7 +154,7 @@ class PoppyFonts {
     tagline: 'Black-tie affair',
   );
 
-  // ── Handwritten ──────────────────────────────────────────
+  // --- Handwritten ---
   static const caveat = PoppyFontData(
     id: PoppyFont.caveat,
     displayName: 'Caveat',
@@ -191,7 +192,7 @@ class PoppyFonts {
     tagline: 'Wild & free',
   );
 
-  // ── Friendly ─────────────────────────────────────────────
+  // --- Friendly ---
   static const comfortaa = PoppyFontData(
     id: PoppyFont.comfortaa,
     displayName: 'Comfortaa',
@@ -223,7 +224,7 @@ class PoppyFonts {
     tagline: 'Approachable chic',
   );
 
-  // ── Minimalist ───────────────────────────────────────────
+  // --- Minimalist ---
   static const inter = PoppyFontData(
     id: PoppyFont.inter,
     displayName: 'Inter',
@@ -256,15 +257,10 @@ class PoppyFonts {
   );
 
   static const all = [
-    // Classic
     lora, merriweather, crimsonPro, sourceSerif, libreBaskerville,
-    // Expressive
     playfair, cormorant, literata, youngSerif, dmSerif, fraunces, bodoniModa,
-    // Handwritten
     caveat, kalam, shadowsIntoLight, sacramento, patrickHand, indieFlower,
-    // Friendly
     comfortaa, quicksand, nunito, fredoka, poppins,
-    // Minimalist
     inter, outfit, spaceGrotesk, manrope, onest,
   ];
 
@@ -276,17 +272,16 @@ class PoppyFonts {
     'Minimalist',
   ];
 
+  /// Returns all fonts belonging to a specific category.
   static List<PoppyFontData> byCategory(String category) =>
       all.where((f) => f.category == category).toList();
 
+  /// Returns the [PoppyFontData] for a given [PoppyFont] ID.
   static PoppyFontData fromId(PoppyFont id) =>
       all.firstWhere((f) => f.id == id, orElse: () => lora);
 }
 
-// ─────────────────────────────────────────────────────────────
-//  FontPairData — thin wrapper for AppTextStyles call sites
-// ─────────────────────────────────────────────────────────────
-
+/// A data structure holding a title font and a body font.
 class FontPairData {
   final PoppyFontData _titleFont;
   final PoppyFontData _bodyFont;

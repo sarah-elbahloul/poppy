@@ -10,6 +10,13 @@ import 'package:provider/provider.dart';
 //  Location: lib/screens/settings/notifications_screen.dart
 // ─────────────────────────────────────────────────────────────
 
+/// Manages local notifications for daily writing reminders.
+/// 
+/// Users can:
+/// - Enable or disable daily reminders.
+/// - Select the specific time of day for the notification.
+/// 
+/// Preferences are persisted locally using [FlutterSecureStorage].
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
@@ -57,12 +64,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await _storage.write(key: _kMinute,  value: _reminderAt.minute.toString());
   }
 
+  // ─── Actions ───
+
+  /// Toggles notifications and updates the scheduling service.
   Future<void> _onToggle(bool value) async {
     if (_saving) return;
     setState(() => _saving = true);
 
     if (value) {
-      // Ask for permission first
       final granted = await NotificationService.requestPermission();
       if (!mounted) return;
 
@@ -96,6 +105,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
+  /// Opens the time picker to schedule the daily reminder.
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
@@ -107,7 +117,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     setState(() => _reminderAt = picked);
     await _persist();
 
-    // Reschedule with new time
     if (_enabled) {
       await NotificationService.scheduleDailyReminder(picked);
     }
@@ -140,7 +149,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           : ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-
           // ── Daily reminder toggle ─────────────────────
           Container(
             decoration: BoxDecoration(
@@ -165,7 +173,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           ),
 
-          // ── Time picker — only when enabled ──────────
+          // ── Time picker ──────────────────────────────
           if (_enabled) ...[
             const SizedBox(height: AppSpacing.sm),
             Container(

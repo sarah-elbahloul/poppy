@@ -1,45 +1,48 @@
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Centralized Error Messages
-//  Location: lib/core/error_messages.dart
-// ─────────────────────────────────────────────────────────────
-
+/// Poppy — Centralized Error Messages
+///
+/// This class provides human-readable error messages for various failure
+/// scenarios, including authentication, database operations, and validation.
 class AppErrors {
   AppErrors._();
 
-  // ── Word limit ────────────────────────────────────────────
+  // --- Word limit ---
 
   static const int wordLimit = 10000;
+
+  /// Returns a message when an entry exceeds the word limit.
   static String wordLimitExceeded(int count) =>
       'Your entry has $count words, which exceeds the $wordLimit-word limit. '
-          'Please shorten it before saving.';
+      'Please shorten it before saving.';
 
-// ── Generic fallback ──────────────────────────────────────
+  // --- Generic fallback ---
 
+  /// Attempts to extract a user-friendly error message from an exception.
   static String fromException(Object error) {
     final l = error.toString().toLowerCase();
     if (_isNetwork(l)) return _networkMsg;
     return 'Something went wrong. Please try again.';
   }
 
-// ── Private ───────────────────────────────────────────────
+  // --- Private Helpers ---
 
   static const String _networkMsg =
       'No internet connection. Please check your network and try again.';
 
   static bool _isNetwork(String lower) =>
-      lower.contains('network')    ||
-          lower.contains('socket')     ||
-          lower.contains('connection') ||
-          lower.contains('timeout')    ||
-          lower.contains('unreachable');
+      lower.contains('network') ||
+      lower.contains('socket') ||
+      lower.contains('connection') ||
+      lower.contains('timeout') ||
+      lower.contains('unreachable');
 
-  // ── Auth ──────────────────────────────────────────────────
+  // --- Authentication Errors ---
 
+  /// Handles sign-in errors.
   static String signIn(String raw) {
     final l = raw.toLowerCase();
     if (l.contains('invalid login credentials') ||
-        l.contains('invalid credentials')       ||
-        l.contains('wrong password')            ||
+        l.contains('invalid credentials') ||
+        l.contains('wrong password') ||
         l.contains('user not found')) {
       return 'Email or password is incorrect.';
     }
@@ -54,10 +57,11 @@ class AppErrors {
     return 'Could not sign in. Please try again.';
   }
 
+  /// Handles sign-up errors.
   static String signUp(String raw) {
     final l = raw.toLowerCase();
     if (l.contains('already registered') ||
-        l.contains('already exists')     ||
+        l.contains('already exists') ||
         l.contains('user already')) {
       return 'An account with this email already exists. '
           'Try signing in instead.';
@@ -65,8 +69,7 @@ class AppErrors {
     if (l.contains('invalid email') || l.contains('valid email')) {
       return 'Please enter a valid email address.';
     }
-    if (l.contains('password') &&
-        (l.contains('short') || l.contains('weak'))) {
+    if (l.contains('password') && (l.contains('short') || l.contains('weak'))) {
       return 'Password is too short. Use at least 6 characters.';
     }
     if (l.contains('too many requests') || l.contains('rate limit')) {
@@ -76,6 +79,7 @@ class AppErrors {
     return 'Could not create your account. Please try again.';
   }
 
+  /// Handles password reset errors.
   static String resetPassword(String raw) {
     final l = raw.toLowerCase();
     if (l.contains('user not found') || l.contains('no user')) {
@@ -88,6 +92,7 @@ class AppErrors {
     return 'Could not send reset email. Please try again.';
   }
 
+  /// Handles email update errors.
   static String updateEmail(String raw) {
     final l = raw.toLowerCase();
     if (l.contains('already registered') || l.contains('already exists')) {
@@ -101,18 +106,19 @@ class AppErrors {
   static const String wrongCurrentPassword =
       'Your current password is incorrect.';
 
+  /// Handles password update errors.
   static String updatePassword(String raw) {
     final l = raw.toLowerCase();
-    if (l.contains('password') &&
-        (l.contains('short') || l.contains('weak'))) {
+    if (l.contains('password') && (l.contains('short') || l.contains('weak'))) {
       return 'Password is too short. Use at least 6 characters.';
     }
     if (_isNetwork(l)) return _networkMsg;
     return 'Could not update password. Please try again.';
   }
 
-  // ── Entry / data ──────────────────────────────────────────
+  // --- Entry / Data Errors ---
 
+  /// Handles errors when saving an entry.
   static String saveEntry(String raw) {
     final l = raw.toLowerCase();
     if (l.contains('content_length') || l.contains('check constraint')) {
@@ -122,18 +128,21 @@ class AppErrors {
     return 'Could not save your entry. Please try again.';
   }
 
+  /// Handles errors when deleting an entry.
   static String deleteEntry(String raw) {
     if (_isNetwork(raw.toLowerCase())) return _networkMsg;
     return 'Could not delete the entry. Please try again.';
   }
 
+  /// Handles errors when loading entries.
   static String loadEntries(String raw) {
     if (_isNetwork(raw.toLowerCase())) return _networkMsg;
     return 'Could not load your entries. Check your connection and try again.';
   }
 
-  // ── Photos ────────────────────────────────────────────────
+  // --- Photo Errors ---
 
+  /// Handles errors when uploading a photo.
   static String uploadPhoto(String raw) {
     final l = raw.toLowerCase();
     if (l.contains('too large') || l.contains('payload')) {
@@ -143,13 +152,15 @@ class AppErrors {
     return 'Could not upload the photo. Please try again.';
   }
 
+  /// Handles errors when deleting a photo.
   static String deletePhoto(String raw) {
     if (_isNetwork(raw.toLowerCase())) return _networkMsg;
     return 'Could not remove the photo. Please try again.';
   }
 
-  // ── Import / export ───────────────────────────────────────
+  // --- Import / Export Errors ---
 
+  /// Handles errors during the import process.
   static String importFile(Object error) {
     if (error is FormatException) return error.message;
     final l = error.toString().toLowerCase();
@@ -157,28 +168,28 @@ class AppErrors {
     return 'Import failed. Make sure the file is a valid Poppy export.';
   }
 
-  static String exportFile(Object error) =>
-      'Export failed. Please try again.';
+  /// Handles errors during the export process.
+  static String exportFile(Object error) => 'Export failed. Please try again.';
 
   static const String importWrongAccount =
       'This export is encrypted with a different account\'s password. '
       'You can only import it from the original account, or ask for '
       'a plain (unencrypted) export instead.';
 
-  // ── PIN ───────────────────────────────────────────────────
+  // --- PIN Errors ---
 
   static const String pinIncorrect = 'Incorrect PIN. Please try again.';
-  static const String pinMismatch  =
+  static const String pinMismatch =
       'PINs do not match. Please try again from the beginning.';
 
-  // ── Validation ────────────────────────────────────────────
+  // --- Validation Errors ---
 
-  static const String emailEmpty    = 'Please enter your email address.';
-  static const String emailInvalid  = 'Please enter a valid email address.';
+  static const String emailEmpty = 'Please enter your email address.';
+  static const String emailInvalid = 'Please enter a valid email address.';
   static const String passwordEmpty = 'Please enter a password.';
   static const String passwordShort = 'Password must be at least 6 characters.';
   static const String passwordMismatch = 'Passwords do not match.';
-  static const String confirmEmpty  = 'Please confirm your password.';
+  static const String confirmEmpty = 'Please confirm your password.';
 
   static String? validateEmail(String email) {
     if (email.trim().isEmpty) return emailEmpty;

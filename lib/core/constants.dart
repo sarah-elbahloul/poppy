@@ -1,15 +1,8 @@
-// ─────────────────────────────────────────────────────────────
-//  POPPY — App-wide Constants
-//  Location: lib/core/constants.dart
-// ─────────────────────────────────────────────────────────────
-
+/// Poppy — App-wide Constants
 const String kAppName    = 'Poppy';
 const String kAppTagline = 'where every day finds its petal';
 
-// ─────────────────────────────────────────────────────────────
-//  SECURE STORAGE KEYS
-// ─────────────────────────────────────────────────────────────
-
+/// Keys used for local secure storage.
 class StorageKeys {
   StorageKeys._();
   static const String pinHash          = 'poppy_pin_hash';
@@ -19,6 +12,7 @@ class StorageKeys {
   static const String selectedBodyFont   = 'poppy_body_font';
   static const String selectedFontSize   = 'poppy_font_size';
   static const String selectedLineHeight = 'poppy_line_height';
+
   // Per-slot colour overrides (absent = use Poppy default)
   static const String colorAccent        = 'poppy_color_accent';
   static const String colorAccentLight   = 'poppy_color_accent_light';
@@ -29,19 +23,18 @@ class StorageKeys {
   static const String colorTextSecondary = 'poppy_color_text_secondary';
   static const String colorTextTertiary  = 'poppy_color_text_tertiary';
   static const String colorBorder        = 'poppy_color_border';
-  // Cached plaintext data key bytes (base64).
-  // Avoids a DB round-trip on every cold start.
+
+  /// Cached plaintext data key bytes (base64).
+  /// Avoids a DB round-trip on every cold start.
   static const String dataKey          = 'poppy_data_key';
-  // Temporary wrapped key blob stored between sign-up and first
-  // sign-in (email confirmation means no session at sign-up time).
-  // Cleared once successfully saved to user_keys table.
+
+  /// Temporary wrapped key blob stored between sign-up and first
+  /// sign-in (email confirmation means no session at sign-up time).
+  /// Cleared once successfully saved to user_keys table.
   static const String pendingEncKey    = 'poppy_pending_enc_key';
 }
 
-// ─────────────────────────────────────────────────────────────
-//  DATABASE TABLE & COLUMN NAMES
-// ─────────────────────────────────────────────────────────────
-
+/// Supabase Database table names.
 class DBTable {
   DBTable._();
   static const String profiles = 'profiles';
@@ -50,6 +43,7 @@ class DBTable {
   static const String userKeys = 'user_keys';
 }
 
+/// Supabase Database column names.
 class DBColumn {
   DBColumn._();
   static const String id          = 'id';
@@ -66,32 +60,26 @@ class DBColumn {
   static const String orderIndex  = 'order_index';
   static const String theme       = 'theme';
   static const String pinEnabled  = 'pin_enabled';
+
   // user_keys table
   static const String encDataKey          = 'encrypted_data_key';
   static const String recoveryEncDataKey  = 'recovery_enc_data_key';
 }
 
-// ─────────────────────────────────────────────────────────────
-//  SUPABASE STORAGE
-// ─────────────────────────────────────────────────────────────
-
+/// Supabase Storage bucket names.
 class StorageBucket {
   StorageBucket._();
-  // saved in the way: bucket/userid/entryid/photo
+  /// Photo storage follows: bucket/userid/entryid/photo
   static const String photos = 'entry-photos';
 }
 
-// ─────────────────────────────────────────────────────────────
-//  EXPORT / IMPORT
-// ─────────────────────────────────────────────────────────────
-
+/// Configuration for data export and import.
 class ExportConfig {
   ExportConfig._();
   static const String jsonVersion = '1.0';
 
-  /// Generates a timestamped filename, e.g. poppy_2026-05-29_14-30.json
-  /// Using .json so every platform/app can open it without registering
-  /// a custom MIME type for .poppy.
+  /// Generates a timestamped filename, e.g., poppy_2026-05-29_14-30.json.
+  /// Using .json ensures compatibility across platforms.
   static String fileName() {
     final now = DateTime.now();
     final ts  = '${now.year.toString().padLeft(4, '0')}-'

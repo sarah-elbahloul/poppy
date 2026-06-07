@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/services/services.dart';
 
+/// Represents the status of the entries loading process.
 enum EntriesStatus { initial, loading, loaded, error }
 
+/// Poppy — Entries Provider
+///
+/// Manages the state of journal entries, including fetching, filtering, 
+/// creating, updating, and deleting entries.
 class EntriesProvider extends ChangeNotifier {
   final _entriesService = EntriesService();
   final _photosService = PhotosService();
@@ -12,19 +17,16 @@ class EntriesProvider extends ChangeNotifier {
   EntriesStatus _status = EntriesStatus.initial;
   String? _errorMessage;
 
-  // ─────────────────────────────────────────────
-  // FILTER STATE
-  // ─────────────────────────────────────────────
+  // --- Filter State ---
   String? _query;
   String? _colorTag;
   DateTime? _fromDate;
   DateTime? _toDate;
 
-  // ─────────────────────────────────────────────
-  // GETTERS
-  // ─────────────────────────────────────────────
+  // --- Getters ---
   List<Entry> get entries => _entries;
 
+  /// Returns the list of entries filtered by the current criteria.
   List<Entry> get filteredEntries {
     return _entries.where((e) {
       final matchesQuery = _query == null ||
@@ -51,9 +53,9 @@ class EntriesProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isLoading => _status == EntriesStatus.loading;
 
-  // ─────────────────────────────────────────────
-  // FILTER API
-  // ─────────────────────────────────────────────
+  // --- Filter API ---
+
+  /// Sets the filters for the entries list.
   void setFilters({
     String? query,
     String? colorTag,
@@ -67,6 +69,7 @@ class EntriesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clears all active filters.
   void clearFilters() {
     _query = null;
     _colorTag = null;
@@ -75,9 +78,9 @@ class EntriesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ─────────────────────────────────────────────
-  // CRUD
-  // ─────────────────────────────────────────────
+  // --- CRUD Operations ---
+
+  /// Fetches all entries from the service layer.
   Future<void> fetchEntries() async {
     _status = EntriesStatus.loading;
     notifyListeners();
@@ -91,6 +94,7 @@ class EntriesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Creates a new entry and updates the local state.
   Future<Entry?> createEntry(Entry entry) async {
     try {
       final created = await _entriesService.create(entry);
@@ -104,6 +108,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
+  /// Updates an existing entry and refreshes the local state.
   Future<bool> updateEntry(Entry entry) async {
     try {
       final updated = await _entriesService.update(entry);
@@ -122,6 +127,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
+  /// Deletes an entry and its associated photos.
   Future<bool> deleteEntry(String entryId) async {
     try {
       await _photosService.deleteAllForEntry(entryId);
@@ -136,6 +142,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
+  /// Returns an entry by its ID from the local cache.
   Entry? getById(String id) {
     try {
       return _entries.firstWhere((e) => e.id == id);
@@ -144,6 +151,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
+  /// Clears all entries and resets the provider state.
   void clear() {
     _entries = [];
     _status = EntriesStatus.initial;
@@ -151,6 +159,7 @@ class EntriesProvider extends ChangeNotifier {
     clearFilters();
   }
 
+  /// Clears the current error message.
   void clearError() {
     _errorMessage = null;
     notifyListeners();

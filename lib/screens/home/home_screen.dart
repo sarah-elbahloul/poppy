@@ -12,6 +12,9 @@ import 'package:poppy/screens/home/settings_drawer.dart';
 //  Location: lib/screens/home/home_screen.dart
 // ─────────────────────────────────────────────────────────────
 
+/// The main entry point of the application once the user is authenticated.
+/// Displays a list of journal entries with search, filter, and batch 
+/// operation capabilities.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -21,7 +24,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final Set<String> _selectedIds = {};
-
   final TextEditingController _searchController = TextEditingController();
 
   String? _selectedYear;
@@ -70,10 +72,10 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // ─────────────────────────────────────────────
-  // UNIFIED FILTER LOGIC
-  // ─────────────────────────────────────────────
+  // ─── Filter Logic ───
 
+  /// Aggregates all active filters (search, year, color) and applies 
+  /// them to the [EntriesProvider].
   void _applyAllFilters() {
     final provider = context.read<EntriesProvider>();
 
@@ -96,7 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _startSearch() {
     setState(() => _searching = true);
-
     Future.delayed(AppDuration.instant, () {
       _searchFocusNode.requestFocus();
     });
@@ -109,13 +110,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _searchController.clear();
     });
     provider.clearFilters();
-    _applyAllFilters(); // clears query but keeps year/color filters
+    _applyAllFilters();
     _searchFocusNode.unfocus();
   }
 
-  // ─────────────────────────────────────────────
-  // ENTRY ACTIONS
-  // ─────────────────────────────────────────────
+  // ─── Entry Actions ───
 
   void _onEntryTap(Entry entry) {
     if (_isBatchMode) {
@@ -144,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _cancelBatch() => setState(() => _selectedIds.clear());
 
+  /// Opens a color picker to apply a color tag to all selected entries.
   Future<void> _openColorPicker() async {
     final t = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
@@ -202,6 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Deletes all currently selected entries after confirmation.
   Future<void> _deleteBatch() async {
     final t = context.poppyTheme;
     final count = _selectedIds.length;
@@ -210,10 +211,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(
-            Radius.circular(AppRadius.lg),
-          ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
         title: Text(
           'Delete $count ${count == 1 ? 'entry' : 'entries'}?',
@@ -245,32 +244,25 @@ class _HomeScreenState extends State<HomeScreen> {
     if (confirmed != true) return;
 
     final provider = context.read<EntriesProvider>();
-
     for (final id in _selectedIds.toList()) {
       await provider.deleteEntry(id);
     }
-
     setState(() => _selectedIds.clear());
   }
 
   Future<void> _changeColorBatch(EntryColorData color) async {
     final provider = context.read<EntriesProvider>();
-
     for (final id in _selectedIds.toList()) {
       final entry = provider.getById(id);
       if (entry == null) continue;
-
       await provider.updateEntry(
         entry.copyWith(colorTag: color),
       );
     }
-
     setState(() => _selectedIds.clear());
   }
 
-  // ─────────────────────────────────────────────
-  // HELPERS
-  // ─────────────────────────────────────────────
+  // ─── Helpers ───
 
   List<String> _extractYears(List<Entry> entries) {
     final years = entries
@@ -282,16 +274,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return years;
   }
 
-  // ─────────────────────────────────────────────
-  // UI
-  // ─────────────────────────────────────────────
+  // ─── Build ───
 
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
     final provider = context.watch<EntriesProvider>();
     final entries = provider.filteredEntries;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -462,16 +451,8 @@ class _HomeScreenState extends State<HomeScreen> {
     if (provider.isLoading || !_fetchedOnce) {
       return Column(
         children: [
-          // ─────────────────────────────────────────
-          // FILTER TABS SKELETON
-          // ─────────────────────────────────────────
           const _FiltersSkeleton(),
-
           const SizedBox(height: AppSpacing.md),
-
-          // ─────────────────────────────────────────
-          // ENTRIES LIST SKELETON
-          // ─────────────────────────────────────────
           Divider(
             height: AppStroke.hairline,
             thickness: AppStroke.hairline,
@@ -548,8 +529,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: _selectedYear != null ? t.accent : t.textSecondary,
                     ),
                     const SizedBox(width: AppSpacing.sm),
-
-                    /// YEAR SELECTOR
                     Expanded(
                       child: MenuAnchor(
                         alignmentOffset:
@@ -628,8 +607,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-
-                    /// Clear button
                     if (_selectedYear != null)
                       GestureDetector(
                         onTap: () {
@@ -675,8 +652,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           : t.textSecondary,
                     ),
                     const SizedBox(width: AppSpacing.xs),
-
-                    /// Scrollable color chips INSIDE container
                     Expanded(
                       child: ListView(
                         scrollDirection: Axis.horizontal,
@@ -685,7 +660,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           return GestureDetector(
                             onTap: () {
                               final newColor = isSelected ? null : colorData;
-
                               setState(() => _selectedColor = newColor);
                               _applyAllFilters();
                             },
@@ -731,8 +705,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         }).toList(),
                       ),
                     ),
-
-                    /// Clear button
                     if (_selectedColor != null)
                       GestureDetector(
                         onTap: () {
@@ -754,12 +726,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-
         const SizedBox(height: AppSpacing.md),
-
-        // ─────────────────────────────────────────
-        // ENTRIES LIST (filtered or all)
-        // ─────────────────────────────────────────
         Divider(
           height: AppStroke.hairline,
           thickness: AppStroke.hairline,
@@ -902,9 +869,6 @@ class _FiltersSkeleton extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
       child: Row(
         children: [
-          // ─────────────────────────────
-          // YEAR DROPDOWN SKELETON
-          // ─────────────────────────────
           Flexible(
             child: Container(
               height: AppComponentSize.filterBarHeight,
@@ -930,8 +894,6 @@ class _FiltersSkeleton extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-
-                  // fake dropdown text
                   Container(
                     height: 10,
                     width: 80,
@@ -940,9 +902,7 @@ class _FiltersSkeleton extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppRadius.xs),
                     ),
                   ),
-
                   const Spacer(),
-
                   Container(
                     width: 14,
                     height: 14,
@@ -955,10 +915,6 @@ class _FiltersSkeleton extends StatelessWidget {
               ),
             ),
           ),
-
-          // ─────────────────────────────
-          // COLOR FILTER SKELETON
-          // ─────────────────────────────
           Flexible(
             child: Container(
               height: AppComponentSize.filterBarHeight,
@@ -983,7 +939,6 @@ class _FiltersSkeleton extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
-                  // fake chips row
                   Expanded(
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,

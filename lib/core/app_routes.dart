@@ -1,8 +1,4 @@
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Named Routes
-//  Location: lib/core/app_routes.dart
-// ─────────────────────────────────────────────────────────────
-
+/// Defines the route name constants used for navigation throughout the app.
 class AppRoutes {
   AppRoutes._();
 

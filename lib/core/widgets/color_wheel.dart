@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:poppy/core/style/style.dart';
 
+/// A custom color wheel widget for selecting HSL colors.
+///
+/// It consists of an outer hue ring and an inner saturation/lightness circle.
 class ColorWheel extends StatefulWidget {
   final Color initialColor;
   final ValueChanged<Color> onChanged;
@@ -50,7 +53,7 @@ class _ColorWheelState extends State<ColorWheel> {
     final hsl = HSLColor.fromColor(c);
     _hue = hsl.hue;
     _saturation = hsl.saturation;
-    // Clamp lightness slightly away from extremes to keep the indicator visible and movable
+    // Clamp lightness slightly away from extremes to keep the indicator visible and movable.
     _lightness = hsl.lightness.clamp(0.01, 0.99);
   }
 
@@ -67,8 +70,7 @@ class _ColorWheelState extends State<ColorWheel> {
     final innerR = center - _ringWidth - _spacing;
 
     if (isStart) {
-      // Forgiving hit detection:
-      // If tap is outside the inner circle boundary (plus half the spacing), it's a hue interaction.
+      // Forgiving hit detection for the hue ring vs inner circle.
       if (dist >= innerR + (_spacing / 2)) {
         _isDraggingHue = true;
         _isDraggingInner = false;
@@ -83,13 +85,13 @@ class _ColorWheelState extends State<ColorWheel> {
       var angle = math.atan2(dy, dx) * 180 / math.pi;
       if (angle < 0) angle += 360;
 
-      // Haptic feedback for significant changes (every ~5 degrees)
+      // Haptic feedback for significant changes.
       if ((angle - _hue).abs() > 5) {
         HapticFeedback.selectionClick();
       }
       setState(() => _hue = angle);
     } else if (_isDraggingInner) {
-      // Map circle coordinates to Saturation and Lightness
+      // Map circle coordinates to Saturation and Lightness.
       final clampedDist = dist.clamp(0.0, innerR);
       final angle = math.atan2(dy, dx);
 
@@ -97,9 +99,9 @@ class _ColorWheelState extends State<ColorWheel> {
       final py = clampedDist * math.sin(angle);
 
       setState(() {
-        // Horizontal axis: Saturation (0 to 1)
+        // Horizontal axis: Saturation (0 to 1).
         _saturation = ((px / innerR) + 1) / 2;
-        // Vertical axis: Lightness (1 to 0)
+        // Vertical axis: Lightness (1 to 0).
         _lightness = 1.0 - ((py / innerR) + 1) / 2;
       });
     }
@@ -142,13 +144,13 @@ class _ColorWheelState extends State<ColorWheel> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            // Hue Ring
+            // Hue Ring.
             CustomPaint(
               size: Size(widget.size, widget.size),
               painter: _HueRingPainter(ringWidth: _ringWidth),
             ),
 
-            // Saturation/Lightness Inner Circle
+            // Saturation/Lightness Inner Circle.
             Center(
               child: Container(
                 width: innerR * 2,
@@ -172,7 +174,7 @@ class _ColorWheelState extends State<ColorWheel> {
               ),
             ),
 
-            // Hue Indicator
+            // Hue Indicator.
             Positioned(
               left: hueDotPos.dx - 18,
               top: hueDotPos.dy - 18,
@@ -184,7 +186,7 @@ class _ColorWheelState extends State<ColorWheel> {
               ),
             ),
 
-            // Sat/Light Indicator
+            // Sat/Light Indicator.
             Positioned(
               left: satLightDotPos.dx - 18,
               top: satLightDotPos.dy - 18,
@@ -202,6 +204,7 @@ class _ColorWheelState extends State<ColorWheel> {
   }
 }
 
+/// A circular indicator used on the [ColorWheel].
 class _Indicator extends StatelessWidget {
   final Color color;
   final bool isLarge;
@@ -233,6 +236,7 @@ class _Indicator extends StatelessWidget {
   }
 }
 
+/// Painter for the outer hue ring.
 class _HueRingPainter extends CustomPainter {
   final double ringWidth;
   _HueRingPainter({required this.ringWidth});
@@ -242,8 +246,6 @@ class _HueRingPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
 
-    // Fixed color order: Standard HSL (Red, Yellow, Green, Cyan, Blue, Magenta, Red)
-    // Matches clockwise 0-360 degrees starting at 3 o'clock.
     final paint = Paint()
       ..shader = const SweepGradient(
         colors: [
@@ -258,7 +260,7 @@ class _HueRingPainter extends CustomPainter {
       ).createShader(Rect.fromCircle(center: center, radius: radius))
       ..style = PaintingStyle.stroke
       ..strokeWidth = ringWidth
-      ..strokeCap = StrokeCap.butt; // Butt looks cleaner for a continuous ring
+      ..strokeCap = StrokeCap.butt;
 
     canvas.drawCircle(center, radius - ringWidth / 2, paint);
   }
@@ -267,6 +269,7 @@ class _HueRingPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+/// Painter for the inner saturation/lightness circle.
 class _SatLightPainter extends CustomPainter {
   final double hue;
 
@@ -274,8 +277,6 @@ class _SatLightPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Using Vertices for high-performance, smooth gradient interpolation.
-    // This fixes the jagged edges from the pixel-by-pixel rendering.
     const int divisions = 32;
     final List<Offset> positions = [];
     final List<Color> colors = [];
@@ -300,12 +301,10 @@ class _SatLightPainter extends CustomPainter {
         final int bottomLeft = (j + 1) * (divisions + 1) + i;
         final int bottomRight = bottomLeft + 1;
 
-        // Triangle 1
         indices.add(topLeft);
         indices.add(topRight);
         indices.add(bottomLeft);
 
-        // Triangle 2
         indices.add(topRight);
         indices.add(bottomRight);
         indices.add(bottomLeft);

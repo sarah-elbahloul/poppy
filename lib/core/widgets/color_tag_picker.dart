@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:poppy/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:poppy/core/widgets/color_dot.dart';
 
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Color Tag Picker
-//  Location: lib/core/widgets/color_tag_picker.dart
-// ─────────────────────────────────────────────────────────────
-
+/// A horizontal picker for choosing an [EntryColorData] tag.
+///
+/// Displays a label and a row of [ColorDot] widgets representing 
+/// the available entry colors.
 class ColorTagPicker extends StatelessWidget {
   final EntryColorData selected;
   final ValueChanged<EntryColorData> onSelected;

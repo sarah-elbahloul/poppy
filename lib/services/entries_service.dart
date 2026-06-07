@@ -4,26 +4,23 @@ import 'package:poppy/core/supabase_client.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/services/encryption_service.dart';
 
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Entries Service
-//  Location: lib/services/entries_service.dart
-//
-//  Write path: plaintext → encrypt with data key → store
-//  Read path:  fetch → decrypt with data key → Entry
-//  Search:     client-side after decryption
-//
-//  With Option D key architecture, the data key NEVER changes,
-//  so there is NO key rotation here. Password changes only
-//  re-wrap the key in user_keys — entries are never touched
-//  as part of a password change.
-// ─────────────────────────────────────────────────────────────
-
+/// Poppy — Entries Service
+///
+/// Handles the lifecycle of journal entries, including storage and retrieval 
+/// from Supabase.
+/// 
+/// **Data Flow:**
+/// - **Write:** Plaintext is encrypted with the user's data key before being 
+///   sent to the database.
+/// - **Read:** Encrypted data is fetched and then decrypted locally before 
+///   being converted into [Entry] models.
+/// - **Search:** Performed client-side on decrypted data to ensure privacy 
+///   while maintaining full-text search capabilities.
 class EntriesService {
   final _client = SupabaseConfig.client;
   final _enc    = EncryptionService.instance;
 
-  // ── Fetch all ─────────────────────────────────────────────
-
+  /// Fetches all entries for the current user, ordered by date descending.
   Future<List<Entry>> fetchAll() async {
     final response = await _client
         .from(DBTable.entries)
@@ -33,8 +30,7 @@ class EntriesService {
     return _decryptList(response as List);
   }
 
-  // ── Create ────────────────────────────────────────────────
-
+  /// Creates a new journal entry.
   Future<Entry> create(Entry entry) async {
     final map = await _buildEncryptedMap(entry);
     map[DBColumn.userId] = SupabaseConfig.userId;
@@ -48,8 +44,7 @@ class EntriesService {
     return _decryptSingle(response as Map<String, dynamic>);
   }
 
-  // ── Update ────────────────────────────────────────────────
-
+  /// Updates an existing journal entry.
   Future<Entry> update(Entry entry) async {
     final map = await _buildEncryptedMap(entry);
     map[DBColumn.updatedAt] = DateTime.now().toIso8601String();
@@ -65,8 +60,7 @@ class EntriesService {
     return _decryptSingle(response as Map<String, dynamic>);
   }
 
-  // ── Delete ────────────────────────────────────────────────
-
+  /// Deletes an entry by its ID.
   Future<void> delete(String entryId) async {
     await _client
         .from(DBTable.entries)
@@ -75,8 +69,7 @@ class EntriesService {
         .eq(DBColumn.userId, SupabaseConfig.userId);
   }
 
-  // ── Search (client-side) ──────────────────────────────────
-
+  /// Searches and filters entries client-side.
   Future<List<Entry>> search({
     String?   query,
     String?   colorTag,
@@ -113,7 +106,7 @@ class EntriesService {
     return entries;
   }
 
-  // ── Encryption helpers ────────────────────────────────────
+  // --- Encryption Helpers ---
 
   Future<Map<String, dynamic>> _buildEncryptedMap(Entry entry) async {
     final encrypted = await _enc.encryptEntry(

@@ -1,25 +1,13 @@
 import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/style/style.dart';
 
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Entry Model
-//  Location: lib/models/entry.dart
-//
-//  ENCRYPTION CONTRACT
-//  ───────────────────
-//  This model always holds DECRYPTED values in memory.
-//  It never touches ciphertext directly.
-//
-//  fromMap() is called by EntriesService AFTER it has decrypted
-//  title_enc and content_enc and injected the plain values into
-//  the map under the literal keys 'title' and 'content'.
-//
-//  toInsertMap() / toUpdateMap() return plain title/content —
-//  EntriesService replaces them with encrypted versions before
-//  sending to Supabase.  These methods are kept for reference
-//  but the service builds its own encrypted map in practice.
-// ─────────────────────────────────────────────────────────────
-
+/// Represents a journal entry in the Poppy app.
+///
+/// **Encryption Contract:**
+/// This model always holds DECRYPTED values in memory. It never touches ciphertext directly.
+/// [Entry.fromMap] is called by the service layer after decryption.
+/// [toInsertMap] and [toUpdateMap] return plain text; encryption is handled by the service layer
+/// before persisting to the database.
 class Entry {
   final String         id;
   final String         userId;
@@ -45,16 +33,12 @@ class Entry {
     this.photoUrls = const [],
   });
 
-  // ── fromMap ───────────────────────────────────────────────
-  // The map passed here has already been decrypted by
-  // EntriesService — 'title' and 'content' are plaintext.
-
+  /// Creates an [Entry] from a database map.
+  /// Expects 'title' and 'content' to be already decrypted and injected into the map.
   factory Entry.fromMap(Map<String, dynamic> map) {
     return Entry(
       id:        map[DBColumn.id]        as String,
       userId:    map[DBColumn.userId]    as String,
-      // 'title' and 'content' are injected by the service layer
-      // after decryption — they are not DB column names.
       title:     map['title']            as String? ?? '',
       content:   map['content']          as String? ?? '',
       colorTag:  EntryColors.fromDbValue(
@@ -68,10 +52,8 @@ class Entry {
     );
   }
 
-  // ── toInsertMap / toUpdateMap ─────────────────────────────
-  // Kept for documentation. In practice EntriesService builds
-  // its own encrypted map and does not call these.
-
+  /// Returns a map representation for insertion. 
+  /// Note: The service layer replaces title/content with encrypted versions.
   Map<String, dynamic> toInsertMap() => {
     DBColumn.titleEnc:   title,
     DBColumn.contentEnc: content,
@@ -80,6 +62,8 @@ class Entry {
     DBColumn.entryDate:  entryDate.toIso8601String().substring(0, 10),
   };
 
+  /// Returns a map representation for updates.
+  /// Note: The service layer replaces title/content with encrypted versions.
   Map<String, dynamic> toUpdateMap() => {
     DBColumn.titleEnc:   title,
     DBColumn.contentEnc: content,
@@ -89,8 +73,7 @@ class Entry {
     DBColumn.updatedAt:  DateTime.now().toIso8601String(),
   };
 
-  // ── Utilities ─────────────────────────────────────────────
-
+  /// Returns a short preview of the content, limited to the first non-empty line.
   String get contentPreview {
     final firstLine = content.split('\n').firstWhere(
           (l) => l.trim().isNotEmpty, orElse: () => '',
@@ -100,13 +83,13 @@ class Entry {
         : firstLine;
   }
 
+  /// Utility method to count words in a string.
   static int countWords(String text) {
     if (text.trim().isEmpty) return 0;
     return text.trim().split(RegExp(r'\s+')).length;
   }
 
-  // ── copyWith ──────────────────────────────────────────────
-
+  /// Creates a copy of this entry with the given fields replaced.
   Entry copyWith({
     String? id, String? userId, String? title, String? content,
     EntryColorData? colorTag, int? wordCount, DateTime? entryDate,
@@ -124,8 +107,7 @@ class Entry {
     photoUrls: photoUrls ?? this.photoUrls,
   );
 
-  // ── Export / Import ───────────────────────────────────────
-
+  /// Converts the entry to a map for data export.
   Map<String, dynamic> toExportMap() => {
     'id':         id,
     'title':      title,
@@ -138,6 +120,7 @@ class Entry {
     'photo_urls': photoUrls,
   };
 
+  /// Creates an [Entry] from a map exported via [toExportMap].
   factory Entry.fromExportMap(Map<String, dynamic> map, String userId) =>
       Entry(
         id:        map['id']        as String,

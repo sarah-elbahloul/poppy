@@ -5,11 +5,13 @@ import 'package:poppy/models/entry.dart';
 import 'package:poppy/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Entry Card Widget
-//  Location: lib/core/widgets/entry_card.dart
-// ─────────────────────────────────────────────────────────────
-
+/// A card widget that displays a summary of a journal [Entry].
+///
+/// Features:
+/// - A color strip indicating the entry's tag.
+/// - A date column colored by the month.
+/// - Title and content preview.
+/// - Word count or selection checkbox in batch mode.
 class EntryCard extends StatelessWidget {
   final Entry entry;
   final VoidCallback onTap;
@@ -42,13 +44,13 @@ class EntryCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Color strip
+            // Color strip indicating the entry tag.
             Container(
               width: AppStroke.colorStrip,
-              color: entry.colorTag.color as Color,
+              color: entry.colorTag.color,
             ),
 
-            // Date column (safer)
+            // Date column.
             Flexible(
               flex: 0,
               child: Container(
@@ -67,13 +69,13 @@ class EntryCard extends StatelessWidget {
                     children: [
                       Text(
                         entry.entryDate.day.toString(),
-                        style: AppTextStyles.calendarDay(monthColor,fp),
+                        style: AppTextStyles.calendarDay(monthColor, fp),
                       ),
                       Text(
                         DateFormat('MMM')
                             .format(entry.entryDate)
                             .toUpperCase(),
-                        style: AppTextStyles.labelSmall(monthColor,fp),
+                        style: AppTextStyles.labelSmall(monthColor, fp),
                       ),
                     ],
                   ),
@@ -87,7 +89,7 @@ class EntryCard extends StatelessWidget {
               color: t.border,
             ),
 
-            // Title + preview (FIXED)
+            // Title and content preview.
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -128,7 +130,7 @@ class EntryCard extends StatelessWidget {
               ),
             ),
 
-            // Word count / checkbox (safe width)
+            // Word count or checkbox.
             ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 40),
               child: Padding(
@@ -164,7 +166,7 @@ class EntryCard extends StatelessWidget {
                     child: Text(
                       '${entry.wordCount}w',
                       style: AppTextStyles.labelSmall(
-                          t.textTertiary,fp),
+                          t.textTertiary, fp),
                     ),
                   ),
                 ),
@@ -175,7 +177,4 @@ class EntryCard extends StatelessWidget {
       ),
     );
   }
-
-  bool _isSameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
 }

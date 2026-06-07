@@ -1,171 +1,167 @@
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Sizes
-//  Location: lib/core/style/app_sizes.dart
-//
-//  All numeric constants for spacing, border radius,
-//  component sizes, and icon sizes.
-//  Use these everywhere instead of raw numbers.
-// ─────────────────────────────────────────────────────────────
-
 import 'package:flutter/cupertino.dart';
 
+/// Poppy — Sizes
+///
+/// Centralized constants for spacing, border radii, strokes, and component dimensions.
+/// Use these constants instead of raw numbers to maintain visual consistency.
 class AppSpacing {
   AppSpacing._();
 
-  /// 4 dp — used for the tightest gaps (e.g. between label and value)
+  /// 4 dp — used for the tightest gaps (e.g., between label and value).
   static const double xs = 4.0;
 
-  /// 8 dp — small gaps inside components
+  /// 8 dp — small gaps inside components.
   static const double sm = 8.0;
 
-  /// 14 dp — standard internal padding
+  /// 14 dp — standard internal padding.
   static const double md = 14.0;
 
-  /// 20 dp — screen-edge horizontal padding, section gaps
+  /// 20 dp — screen-edge horizontal padding, section gaps.
   static const double lg = 20.0;
 
-  /// 32 dp — large vertical breathing room
+  /// 32 dp — large vertical breathing room.
   static const double xl = 32.0;
 
-  /// 48 dp — splash screen / lock screen vertical offsets
+  /// 48 dp — splash screen / lock screen vertical offsets.
   static const double xxl = 48.0;
 
-  /// 64 dp —
+  /// 64 dp — extra large spacing.
   static const double xxxl = 64.0;
 }
 
 class AppRadius {
   AppRadius._();
 
-  /// 6 dp — tags, small chips
-  static const double xs  = 6.0;
+  /// 6 dp — tags, small chips.
+  static const double xs = 6.0;
 
-  /// 8 dp — photo thumbnails, small containers
-  static const double sm  = 8.0;
+  /// 8 dp — photo thumbnails, small containers.
+  static const double sm = 8.0;
 
-  /// 12 dp — cards, input fields
-  static const double md  = 12.0;
+  /// 12 dp — cards, input fields.
+  static const double md = 12.0;
 
-  /// 16 dp — sheets, large cards
-  static const double lg  = 16.0;
+  /// 16 dp — sheets, large cards.
+  static const double lg = 16.0;
 
-  /// 24 dp — FAB, pill chips
-  static const double xl  = 24.0;
+  /// 24 dp — FAB, pill chips.
+  static const double xl = 24.0;
 
-  /// 999 dp — fully rounded / stadium shape
+  /// 999 dp — fully rounded / stadium shape.
   static const double full = 999.0;
 }
 
 class AppStroke {
   AppStroke._();
 
-  /// 0.5 dp — hairline dividers and card borders
+  /// 0.5 dp — hairline dividers and card borders.
   static const double hairline = 0.5;
 
-  /// 1.0 dp — standard border
+  /// 1.0 dp — standard border.
   static const double thin = 1.0;
 
-  /// 1.5 dp — selected state border
+  /// 1.5 dp — selected state border.
   static const double medium = 1.5;
 
   static const double thick = 2.0;
 
-  /// 3.0 dp — entry color tag strip
+  /// 4.0 dp — entry color tag strip.
   static const double colorStrip = 4.0;
 }
 
 class AppIconSize {
   AppIconSize._();
 
-  /// 16 dp — inline icons next to small text
-  static const double xs  = 16.0;
+  /// 16 dp — inline icons next to small text.
+  static const double xs = 16.0;
 
-  /// 20 dp — standard action icons in app bars and rows
-  static const double sm  = 20.0;
+  /// 20 dp — standard action icons in app bars and rows.
+  static const double sm = 20.0;
 
-  /// 24 dp — default Material icon size
-  static const double md  = 24.0;
+  /// 24 dp — default Material icon size.
+  static const double md = 24.0;
 
-  /// 28 dp — nav bar / prominent icons
-  static const double lg  = 28.0;
+  /// 28 dp — nav bar / prominent icons.
+  static const double lg = 28.0;
 
-  /// 36 dp — empty state illustrations
-  static const double xl  = 36.0;
+  /// 36 dp — empty state illustrations.
+  static const double xl = 36.0;
 
-  /// 52 dp — logo on auth screens
+  /// 70 dp — logo on auth screens.
   static const double logo = 70.0;
 
-  /// 64 dp — large logo on lock / splash
+  /// 64 dp — large logo on lock / splash.
   static const double logoLg = 64.0;
 }
 
 class AppComponentSize {
   AppComponentSize._();
 
-  /// Standard app bar height (Flutter default is 56)
+  /// Standard app bar height.
   static const double appBarHeight = 60.0;
 
-  /// Standard input height (TextFields, Date pickers)
+  /// Standard input height (TextFields, Date pickers).
   static const double inputHeight = 44.0;
 
-  /// Compact filter bar / search input height
+  /// Compact filter bar / search input height.
   static const double filterBarHeight = 40.0;
 
-  /// Height of a compact entry card row
+  /// Height of a compact entry card row.
   static const double entryCardHeight = 58.0;
 
-  /// Width of the date column on entry cards
+  /// Width of the date column on entry cards.
   static const double entryDateColWidth = 48.0;
 
-  /// Height of the photo strip section
+  /// Height of the photo strip section.
   static const double photoStripHeight = 96.0;
 
-  /// Photo thumbnail size inside the strip
+  /// Photo thumbnail size inside the strip.
   static const double photoThumbSize = 80.0;
 
-  /// Color dot — default size
+  /// Color dot — default size.
   static const double colorDot = 20.0;
 
-  /// Color dot — inside the color picker toolbar
+  /// Color dot — inside the color picker toolbar.
   static const double colorDotPicker = 18.0;
 
-  /// Color dot — inside search filter chips
+  /// Color dot — inside search filter chips.
   static const double colorDotChip = 15.0;
 
-  /// PIN pad digit key diameter
+  /// PIN pad digit key diameter.
   static const double pinKey = 64.0;
 
-  /// PIN dot indicator diameter
+  /// PIN dot indicator diameter.
   static const double pinDot = 12.0;
 
-  /// FAB size
+  /// FAB size.
   static const double fab = 56.0;
 
-  /// Bottom sheet handle bar width
+  /// Bottom sheet handle bar width.
   static const double sheetHandle = 36.0;
 
-  /// Bottom sheet handle bar height
+  /// Bottom sheet handle bar height.
   static const double sheetHandleHeight = 4.0;
 
-  /// Settings section icon column width
+  /// Settings section icon column width.
   static const double settingsIconCol = 20.0;
 
-  /// Confirmation icon circle (e.g. email sent screen)
+  /// Confirmation icon circle (e.g., email sent screen).
   static const double confirmIconCircle = 72.0;
 
-  /// Color picker wheel diameter
+  /// Color picker wheel diameter.
   static const double colorPickerWheel = 180.0;
 
-  /// Color picker wheel ring thickness
+  /// Color picker wheel ring thickness.
   static const double colorPickerRing = 24.0;
 
-  /// Color picker swatch size
+  /// Color picker swatch size.
   static const double colorPickerSwatch = 42.0;
 
-  /// Search field width in app bar relative to the screen width
-  static double searchFieldWidth(BuildContext context) => MediaQuery.sizeOf(context).width * 0.7;
+  /// Search field width in app bar relative to the screen width.
+  static double searchFieldWidth(BuildContext context) =>
+      MediaQuery.sizeOf(context).width * 0.7;
 
-  /// Drawer width in relative to the screen width
-  static double drawerWidth(BuildContext context) => MediaQuery.sizeOf(context).width * 0.7;
-
+  /// Drawer width relative to the screen width.
+  static double drawerWidth(BuildContext context) =>
+      MediaQuery.sizeOf(context).width * 0.7;
 }

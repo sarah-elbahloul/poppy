@@ -6,35 +6,27 @@ import 'package:poppy/core/core.dart';
 import 'package:poppy/services/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Auth Provider
-//  Location: lib/providers/auth_provider.dart
-//
-//  AUTH STATES
-//  ───────────
-//  unknown          → app start, checking session
-//  unauthenticated  → no session, show login
-//  authenticated    → normal session, show home
-//  passwordRecovery → one-time reset session from email link,
-//                     show SetNewPasswordScreen
-//
-//  FORGOT PASSWORD (email reset) — HOW IT WORKS
-//  ─────────────────────────────────────────────
-//  1. sendPasswordResetEmail(email) — Supabase sends link
-//  2. User taps link → Supabase redirects to app deep link /
-//     web URL → app receives AuthChangeEvent.passwordRecovery
-//  3. _status flips to passwordRecovery → SetNewPasswordScreen shown
-//  4. User enters new password → completePasswordReset(newPassword):
-//       a. updateUser(password: newPassword)  — updates Supabase auth
-//       b. KeyService.saveNewWrappedKey(newPassword) — re-wraps data key
-//          If no key in memory (different device / reinstall):
-//          generate a fresh data key (old entries unreadable — expected
-//          behaviour for E2E encrypted app with no key escrow).
-//       c. _status flips to authenticated → home screen
-// ─────────────────────────────────────────────────────────────
+/// Represents the possible authentication states of the application.
+enum AuthStatus {
+  /// Initial state while checking for an existing session.
+  unknown,
 
-enum AuthStatus { unknown, authenticated, unauthenticated, passwordRecovery }
+  /// User is successfully signed in.
+  authenticated,
 
+  /// No active session exists.
+  unauthenticated,
+
+  /// One-time session active from a password reset email link.
+  passwordRecovery,
+}
+
+/// Poppy — Auth Provider
+///
+/// Manages the authentication state of the application, including sign-in,
+/// sign-up, password recovery, and session persistence.
+///
+/// It also handles the encryption state and PIN lock functionality.
 class AuthProvider extends ChangeNotifier {
   final _storage    = const FlutterSecureStorage();
   final _enc        = EncryptionService.instance;
@@ -58,7 +50,7 @@ class AuthProvider extends ChangeNotifier {
   bool       get isAuthenticated => _status == AuthStatus.authenticated;
   bool       get encryptionReady => _encryptionReady;
 
-  /// Display name from Supabase user_metadata, fallback to email prefix
+  /// Returns the display name from metadata, or falls back to the email prefix.
   String get displayName {
     final meta = _user?.userMetadata;
     if (meta != null) {
@@ -71,16 +63,16 @@ class AuthProvider extends ChangeNotifier {
     return email.contains('@') ? email.split('@')[0] : email;
   }
 
-  AuthProvider() { _init(); }
+  AuthProvider() {
+    _init();
+  }
 
+  /// Initializes the provider by checking for an existing Supabase session.
   Future<void> _init() async {
     final session = SupabaseConfig.client.auth.currentSession;
     if (session != null) {
-      _user   = session.user;
-      // Await pin lock state BEFORE setting status so the first frame
-      // rendered by _RootRouter already has the correct isLocked value.
-      // Without this, _status = authenticated fires a frame showing
-      // HomeScreen for one tick before _isLocked becomes true.
+      _user = session.user;
+      // Await pin lock state before setting status to ensure correct initial routing.
       await _checkPinLock(resetLock: true);
       final loaded = await _enc.loadCachedKey();
       _encryptionReady = loaded;
@@ -94,34 +86,21 @@ class AuthProvider extends ChangeNotifier {
       _user = data.session?.user;
       switch (data.event) {
         case AuthChangeEvent.signedIn:
-        // signIn() sets _status and _encryptionReady itself after the
-        // full key-load sequence completes. The stream event fires
-        // concurrently — if we set status here too we create a race
-        // where _RootRouter renders HomeScreen before the key is ready.
-        // Only handle the case where the session was restored at cold
-        // start (i.e. _init already handled it) — nothing to do here.
+          // signIn() handles status and encryptionReady manually to avoid races.
           break;
 
         case AuthChangeEvent.passwordRecovery:
-        // One-time session from reset email link.
-        // Try to load the data key from local cache — may succeed
-        // if same device; will fail on fresh install (expected).
           _status = AuthStatus.passwordRecovery;
-          await _enc.loadCachedKey(); // best-effort; may not succeed
+          await _enc.loadCachedKey(); // best-effort load
           _safeNotify();
           break;
 
         case AuthChangeEvent.userUpdated:
-        // Fired after updateUser() — just keep user reference fresh.
-        // completePasswordReset() has already set status/encryptionReady.
           _user = data.session?.user;
           _safeNotify();
           break;
 
         case AuthChangeEvent.signedOut:
-        // Ignore the signedOut event that Supabase fires when
-        // updateUser() consumes the one-time passwordRecovery session.
-        // completePasswordReset() sets _status = authenticated itself.
           if (_isCompletingPasswordReset) break;
           _status          = AuthStatus.unauthenticated;
           _isLocked        = false;
@@ -144,8 +123,13 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  void unlock() { _isLocked = false; _safeNotify(); }
+  /// Unlocks the app from PIN protection.
+  void unlock() {
+    _isLocked = false;
+    _safeNotify();
+  }
 
+  /// Toggles whether the PIN lock is enabled.
   Future<void> setPinEnabled(bool enabled) async {
     _pinEnabled = enabled;
     await _storage.write(
@@ -154,23 +138,26 @@ class AuthProvider extends ChangeNotifier {
     _safeNotify();
   }
 
-  // ── Sign in ───────────────────────────────────────────────
+  // --- Sign In ---
 
+  /// Signs in the user and handles the decryption key loading sequence.
   Future<bool> signIn({
     required String email,
     required String password,
   }) async {
-    _setLoading(true); _clearError();
+    _setLoading(true);
+    _clearError();
     _encryptionReady = false;
     try {
       await SupabaseConfig.client.auth.signInWithPassword(
-        email: email.trim(), password: password,
+        email: email.trim(),
+        password: password,
       );
 
       final hasKeys = await _keyService.hasKeysRow();
 
       if (!hasKeys) {
-        // First sign-in after sign-up: flush pending blob to DB
+        // Handle pending wrapped keys from sign-up if this is the first sign-in.
         final pending = await _storage.read(key: StorageKeys.pendingEncKey);
         if (pending != null) {
           await _keyService.saveWrappedKey(encDataKeyJson: pending);
@@ -185,31 +172,35 @@ class AuthProvider extends ChangeNotifier {
       }
 
       _encryptionReady = _enc.hasKey;
-
       await _checkPinLock();
       _isLocked = false;
-
-      _status          = AuthStatus.authenticated;
+      _status = AuthStatus.authenticated;
       _safeNotify();
       return true;
     } on AuthException catch (e) {
-      _errorMessage    = AppErrors.signIn(e.message);
+      _errorMessage = AppErrors.signIn(e.message);
       _encryptionReady = false;
-      _safeNotify(); return false;
+      _safeNotify();
+      return false;
     } catch (e) {
-      _errorMessage    = AppErrors.fromException(e);
+      _errorMessage = AppErrors.fromException(e);
       _encryptionReady = false;
-      _safeNotify(); return false;
-    } finally { _setLoading(false); }
+      _safeNotify();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 
-  // ── Sign up (phase 1 — no session yet) ───────────────────
+  // --- Sign Up ---
 
+  /// Registers a new user and generates their unique data encryption key.
   Future<bool> signUp({
     required String email,
     required String password,
   }) async {
-    _setLoading(true); _clearError();
+    _setLoading(true);
+    _clearError();
     try {
       await SupabaseConfig.client.auth.signUp(
         email:           email.trim(),
@@ -228,24 +219,31 @@ class AuthProvider extends ChangeNotifier {
     } on AuthException catch (e) {
       _errorMessage = AppErrors.signUp(e.message);
       await _enc.clearKey();
-      _safeNotify(); return false;
+      _safeNotify();
+      return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);
       await _enc.clearKey();
-      _safeNotify(); return false;
-    } finally { _setLoading(false); }
+      _safeNotify();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 
-  // ── Sign out ──────────────────────────────────────────────
+  // --- Sign Out ---
 
+  /// Signs out the user and clears sensitive data from memory and local cache.
   Future<void> signOut() async {
     await SupabaseConfig.client.auth.signOut();
   }
 
-  // ── Forgot password: send reset email ────────────────────
+  // --- Password Recovery ---
 
+  /// Sends a password reset email to the user.
   Future<bool> sendPasswordResetEmail(String email) async {
-    _setLoading(true); _clearError();
+    _setLoading(true);
+    _clearError();
     try {
       await SupabaseConfig.client.auth.resetPasswordForEmail(
         email.trim(),
@@ -254,31 +252,27 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on AuthException catch (e) {
       _errorMessage = AppErrors.resetPassword(e.message);
-      _safeNotify(); return false;
+      _safeNotify();
+      return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);
-      _safeNotify(); return false;
-    } finally { _setLoading(false); }
+      _safeNotify();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 
-  // ── Forgot password: complete reset (called from SetNewPasswordScreen)
-  //
-  // At this point the user has a one-time passwordRecovery session.
-  // Priority order:
-  //  1. Key in memory (same device): re-wrap directly.
-  //  2. Recovery key in DB (uid-wrapped, set at every sign-in): unwrap → re-wrap.
-  //  3. Neither available (account predates dual-wrapping): generate fresh key.
-  //
-  // Zero UX prompts. User just enters their new password and is done.
-
+  /// Completes the password reset process using the new password.
+  /// 
+  /// Updates the authentication password and re-wraps the user's data 
+  /// encryption key using the new password and a recovery key if necessary.
   Future<bool> completePasswordReset(String newPassword) async {
-    _setLoading(true); _clearError();
+    _setLoading(true);
+    _clearError();
     try {
       final uid = SupabaseConfig.userId;
 
-      // 1. Update Supabase auth password (consumes the one-time session).
-      // Guard against the signedOut event that Supabase fires when the
-      // passwordRecovery session is invalidated by updateUser().
       _isCompletingPasswordReset = true;
       try {
         await SupabaseConfig.client.auth.updateUser(
@@ -288,7 +282,7 @@ class AuthProvider extends ChangeNotifier {
         _isCompletingPasswordReset = false;
       }
 
-      // 2a. Key already in memory (same device).
+      // Re-wrap the key if it's already in memory.
       if (_enc.hasKey) {
         await _keyService.saveNewWrappedKey(newPassword);
         _encryptionReady = true;
@@ -297,7 +291,7 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
 
-      // 2b. Try recovery key from DB (any device, written at every sign-in).
+      // Try recovery via the UID-wrapped key from the database.
       final recovered = await _keyService.rewrapWithRecoveryKey(
         uid:         uid,
         newPassword: newPassword,
@@ -309,7 +303,7 @@ class AuthProvider extends ChangeNotifier {
         return true;
       }
 
-      // 2c. Last resort: account predates dual-wrapping — generate new key.
+      // Fallback: Generate a new key if recovery is not possible.
       final newKeyBytes = await _enc.generateDataKey();
       final newWrapped  = await _enc.wrapWithPassword(newKeyBytes, newPassword);
       await _keyService.saveWrappedKeyMapWithRecovery(newWrapped, uid);
@@ -319,17 +313,23 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on AuthException catch (e) {
       _errorMessage = AppErrors.updatePassword(e.message);
-      _safeNotify(); return false;
+      _safeNotify();
+      return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);
-      _safeNotify(); return false;
-    } finally { _setLoading(false); }
+      _safeNotify();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 
-  // ── Update display name ───────────────────────────────────
+  // --- Profile Updates ---
 
+  /// Updates the user's display name.
   Future<bool> updateDisplayName(String name) async {
-    _setLoading(true); _clearError();
+    _setLoading(true);
+    _clearError();
     try {
       final response = await SupabaseConfig.client.auth.updateUser(
         UserAttributes(data: {'display_name': name.trim()}),
@@ -339,17 +339,21 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on AuthException catch (e) {
       _errorMessage = AppErrors.fromException(e);
-      _safeNotify(); return false;
+      _safeNotify();
+      return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);
-      _safeNotify(); return false;
-    } finally { _setLoading(false); }
+      _safeNotify();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 
-  // ── Update email ──────────────────────────────────────────
-
+  /// Initiates an email update.
   Future<bool> updateEmail(String newEmail) async {
-    _setLoading(true); _clearError();
+    _setLoading(true);
+    _clearError();
     try {
       await SupabaseConfig.client.auth.updateUser(
         UserAttributes(email: newEmail.trim()),
@@ -358,20 +362,24 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on AuthException catch (e) {
       _errorMessage = AppErrors.updateEmail(e.message);
-      _safeNotify(); return false;
+      _safeNotify();
+      return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);
-      _safeNotify(); return false;
-    } finally { _setLoading(false); }
+      _safeNotify();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
   }
 
-  // ── Update password (from settings) ──────────────────────
-
+  /// Updates the user's password from within the settings.
   Future<bool> updatePassword({
     required String oldPassword,
     required String newPassword,
   }) async {
-    _setLoading(true); _clearError();
+    _setLoading(true);
+    _clearError();
     try {
       final ok = await _keyService.rewrapKey(
         oldPassword: oldPassword,
@@ -379,7 +387,8 @@ class AuthProvider extends ChangeNotifier {
       );
       if (!ok) {
         _errorMessage = AppErrors.wrongCurrentPassword;
-        _safeNotify(); return false;
+        _safeNotify();
+        return false;
       }
       await SupabaseConfig.client.auth.updateUser(
         UserAttributes(password: newPassword),
@@ -387,53 +396,30 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on AuthException catch (e) {
       _errorMessage = AppErrors.updatePassword(e.message);
-      _safeNotify(); return false;
+      _safeNotify();
+      return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);
-      _safeNotify(); return false;
-    } finally { _setLoading(false); }
-  }
-
-  // ── Helpers ───────────────────────────────────────────────
-
-  /// The redirect URL to use for Supabase auth emails.
-  /// On web: the current page origin (works for any port).
-  /// On mobile: the registered custom scheme deep link.
-  static String get _redirectUrl {
-    if (kIsWeb) {
-      // Use the window's origin so it works on any port / domain
-      // without hard-coding localhost:49296.
-      // ignore: undefined_prefixed_name
-      return Uri.base.origin;
+      _safeNotify();
+      return false;
+    } finally {
+      _setLoading(false);
     }
-    return 'io.supabase.poppy://login-callback/';
   }
 
-  // ── Delete account ────────────────────────────────────────
-  //
-  // Calls the Supabase `delete_user_account` RPC which must:
-  //   1. Delete all rows in user_keys, entries, photos for this user
-  //   2. Call auth.admin.deleteUser(uid) via a Postgres trigger or
-  //      Supabase Edge Function (see SQL migration note below).
-  //
+  // --- Account Deletion ---
 
+  /// Deletes the user's account and all associated data.
   Future<bool> deleteAccount() async {
-    _setLoading(true); _clearError();
+    _setLoading(true);
+    _clearError();
     try {
-      // Step 1: delete all app data via RPC
       await SupabaseConfig.client.rpc('delete_user_account');
-
-      // Step 2: call Edge Function to delete the auth.users row
-      // (service role key is required — only safe from server side)
       try {
         await SupabaseConfig.client.functions.invoke('delete-user');
       } catch (_) {
-        // If Edge Function isn't deployed yet, the data is still
-        // gone but the auth row remains. Sign out anyway so the
-        // user is effectively logged out.
+        // Log or handle error if edge function fails.
       }
-
-      // Step 3: sign out locally
       await SupabaseConfig.client.auth.signOut();
       await _enc.clearKey();
       _status          = AuthStatus.unauthenticated;
@@ -442,11 +428,25 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } on AuthException catch (e) {
       _errorMessage = 'Could not delete account: ${e.message}';
-      _safeNotify(); return false;
+      _safeNotify();
+      return false;
     } catch (e) {
       _errorMessage = AppErrors.fromException(e);
-      _safeNotify(); return false;
-    } finally { _setLoading(false); }
+      _safeNotify();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // --- Helpers ---
+
+  static String get _redirectUrl {
+    if (kIsWeb) {
+      // ignore: undefined_prefixed_name
+      return Uri.base.origin;
+    }
+    return 'io.supabase.poppy://login-callback/';
   }
 
   void _safeNotify() {
@@ -455,11 +455,16 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
-  void _setLoading(bool v) { _isLoading = v; _safeNotify(); }
-  void _clearError()       => _errorMessage = null;
-  void clearError()        { _clearError(); _safeNotify(); }
-}
+  void _setLoading(bool v) {
+    _isLoading = v;
+    _safeNotify();
+  }
 
-// NOTE: This extension is appended — the class above ends with the closing }.
-// The deleteAccount method is added directly below inside the class definition
-// via the patch in auth_provider_patch.dart — see that file.
+  void _clearError() => _errorMessage = null;
+
+  /// Clears the current error message.
+  void clearError() {
+    _clearError();
+    _safeNotify();
+  }
+}

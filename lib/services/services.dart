@@ -1,3 +1,7 @@
+/// Poppy — Services Barrel Export
+///
+/// Centralized access to all service classes, including authentication, 
+/// encryption, database operations, and notifications.
 export 'auth_service.dart';
 export 'encryption_service.dart';
 export 'entries_service.dart';

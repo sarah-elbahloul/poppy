@@ -1,3 +1,6 @@
+/// Poppy — Settings Screens Barrel Export
+///
+/// Centralized access to all settings-related screens.
 export 'about_screen.dart';
 export 'account_screen.dart';
 export 'appearance_screen.dart';

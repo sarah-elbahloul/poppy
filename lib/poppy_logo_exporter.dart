@@ -5,17 +5,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
 
-/// Usage:
+/// A utility screen used to export the [PoppyLogo] as a high-resolution PNG.
 ///
-/// 1. Replace `PoppyLogo` import with your actual import.
-/// 2. Open this page in your app.
-/// 3. Press the export button.
-/// 4. The PNG will be written to the app documents directory.
-///
-/// NOTE:
-/// On Android/iOS you will usually want to use
-/// path_provider to obtain a writable location.
-
+/// This is intended for development use to generate assets for the app.
 class PoppyLogoExporter extends StatefulWidget {
   const PoppyLogoExporter({super.key});
 
@@ -26,6 +18,7 @@ class PoppyLogoExporter extends StatefulWidget {
 class _PoppyLogoExporterState extends State<PoppyLogoExporter> {
   final GlobalKey _logoKey = GlobalKey();
 
+  /// Captures the [RepaintBoundary] as an image and triggers a download in the browser.
   Future<void> exportPng() async {
     final boundary =
     _logoKey.currentContext!.findRenderObject()
@@ -42,6 +35,7 @@ class _PoppyLogoExporterState extends State<PoppyLogoExporter> {
     final Uint8List pngBytes =
     byteData!.buffer.asUint8List();
 
+    // Trigger download in the browser.
     final blob = html.Blob([pngBytes], 'image/png');
     final url = html.Url.createObjectUrlFromBlob(blob);
 
@@ -65,7 +59,7 @@ class _PoppyLogoExporterState extends State<PoppyLogoExporter> {
               width: 1024,
               height: 1024,
               color: Colors.transparent,
-              padding: EdgeInsetsGeometry.all(100),
+              padding: const EdgeInsets.all(100),
               child: const PoppyLogo(
                 size: 1024,
                 background: Colors.transparent,

@@ -6,18 +6,11 @@ import 'package:provider/provider.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Login Screen
 //  Location: lib/screens/auth/login_screen.dart
-//
-//  Two modes (toggled inline):
-//
-//    normal  — email + password → signIn()
-//
-//    forgot  — email only → sendPasswordResetEmail()
-//              Supabase sends a magic link. User taps it,
-//              app receives AuthChangeEvent.passwordRecovery,
-//              _RootRouter shows SetNewPasswordScreen.
-//              No recovery code. No step 2 in this screen.
 // ─────────────────────────────────────────────────────────────
 
+/// Supports two primary flows:
+/// 1. **Sign In:** Email and password authentication.
+/// 2. **Forgot Password:** Sending a reset link via email.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -39,23 +32,30 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // ── Actions ───────────────────────────────────────────────
+  // ─── Actions ───
 
+  /// Validates input and attempts to sign in the user.
   Future<void> _onSignIn() async {
     final emailErr = AppErrors.validateEmail(_emailController.text);
-    if (emailErr != null) { _showSnack(emailErr); return; }
+    if (emailErr != null) {
+      _showSnack(emailErr);
+      return;
+    }
     final auth = context.read<AuthProvider>();
     auth.clearError();
     await auth.signIn(
       email:    _emailController.text,
       password: _passwordController.text,
     );
-    // Navigation handled by _RootRouter watching auth.status
   }
 
+  /// Sends a password reset email using the provided address.
   Future<void> _onSendResetEmail() async {
     final emailErr = AppErrors.validateEmail(_emailController.text);
-    if (emailErr != null) { _showSnack(emailErr); return; }
+    if (emailErr != null) {
+      _showSnack(emailErr);
+      return;
+    }
     final auth = context.read<AuthProvider>();
     auth.clearError();
     final ok = await auth.sendPasswordResetEmail(_emailController.text);
@@ -72,8 +72,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showSnack(String msg) => ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text(msg)));
-
-  // ── Build ─────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -92,15 +90,15 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: AppSpacing.xl),
-              Center(child: const PoppyLogo(size: AppIconSize.logo)),
+              const Center(child: PoppyLogo(size: AppIconSize.logo)),
               const SizedBox(height: AppSpacing.md),
               Center(child: Text(kAppName,
                   style: AppTextStyles.displayLarge(t.textPrimary))),
               Center(child: Text(kAppTagline,
                   style: AppTextStyles.bodySmallSerif(t.textTertiary, fp))),
-              SizedBox(height: AppSpacing.xl * 1.5),
+              const SizedBox(height: AppSpacing.xl * 1.5),
 
-              // ── Title ──────────────────────────────────────
+              // Mode-specific title and description.
               Text(
                 _forgotMode ? 'Reset password' : 'Welcome back',
                 style: AppTextStyles.headlineSmall(t.textPrimary, fp),
@@ -115,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
 
-              // ── Fields ─────────────────────────────────────
+              // Input fields.
               _Field(
                 controller:   _emailController,
                 label:        'Email',
@@ -135,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ],
 
-              // ── Error ──────────────────────────────────────
+              // Error feedback.
               if (auth.errorMessage != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 _ErrorBanner(message: auth.errorMessage!),
@@ -143,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: AppSpacing.lg),
 
-              // ── Primary button ─────────────────────────────
+              // Submission button.
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -197,8 +195,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
-// ── Private widgets ────────────────────────────────────────────
 
 class _Field extends StatelessWidget {
   final TextEditingController controller;

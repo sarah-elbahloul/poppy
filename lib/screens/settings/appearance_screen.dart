@@ -8,8 +8,15 @@ import 'package:provider/provider.dart';
 //  Location: lib/screens/settings/appearance_screen.dart
 // ─────────────────────────────────────────────────────────────
 
+/// Allows users to customize the visual style of the application.
+/// 
+/// Users can:
+/// - Select fonts for titles and body text.
+/// - Customize individual theme colors (background, surface, accent, etc.).
+/// - Preview changes in real-time on a sample entry canvas.
 class AppearanceScreen extends StatefulWidget {
   const AppearanceScreen({super.key});
+
   @override
   State<AppearanceScreen> createState() => _AppearanceScreenState();
 }
@@ -52,11 +59,10 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
       body: ListView(
         padding: const EdgeInsets.only(bottom: 28),
         children: [
-
-          // 1 ── Editable preview canvas ─────────────────────
+          // ── Preview canvas ────────────────────────────────
           _PreviewCanvas(ctrl: _bodyCtrl, tp: tp),
 
-          // 2 ── Title font ──────────────────────────────────
+          // ── Title font ────────────────────────────────────
           const _SectionRow(label: 'Title font'),
           _FontRow(
             fonts:    PoppyFonts.all,
@@ -64,7 +70,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
             onSelect: tp.setTitleFont,
           ),
 
-          // 3 ── Body font ───────────────────────────────────
+          // ── Body font ─────────────────────────────────────
           const _SectionRow(label: 'Body font'),
           _FontRow(
             fonts:    PoppyFonts.all,
@@ -72,7 +78,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
             onSelect: tp.setBodyFont,
           ),
 
-          // 4 ── Colours ─────────────────────────────────────
+          // ── Colours ───────────────────────────────────────
           _SectionRow(
             label: 'App Colors',
             trailing: tp.hasAnyCustomColor
@@ -97,7 +103,7 @@ class _AppearanceScreenState extends State<AppearanceScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  Preview canvas
+//  Preview Components
 // ─────────────────────────────────────────────────────────────
 
 class _PreviewCanvas extends StatelessWidget {
@@ -181,10 +187,6 @@ class _PreviewCanvas extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Font row
-// ─────────────────────────────────────────────────────────────
-
 class _FontRow extends StatelessWidget {
   final List<PoppyFontData>     fonts;
   final PoppyFont               selected;
@@ -250,10 +252,6 @@ class _FontRow extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Colour card
-// ─────────────────────────────────────────────────────────────
-
 class _ColorCard extends StatelessWidget {
   final ThemeProvider tp;
   const _ColorCard({required this.tp});
@@ -314,10 +312,6 @@ class _ColorCard extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────
-//  Individual circle swatch
-// ─────────────────────────────────────────────────────────────
 
 class _ColorSwatch extends StatelessWidget {
   final ColorSlot     slot;
@@ -404,10 +398,6 @@ class _ColorSwatch extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Reset all button
-// ─────────────────────────────────────────────────────────────
-
 class _ResetAllButton extends StatelessWidget {
   final ThemeProvider tp;
   const _ResetAllButton({required this.tp});
@@ -443,10 +433,6 @@ class _ResetAllButton extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────
-//  Color picker bottom sheet
-// ─────────────────────────────────────────────────────────────
 
 class _ColorPickerSheet extends StatefulWidget {
   final ColorSlot            slot;
@@ -766,10 +752,6 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────
-//  Section row with optional trailing
-// ─────────────────────────────────────────────────────────────
 
 class _SectionRow extends StatelessWidget {
   final String  label;
