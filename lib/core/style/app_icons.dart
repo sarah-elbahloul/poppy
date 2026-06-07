@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
-/// Poppy — App Icons
-///
-/// A single source of truth for every icon used in Poppy.
-/// Uses Iconsax for a modern aesthetic and ensures consistency across the app.
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Icon System
+//  Location: lib/core/style/app_icons.dart
+// ─────────────────────────────────────────────────────────────
+
+/// Centralized repository for all icons used in the application.
+/// 
+/// Uses the Iconsax library for a consistent, modern aesthetic.
 class AppIcons {
   AppIcons._();
 
-  // --- Navigation & Actions ---
+  // ─── Navigation & Actions ───
   static const IconData back         = Iconsax.arrow_left_2;
   static const IconData close        = Icons.close;
   static const IconData search       = Iconsax.search_normal_14;
@@ -28,21 +32,21 @@ class AppIcons {
   static const IconData chevronDown  = Iconsax.arrow_down_1;
   static const IconData chevronUp    = Iconsax.arrow_up_2;
 
-  // --- Writing ---
+  // ─── Writing ───
   static const IconData write      = Iconsax.edit_2;
   static const IconData title      = Iconsax.text;
   static const IconData wordCount  = Iconsax.text_block;
   static const IconData tag        = Iconsax.tag;
   static const IconData color      = Iconsax.colorfilter;
 
-  // --- Photos ---
+  // ─── Photos ───
   static const IconData photo       = Iconsax.gallery;
   static const IconData photoAdd    = Iconsax.gallery_add;
   static const IconData gallery     = Iconsax.gallery;
   static const IconData camera      = Iconsax.camera;
   static const IconData imageBroken = Iconsax.gallery_slash;
 
-  // --- Auth & Account ---
+  // ─── Auth & Account ───
   static const IconData person        = Iconsax.user;
   static const IconData email         = Iconsax.sms;
   static const IconData emailUnread   = Iconsax.notification_status;
@@ -51,14 +55,14 @@ class AppIcons {
   static const IconData visibilityOn  = Iconsax.eye;
   static const IconData visibilityOff = Iconsax.eye_slash;
 
-  // --- Security ---
+  // ─── Security ───
   static const IconData lock        = Iconsax.lock;
   static const IconData lockOpen    = Iconsax.unlock;
   static const IconData pin         = Iconsax.password_check;
   static const IconData backspace   = Iconsax.arrow_left;
   static const IconData fingerprint = Iconsax.finger_scan;
 
-  // --- Settings Sections ---
+  // ─── Settings Hub ───
   static const IconData appearance    = Iconsax.colorfilter;
   static const IconData security      = Iconsax.lock_1;
   static const IconData export_       = Iconsax.export;
@@ -69,15 +73,12 @@ class AppIcons {
   static const IconData Tos           = Iconsax.document;
   static const IconData Osl           = Iconsax.info_circle;
 
-  // --- Entry States ---
+  // ─── States & Date ───
   static const IconData emptyDiary = Iconsax.note;
   static const IconData offline    = Iconsax.cloud_remove;
   static const IconData retry      = Iconsax.refresh;
+  static const IconData calendar   = Iconsax.calendar_1;
+  static const IconData time       = Iconsax.clock;
 
-  // --- Date & Time ---
-  static const IconData calendar = Iconsax.calendar_1;
-  static const IconData time     = Iconsax.clock;
-
-  // --- Color Tags ---
   static const IconData tagOutline = Iconsax.tag;
 }

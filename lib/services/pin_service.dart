@@ -3,45 +3,49 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:poppy/core/constants.dart';
 
-/// Service for managing PIN-based app locking.
-/// 
-/// Stores a salted SHA-256 hash of the PIN in secure storage.
+/// Manages the application-level PIN lock lifecycle.
+///
+/// This service handles the storage and verification of a 4-digit security PIN.
+/// The PIN is distinct from the account password and is used to protect access
+/// to the application on a per-device basis.
 class PinService {
   final _storage = const FlutterSecureStorage();
 
-  /// Generates a SHA-256 hash of the given PIN.
+  /// Generates a SHA-256 hash of the given [pin].
   String _hash(String pin) {
-    final bytes  = utf8.encode(pin);
+    final bytes = utf8.encode(pin);
     final digest = sha256.convert(bytes);
     return digest.toString();
   }
 
-  /// Hashes and saves a new PIN, enabling the PIN lock.
+  /// Persists a new PIN hash to secure storage and enables the lock state.
   Future<void> savePin(String pin) async {
-    await _storage.write(key: StorageKeys.pinHash,    value: _hash(pin));
+    await _storage.write(key: StorageKeys.pinHash, value: _hash(pin));
     await _storage.write(key: StorageKeys.pinEnabled, value: 'true');
   }
 
-  /// Verifies if the provided PIN matches the stored hash.
+  /// Verifies if the provided [pin] matches the stored hash.
   Future<bool> verify(String pin) async {
     final stored = await _storage.read(key: StorageKeys.pinHash);
     if (stored == null) return false;
     return _hash(pin) == stored;
   }
 
-  /// Removes the stored PIN and disables the PIN lock.
+  /// Wipes the PIN hash from secure storage and disables the lock state.
   Future<void> removePin() async {
     await _storage.delete(key: StorageKeys.pinHash);
     await _storage.write(key: StorageKeys.pinEnabled, value: 'false');
   }
 
-  /// Checks if the PIN lock is currently enabled.
+  /// Checks if a PIN lock is currently enabled on this device.
   Future<bool> isPinEnabled() async {
     final value = await _storage.read(key: StorageKeys.pinEnabled);
     return value == 'true';
   }
 
-  /// Updates the PIN if the [oldPin] is correct.
+  /// Updates the PIN after verifying the [oldPin].
+  ///
+  /// Returns true if the [oldPin] was correct and the [newPin] was successfully saved.
   Future<bool> changePin({
     required String oldPin,
     required String newPin,

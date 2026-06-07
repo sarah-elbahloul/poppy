@@ -1,58 +1,70 @@
 import 'package:poppy/core/supabase_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Service class for handling authentication logic using Supabase.
+/// Orchestrates authentication workflows using Supabase Auth.
+///
+/// Responsibilities include:
+/// - User sign-in, sign-up, and sign-out.
+/// - Password reset and profile management.
+/// - Monitoring authentication state changes.
 class AuthService {
   final _client = SupabaseConfig.client;
 
-  /// Signs in a user with their email and password.
+  /// Authenticates a user with email and password.
   Future<AuthResponse> signIn({
     required String email,
     required String password,
   }) async {
     return await _client.auth.signInWithPassword(
-        email: email.trim(), password: password);
+      email: email.trim(),
+      password: password,
+    );
   }
 
-  /// Registers a new user with their email and password.
+  /// Registers a new user account.
   Future<AuthResponse> signUp({
     required String email,
     required String password,
   }) async {
     return await _client.auth.signUp(
-        email: email.trim(), password: password);
+      email: email.trim(),
+      password: password,
+    );
   }
 
-  /// Signs out the currently authenticated user.
+  /// Terminates the current session.
   Future<void> signOut() async {
     await _client.auth.signOut();
   }
 
-  /// Sends a password reset email to the specified address.
+  /// Triggers the password recovery flow for the given [email].
   Future<void> sendPasswordResetEmail(String email) async {
     await _client.auth.resetPasswordForEmail(email.trim());
   }
 
-  /// Updates the email address of the currently authenticated user.
+  /// Updates the email address for the currently authenticated user.
   Future<UserResponse> updateEmail(String newEmail) async {
     return await _client.auth.updateUser(
-        UserAttributes(email: newEmail.trim()));
+      UserAttributes(email: newEmail.trim()),
+    );
   }
 
-  /// Updates the password of the currently authenticated user.
+  /// Updates the password for the currently authenticated user.
   Future<UserResponse> updatePassword(String newPassword) async {
     return await _client.auth.updateUser(
-        UserAttributes(password: newPassword));
+      UserAttributes(password: newPassword),
+    );
   }
 
-  /// Returns the currently authenticated user, or null if no user is signed in.
+  /// Returns the currently authenticated user, or null if signed out.
   User? get currentUser => _client.auth.currentUser;
 
-  /// A stream of authentication state changes.
-  Stream<AuthState> get onAuthStateChange =>
-      _client.auth.onAuthStateChange;
+  /// Provides a stream of authentication state changes.
+  Stream<AuthState> get onAuthStateChange => _client.auth.onAuthStateChange;
 
-  /// Fetches the user profile from the database.
+  // --- Profile Management ---
+
+  /// Fetches extended profile data for the current user from the 'profiles' table.
   Future<Map<String, dynamic>?> fetchProfile() async {
     final response = await _client
         .from('profiles')
@@ -62,7 +74,7 @@ class AuthService {
     return response as Map<String, dynamic>?;
   }
 
-  /// Updates the user profile in the database.
+  /// Updates profile-specific preferences (e.g., theme settings, PIN state).
   Future<void> updateProfile(Map<String, dynamic> data) async {
     await _client
         .from('profiles')

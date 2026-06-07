@@ -1,7 +1,8 @@
 /// Poppy — Core Barrel Export
 ///
-/// Centralized access to routes, constants, error messages, Supabase client, 
-/// and common widgets/styles.
+/// Provides a single entry point for essential application components,
+/// including routing, constants, error handling, infrastructure clients,
+/// and foundational UI elements.
 export 'app_routes.dart';
 export 'constants.dart';
 export 'error_messages.dart';

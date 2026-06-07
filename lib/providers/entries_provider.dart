@@ -2,20 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/services/services.dart';
 
-/// Represents the status of the entries loading process.
+/// The various states an entries-related operation can be in.
 enum EntriesStatus { initial, loading, loaded, error }
 
-/// Poppy — Entries Provider
+/// Manages the state and business logic for journal entries.
 ///
-/// Manages the state of journal entries, including fetching, filtering, 
-/// creating, updating, and deleting entries.
+/// **Offline-First Flow:**
+/// 1. [fetchEntries] loads data from the local SQLite database immediately for instant UI feedback.
+/// 2. It triggers a background synchronization via [SyncService].
+/// 3. Once sync is complete, the provider reloads from the local database to pick up any remote changes.
 class EntriesProvider extends ChangeNotifier {
   final _entriesService = EntriesService();
   final _photosService = PhotosService();
+  final _sync = SyncService.instance;
 
   List<Entry> _entries = [];
   EntriesStatus _status = EntriesStatus.initial;
   String? _errorMessage;
+  bool _isSyncing = false;
 
   // --- Filter State ---
   String? _query;
@@ -23,10 +27,10 @@ class EntriesProvider extends ChangeNotifier {
   DateTime? _fromDate;
   DateTime? _toDate;
 
-  // --- Getters ---
+  /// The complete list of cached entries.
   List<Entry> get entries => _entries;
 
-  /// Returns the list of entries filtered by the current criteria.
+  /// The list of entries filtered by the current search and filter criteria.
   List<Entry> get filteredEntries {
     return _entries.where((e) {
       final matchesQuery = _query == null ||
@@ -49,13 +53,21 @@ class EntriesProvider extends ChangeNotifier {
       ..sort((a, b) => b.entryDate.compareTo(a.entryDate));
   }
 
+  /// Current status of the entries data layer.
   EntriesStatus get status => _status;
+
+  /// The last error message encountered.
   String? get errorMessage => _errorMessage;
+
+  /// Whether the initial data load is in progress.
   bool get isLoading => _status == EntriesStatus.loading;
+
+  /// Whether a background synchronization with Supabase is currently running.
+  bool get isSyncing => _isSyncing;
 
   // --- Filter API ---
 
-  /// Sets the filters for the entries list.
+  /// Updates the current filters and notifies listeners.
   void setFilters({
     String? query,
     String? colorTag,
@@ -69,7 +81,7 @@ class EntriesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Clears all active filters.
+  /// Clears all active filters and notifies listeners.
   void clearFilters() {
     _query = null;
     _colorTag = null;
@@ -80,21 +92,41 @@ class EntriesProvider extends ChangeNotifier {
 
   // --- CRUD Operations ---
 
-  /// Fetches all entries from the service layer.
+  /// Loads entries from the local database immediately and initiates a background sync.
   Future<void> fetchEntries() async {
     _status = EntriesStatus.loading;
     notifyListeners();
+
     try {
+      // Instant load from local cache.
       _entries = await _entriesService.fetchAll();
       _status = EntriesStatus.loaded;
+      notifyListeners();
+
+      // Initiate background synchronization.
+      _isSyncing = true;
+      notifyListeners();
+
+      _sync.onSyncComplete = () async {
+        try {
+          _entries = await _entriesService.fetchAll();
+          _isSyncing = false;
+          notifyListeners();
+        } catch (_) {
+          _isSyncing = false;
+          notifyListeners();
+        }
+      };
+
+      await _sync.syncNow();
     } catch (e) {
       _status = EntriesStatus.error;
       _errorMessage = e.toString();
+      notifyListeners();
     }
-    notifyListeners();
   }
 
-  /// Creates a new entry and updates the local state.
+  /// Creates a new [entry] and updates the local state.
   Future<Entry?> createEntry(Entry entry) async {
     try {
       final created = await _entriesService.create(entry);
@@ -108,7 +140,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
-  /// Updates an existing entry and refreshes the local state.
+  /// Updates an existing [entry] and refreshes the local state.
   Future<bool> updateEntry(Entry entry) async {
     try {
       final updated = await _entriesService.update(entry);
@@ -127,13 +159,23 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
-  /// Deletes an entry and its associated photos.
+  /// Deletes an entry by its [entryId] and removes associated photos.
   Future<bool> deleteEntry(String entryId) async {
     try {
-      await _photosService.deleteAllForEntry(entryId);
-      await _entriesService.delete(entryId);
+      // Optimistic UI update: remove from memory immediately.
       _entries.removeWhere((e) => e.id == entryId);
       notifyListeners();
+
+      // Best-effort photo cleanup.
+      try {
+        await _photosService.deleteAllForEntry(entryId);
+      } catch (_) {
+        // Non-fatal; server-side cleanup will handle it if offline.
+      }
+
+      // Mark for deletion in local DB and queue for sync.
+      await _entriesService.delete(entryId);
+
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -142,7 +184,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
-  /// Returns an entry by its ID from the local cache.
+  /// Retrieves an entry by its [id] from the local cache.
   Entry? getById(String id) {
     try {
       return _entries.firstWhere((e) => e.id == id);
@@ -151,15 +193,16 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
-  /// Clears all entries and resets the provider state.
+  /// Resets the provider state to its initial values.
   void clear() {
     _entries = [];
     _status = EntriesStatus.initial;
     _errorMessage = null;
+    _isSyncing = false;
     clearFilters();
   }
 
-  /// Clears the current error message.
+  /// Clears the current error message and notifies listeners.
   void clearError() {
     _errorMessage = null;
     notifyListeners();

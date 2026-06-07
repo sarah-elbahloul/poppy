@@ -214,6 +214,7 @@ class _NewEntryButton extends StatelessWidget {
           border: Border.all(color: t.accent.withOpacity(0.1)),
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(AppIcons.add, color: t.accent, size: AppIconSize.sm),
             const SizedBox(width: AppSpacing.md),

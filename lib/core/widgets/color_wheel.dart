@@ -4,12 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:poppy/core/style/style.dart';
 
-/// A custom color wheel widget for selecting HSL colors.
+/// A custom color wheel widget for selecting HSL (Hue, Saturation, Lightness) colors.
 ///
 /// It consists of an outer hue ring and an inner saturation/lightness circle.
+/// The user can drag the outer ring to change hue, and the inner circle to adjust
+/// saturation (horizontal) and lightness (vertical).
 class ColorWheel extends StatefulWidget {
+  /// The initial color to display on the wheel.
   final Color initialColor;
+
+  /// Callback triggered whenever the selected color changes.
   final ValueChanged<Color> onChanged;
+
+  /// The diameter of the color wheel.
   final double size;
 
   const ColorWheel({
@@ -43,24 +50,29 @@ class _ColorWheelState extends State<ColorWheel> {
   @override
   void didUpdateWidget(ColorWheel oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Only sync if the color actually changed and we aren't currently interacting.
     if (widget.initialColor.value != oldWidget.initialColor.value &&
-        !_isDraggingHue && !_isDraggingInner) {
+        !_isDraggingHue &&
+        !_isDraggingInner) {
       _syncFromColor(widget.initialColor);
     }
   }
 
+  /// Extracts HSL components from a [Color] to update internal state.
   void _syncFromColor(Color c) {
     final hsl = HSLColor.fromColor(c);
     _hue = hsl.hue;
     _saturation = hsl.saturation;
-    // Clamp lightness slightly away from extremes to keep the indicator visible and movable.
+    // Clamp lightness slightly away from extremes (0 or 1) to keep the indicator usable.
     _lightness = hsl.lightness.clamp(0.01, 0.99);
   }
 
+  /// Returns the currently selected [Color] based on HSL state.
   Color get _current {
     return HSLColor.fromAHSL(1.0, _hue, _saturation, _lightness).toColor();
   }
 
+  /// Handles touch/drag interactions on the wheel.
   void _handleInteraction(Offset localPos, {bool isStart = false}) {
     final center = widget.size / 2;
     final dx = localPos.dx - center;
@@ -70,7 +82,7 @@ class _ColorWheelState extends State<ColorWheel> {
     final innerR = center - _ringWidth - _spacing;
 
     if (isStart) {
-      // Forgiving hit detection for the hue ring vs inner circle.
+      // Determine if the user is touching the outer hue ring or the inner area.
       if (dist >= innerR + (_spacing / 2)) {
         _isDraggingHue = true;
         _isDraggingInner = false;
@@ -85,13 +97,13 @@ class _ColorWheelState extends State<ColorWheel> {
       var angle = math.atan2(dy, dx) * 180 / math.pi;
       if (angle < 0) angle += 360;
 
-      // Haptic feedback for significant changes.
+      // Provide haptic feedback for significant changes.
       if ((angle - _hue).abs() > 5) {
         HapticFeedback.selectionClick();
       }
       setState(() => _hue = angle);
     } else if (_isDraggingInner) {
-      // Map circle coordinates to Saturation and Lightness.
+      // Map circle coordinates to Saturation (Horizontal) and Lightness (Vertical).
       final clampedDist = dist.clamp(0.0, innerR);
       final angle = math.atan2(dy, dx);
 
@@ -99,9 +111,7 @@ class _ColorWheelState extends State<ColorWheel> {
       final py = clampedDist * math.sin(angle);
 
       setState(() {
-        // Horizontal axis: Saturation (0 to 1).
         _saturation = ((px / innerR) + 1) / 2;
-        // Vertical axis: Lightness (1 to 0).
         _lightness = 1.0 - ((py / innerR) + 1) / 2;
       });
     }
@@ -144,7 +154,7 @@ class _ColorWheelState extends State<ColorWheel> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            // Hue Ring.
+            // Outer Hue Ring.
             CustomPaint(
               size: Size(widget.size, widget.size),
               painter: _HueRingPainter(ringWidth: _ringWidth),
@@ -174,7 +184,7 @@ class _ColorWheelState extends State<ColorWheel> {
               ),
             ),
 
-            // Hue Indicator.
+            // Interactive Hue Indicator.
             Positioned(
               left: hueDotPos.dx - 18,
               top: hueDotPos.dy - 18,
@@ -186,7 +196,7 @@ class _ColorWheelState extends State<ColorWheel> {
               ),
             ),
 
-            // Sat/Light Indicator.
+            // Interactive Sat/Light Indicator.
             Positioned(
               left: satLightDotPos.dx - 18,
               top: satLightDotPos.dy - 18,
@@ -204,10 +214,11 @@ class _ColorWheelState extends State<ColorWheel> {
   }
 }
 
-/// A circular indicator used on the [ColorWheel].
+/// A private helper widget representing a draggable indicator on the [ColorWheel].
 class _Indicator extends StatelessWidget {
   final Color color;
   final bool isLarge;
+
   const _Indicator({required this.color, this.isLarge = false});
 
   @override
@@ -236,7 +247,7 @@ class _Indicator extends StatelessWidget {
   }
 }
 
-/// Painter for the outer hue ring.
+/// A [CustomPainter] that renders the outer hue spectrum ring.
 class _HueRingPainter extends CustomPainter {
   final double ringWidth;
   _HueRingPainter({required this.ringWidth});
@@ -269,7 +280,7 @@ class _HueRingPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Painter for the inner saturation/lightness circle.
+/// A [CustomPainter] that renders the inner saturation/lightness gradient.
 class _SatLightPainter extends CustomPainter {
   final double hue;
 
@@ -281,18 +292,20 @@ class _SatLightPainter extends CustomPainter {
     final List<Offset> positions = [];
     final List<Color> colors = [];
 
+    // Build the grid of vertices for the gradient.
     for (int j = 0; j <= divisions; j++) {
       final double l = 1.0 - j / divisions;
       final double y = size.height * j / divisions;
       for (int i = 0; i <= divisions; i++) {
         final double s = i / divisions;
         final double x = size.width * i / divisions;
-        
+
         positions.add(Offset(x, y));
         colors.add(HSLColor.fromAHSL(1.0, hue, s, l).toColor());
       }
     }
 
+    // Connect vertices into triangles.
     final List<int> indices = [];
     for (int j = 0; j < divisions; j++) {
       for (int i = 0; i < divisions; i++) {

@@ -1,7 +1,13 @@
-// supabase/functions/delete-user/index.ts
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Edge Function: delete-user
+//  Location: supabase/functions/delete-user/index.ts
+// ─────────────────────────────────────────────────────────────
+
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-// Helper function to recursively get all file paths in a folder
+/**
+ * Recursively retrieves all file paths within a specific storage folder.
+ */
 async function getAllFilePaths(supabase: any, bucket: string, folderPath: string): Promise<string[]> {
   const { data: list, error } = await supabase.storage.from(bucket).list(folderPath);
 
@@ -12,14 +18,12 @@ async function getAllFilePaths(supabase: any, bucket: string, folderPath: string
   let filePaths: string[] = [];
 
   for (const item of list) {
-    // Construct the full path for the item
     const itemPath = `${folderPath}/${item.name}`;
 
     // In Supabase Storage, files have an `id`, folders do not.
     if (item.id) {
       filePaths.push(itemPath);
     } else {
-      // If it's a folder, recursively fetch its contents
       const subFiles = await getAllFilePaths(supabase, bucket, itemPath);
       filePaths = [...filePaths, ...subFiles];
     }
@@ -28,6 +32,13 @@ async function getAllFilePaths(supabase: any, bucket: string, folderPath: string
   return filePaths;
 }
 
+/**
+ * Main function handler.
+ * 
+ * 1. Authenticates the user via the provided Bearer token.
+ * 2. Deletes all photos associated with the user from Supabase Storage.
+ * 3. Deletes the user account from Supabase Auth.
+ */
 Deno.serve(async (req) => {
   try {
     const supabase = createClient(
@@ -44,24 +55,20 @@ Deno.serve(async (req) => {
       return new Response('Unauthorized', { status: 401 });
     }
 
-    // 1. Get all file paths inside the user's folder
+    // 1. Cleanup storage files.
     const filesToDelete = await getAllFilePaths(supabase, 'entry-photos', user.id);
 
-    // 2. Delete the files (if any exist)
     if (filesToDelete.length > 0) {
-      // Note: Supabase allows a maximum of 100 files per remove() call.
-      // If a user could have >100 photos, you'd need to chunk this array.
       const { error: deleteStorageError } = await supabase.storage
         .from('entry-photos')
         .remove(filesToDelete);
 
       if (deleteStorageError) {
         console.error('Storage delete error:', deleteStorageError);
-        // Decide if you want to block user deletion if storage fails
       }
     }
 
-    // 3. Delete the user account
+    // 2. Delete the auth account.
     await supabase.auth.admin.deleteUser(user.id);
 
     return new Response(JSON.stringify({ success: true }), {

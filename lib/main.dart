@@ -6,20 +6,20 @@ import 'package:poppy/providers/providers.dart';
 import 'package:poppy/services/services.dart';
 import 'package:provider/provider.dart';
 
-/// Poppy — Entry Point
+/// Poppy application entry point.
 ///
-/// Sets up system-level configurations and initializes essential services
-/// before running the app with global providers.
-Future<void> main() async {
+/// Responsible for initializing core services, setting system-wide configurations,
+/// and launching the [MultiProvider] root.
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Restrict the app to portrait orientation.
+  // Lock device orientation to portrait for a consistent UI experience.
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Set the default system UI overlay style.
+  // Configure system UI overlay style.
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -27,9 +27,12 @@ Future<void> main() async {
     ),
   );
 
-  // Initialize core services.
+  // Initialize infrastructure and persistence layers.
   await SupabaseConfig.init();
   await NotificationService.init();
+
+  // Local SQLite database initialization must complete before service access.
+  await LocalDbService.instance.init();
 
   runApp(
     MultiProvider(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
-import 'package:provider/provider.dart';
 import 'package:poppy/providers/providers.dart';
+import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Account Screen
@@ -9,7 +9,7 @@ import 'package:poppy/providers/providers.dart';
 // ─────────────────────────────────────────────────────────────
 
 /// Allows users to manage their profile and account security.
-/// 
+///
 /// Features:
 /// - Change display name.
 /// - Update email address (requires confirmation).
@@ -29,10 +29,20 @@ class _AccountScreenState extends State<AccountScreen> {
   final _currentPassController = TextEditingController();
   final _newPassController     = TextEditingController();
   final _confirmPassController = TextEditingController();
+  final _newPassFocus          = FocusNode();
 
-  bool _obscureCurrent = true;
-  bool _obscureNew     = true;
-  bool _obscureConfirm = true;
+  bool _obscureCurrent  = true;
+  bool _obscureNew      = true;
+  bool _obscureConfirm  = true;
+  bool _newPassFocused  = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _newPassFocus.addListener(() {
+      setState(() => _newPassFocused = _newPassFocus.hasFocus);
+    });
+  }
 
   @override
   void dispose() {
@@ -41,6 +51,7 @@ class _AccountScreenState extends State<AccountScreen> {
     _currentPassController.dispose();
     _newPassController.dispose();
     _confirmPassController.dispose();
+    _newPassFocus.dispose();
     super.dispose();
   }
 
@@ -108,7 +119,12 @@ class _AccountScreenState extends State<AccountScreen> {
   Widget build(BuildContext context) {
     final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
-    final fp = context.read<ThemeProvider>().currentFontPairData;
+    final fp   = context.read<ThemeProvider>().currentFontPairData;
+
+    // Show checker if the new-password field is focused or has content,
+    // AND the password panel is open.
+    final showChecker = _openPanel == 'password' &&
+        (_newPassFocused || _newPassController.text.isNotEmpty);
 
     return Scaffold(
       backgroundColor: t.background,
@@ -135,21 +151,22 @@ class _AccountScreenState extends State<AccountScreen> {
           const SizedBox(height: AppSpacing.xs),
           Text(
             auth.user?.email ?? '—',
-            style: AppTextStyles.headlineSmall(t.textPrimary,fp)
+            style: AppTextStyles.headlineSmall(t.textPrimary, fp)
                 .copyWith(fontSize: 15),
           ),
           const SizedBox(height: AppSpacing.lg),
-          
+
           // ── Change display name ───────────────────────────
           _ExpandablePanel(
-            icon:  AppIcons.person,
-            title: 'Change display name',
-            isOpen: _openPanel == 'displayName',
+            icon:    AppIcons.person,
+            title:   'Change display name',
+            isOpen:  _openPanel == 'displayName',
             onToggle: () => setState(() {
               if (_openPanel != 'displayName') {
                 _displayNameController.text = auth.displayName;
               }
-              _openPanel = _openPanel == 'displayName' ? null : 'displayName';
+              _openPanel =
+              _openPanel == 'displayName' ? null : 'displayName';
             }),
             child: Column(
               children: [
@@ -158,7 +175,8 @@ class _AccountScreenState extends State<AccountScreen> {
                   label:        'Display name',
                   keyboardType: TextInputType.name,
                 ),
-                if (auth.errorMessage != null && _openPanel == 'displayName') ...[
+                if (auth.errorMessage != null &&
+                    _openPanel == 'displayName') ...[
                   const SizedBox(height: AppSpacing.sm),
                   _ErrorText(message: auth.errorMessage!),
                 ],
@@ -173,12 +191,12 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
 
           const SizedBox(height: AppSpacing.sm),
-          
+
           // ── Change email ──────────────────────────────────
           _ExpandablePanel(
-            icon:  AppIcons.email,
-            title: 'Change email',
-            isOpen: _openPanel == 'email',
+            icon:    AppIcons.email,
+            title:   'Change email',
+            isOpen:  _openPanel == 'email',
             onToggle: () => setState(() =>
             _openPanel = _openPanel == 'email' ? null : 'email'),
             child: Column(
@@ -206,14 +224,22 @@ class _AccountScreenState extends State<AccountScreen> {
 
           // ── Change password ───────────────────────────────
           _ExpandablePanel(
-            icon:  AppIcons.password,
-            title: 'Change password',
-            isOpen: _openPanel == 'password',
-            onToggle: () => setState(() =>
-            _openPanel =
-            _openPanel == 'password' ? null : 'password'),
+            icon:    AppIcons.password,
+            title:   'Change password',
+            isOpen:  _openPanel == 'password',
+            onToggle: () => setState(() {
+              _openPanel =
+              _openPanel == 'password' ? null : 'password';
+              // Reset checker state when closing the panel.
+              if (_openPanel == null) {
+                _newPassController.clear();
+                _currentPassController.clear();
+                _confirmPassController.clear();
+              }
+            }),
             child: Column(
               children: [
+                // Current password — no checker needed.
                 _Field(
                   controller:  _currentPassController,
                   label:       'Current password',
@@ -225,17 +251,37 @@ class _AccountScreenState extends State<AccountScreen> {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
+
+                // New password + live rules checker.
                 _Field(
                   controller:  _newPassController,
                   label:       'New password',
                   obscureText: _obscureNew,
+                  focusNode:   _newPassFocus,
                   suffixIcon: _VisToggle(
                     obscure:  _obscureNew,
                     onToggle: () =>
                         setState(() => _obscureNew = !_obscureNew),
                   ),
                 ),
+
+                AnimatedSize(
+                  duration: AppDuration.normal,
+                  curve:    Curves.easeOutCubic,
+                  child: showChecker
+                      ? Padding(
+                    padding:
+                    const EdgeInsets.only(top: AppSpacing.sm),
+                    child: PasswordRulesChecker(
+                      controller: _newPassController,
+                    ),
+                  )
+                      : const SizedBox.shrink(),
+                ),
+
                 const SizedBox(height: AppSpacing.sm),
+
+                // Confirm password.
                 _Field(
                   controller:  _confirmPassController,
                   label:       'Confirm new password',
@@ -246,6 +292,7 @@ class _AccountScreenState extends State<AccountScreen> {
                             () => _obscureConfirm = !_obscureConfirm),
                   ),
                 ),
+
                 if (auth.errorMessage != null &&
                     _openPanel == 'password') ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -266,14 +313,16 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 }
 
-// ─── Sub-widgets ───
+// ─────────────────────────────────────────────────────────────
+//  Private sub-widgets (unchanged from original)
+// ─────────────────────────────────────────────────────────────
 
 class _ExpandablePanel extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final bool isOpen;
+  final IconData     icon;
+  final String       title;
+  final bool         isOpen;
   final VoidCallback onToggle;
-  final Widget child;
+  final Widget       child;
   const _ExpandablePanel({
     required this.icon, required this.title,
     required this.isOpen, required this.onToggle, required this.child,
@@ -281,7 +330,7 @@ class _ExpandablePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return AnimatedContainer(
@@ -307,7 +356,8 @@ class _ExpandablePanel extends StatelessWidget {
                 children: [
                   Icon(icon, size: AppIconSize.sm, color: t.textTertiary),
                   const SizedBox(width: AppSpacing.md),
-                  Expanded(child: Text(title, style: AppTextStyles.titleSmallSans(t.textPrimary,fp))),
+                  Expanded(child: Text(title,
+                      style: AppTextStyles.titleSmallSans(t.textPrimary, fp))),
                   Icon(
                     isOpen ? AppIcons.chevronUp : AppIcons.chevronDown,
                     size: AppIconSize.sm, color: t.textTertiary,
@@ -328,7 +378,10 @@ class _ExpandablePanel extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  Divider(height: AppSpacing.md, color: t.border, thickness: AppStroke.hairline),
+                  Divider(
+                      height: AppSpacing.md,
+                      color: t.border,
+                      thickness: AppStroke.hairline),
                   const SizedBox(height: AppSpacing.xs),
                   child,
                 ],
@@ -344,14 +397,15 @@ class _ExpandablePanel extends StatelessWidget {
 class _ErrorText extends StatelessWidget {
   final String message;
   const _ErrorText({required this.message});
+
   @override
   Widget build(BuildContext context) {
+    final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
-    final t = context.poppyTheme;
     return Align(
       alignment: Alignment.centerLeft,
       child: Text(message,
-          style: AppTextStyles.bodySmallSans(t.accent,fp)),
+          style: AppTextStyles.bodySmallSans(t.accent, fp)),
     );
   }
 }
@@ -362,14 +416,20 @@ class _Field extends StatelessWidget {
   final bool obscureText;
   final TextInputType? keyboardType;
   final Widget? suffixIcon;
+  final FocusNode? focusNode;
+
   const _Field({
-    required this.controller, required this.label,
-    this.obscureText = false, this.keyboardType, this.suffixIcon,
+    required this.controller,
+    required this.label,
+    this.obscureText = false,
+    this.keyboardType,
+    this.suffixIcon,
+    this.focusNode,
   });
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Container(
@@ -379,12 +439,14 @@ class _Field extends StatelessWidget {
         border: Border.all(color: t.border, width: AppStroke.hairline),
       ),
       child: TextField(
-        controller: controller, obscureText: obscureText,
+        controller:   controller,
+        focusNode:    focusNode,
+        obscureText:  obscureText,
         keyboardType: keyboardType,
-        style: AppTextStyles.bodyMedium(t.textPrimary,fp),
+        style: AppTextStyles.bodyMedium(t.textPrimary, fp),
         decoration: InputDecoration(
           labelText:  label,
-          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary,fp),
+          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary, fp),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -415,11 +477,13 @@ class _VisToggle extends StatelessWidget {
 }
 
 class _SubmitButton extends StatelessWidget {
-  final String label;
-  final bool isLoading;
+  final String       label;
+  final bool         isLoading;
   final VoidCallback onPressed;
   const _SubmitButton({
-    required this.label, required this.isLoading, required this.onPressed,
+    required this.label,
+    required this.isLoading,
+    required this.onPressed,
   });
 
   @override

@@ -92,9 +92,9 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: AppSpacing.xl),
               const Center(child: PoppyLogo(size: AppIconSize.logo)),
               const SizedBox(height: AppSpacing.md),
-              Center(child: Text(kAppName,
+              Center(child: Text(AppConstants.AppName,
                   style: AppTextStyles.displayLarge(t.textPrimary))),
-              Center(child: Text(kAppTagline,
+              Center(child: Text(AppConstants.AppTagline,
                   style: AppTextStyles.bodySmallSerif(t.textTertiary, fp))),
               const SizedBox(height: AppSpacing.xl * 1.5),
 

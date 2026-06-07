@@ -1,29 +1,24 @@
-/// Poppy — Centralized Error Messages
-///
-/// This class provides human-readable error messages for various failure
-/// scenarios, including authentication, database operations, and validation.
+/// Provides human-readable error messages and validation logic for various 
+/// application failure scenarios.
 class AppErrors {
   AppErrors._();
 
-  // --- Word limit ---
-
+  /// The maximum allowed word count for a single entry.
   static const int wordLimit = 10000;
 
-  /// Returns a message when an entry exceeds the word limit.
+  /// Returns a message when an entry exceeds the [wordLimit].
   static String wordLimitExceeded(int count) =>
       'Your entry has $count words, which exceeds the $wordLimit-word limit. '
       'Please shorten it before saving.';
 
-  // --- Generic fallback ---
-
-  /// Attempts to extract a user-friendly error message from an exception.
+  /// Extracts a user-friendly error message from a general [error] object.
   static String fromException(Object error) {
     final l = error.toString().toLowerCase();
     if (_isNetwork(l)) return _networkMsg;
     return 'Something went wrong. Please try again.';
   }
 
-  // --- Private Helpers ---
+  // --- Internal Helpers ---
 
   static const String _networkMsg =
       'No internet connection. Please check your network and try again.';
@@ -37,7 +32,7 @@ class AppErrors {
 
   // --- Authentication Errors ---
 
-  /// Handles sign-in errors.
+  /// Maps Supabase Auth errors to user-friendly strings for sign-in attempts.
   static String signIn(String raw) {
     final l = raw.toLowerCase();
     if (l.contains('invalid login credentials') ||
@@ -47,8 +42,7 @@ class AppErrors {
       return 'Email or password is incorrect.';
     }
     if (l.contains('email not confirmed')) {
-      return 'Please confirm your email before signing in. '
-          'Check your inbox for the confirmation link.';
+      return 'Please confirm your email before signing in.';
     }
     if (l.contains('too many requests') || l.contains('rate limit')) {
       return 'Too many sign-in attempts. Please wait a few minutes.';
@@ -57,42 +51,29 @@ class AppErrors {
     return 'Could not sign in. Please try again.';
   }
 
-  /// Handles sign-up errors.
+  /// Maps Supabase Auth errors to user-friendly strings for registration.
   static String signUp(String raw) {
     final l = raw.toLowerCase();
-    if (l.contains('already registered') ||
-        l.contains('already exists') ||
-        l.contains('user already')) {
-      return 'An account with this email already exists. '
-          'Try signing in instead.';
+    if (l.contains('already registered') || l.contains('already exists')) {
+      return 'An account with this email already exists.';
     }
-    if (l.contains('invalid email') || l.contains('valid email')) {
-      return 'Please enter a valid email address.';
-    }
+    if (l.contains('invalid email')) return 'Please enter a valid email address.';
     if (l.contains('password') && (l.contains('short') || l.contains('weak'))) {
-      return 'Password is too short. Use at least 6 characters.';
-    }
-    if (l.contains('too many requests') || l.contains('rate limit')) {
-      return 'Too many attempts. Please wait a few minutes.';
+      return 'Password is too short. Use at least 8 characters.';
     }
     if (_isNetwork(l)) return _networkMsg;
     return 'Could not create your account. Please try again.';
   }
 
-  /// Handles password reset errors.
+  /// Maps Supabase Auth errors for password reset requests.
   static String resetPassword(String raw) {
     final l = raw.toLowerCase();
-    if (l.contains('user not found') || l.contains('no user')) {
-      return 'No account found with that email address.';
-    }
-    if (l.contains('too many requests') || l.contains('rate limit')) {
-      return 'Too many attempts. Please wait a few minutes.';
-    }
+    if (l.contains('user not found')) return 'No account found with that email.';
     if (_isNetwork(l)) return _networkMsg;
     return 'Could not send reset email. Please try again.';
   }
 
-  /// Handles email update errors.
+  /// Maps Supabase Auth errors for email update requests.
   static String updateEmail(String raw) {
     final l = raw.toLowerCase();
     if (l.contains('already registered') || l.contains('already exists')) {
@@ -103,10 +84,7 @@ class AppErrors {
     return 'Could not update email. Please try again.';
   }
 
-  static const String wrongCurrentPassword =
-      'Your current password is incorrect.';
-
-  /// Handles password update errors.
+  /// Maps Supabase Auth errors for password update requests.
   static String updatePassword(String raw) {
     final l = raw.toLowerCase();
     if (l.contains('password') && (l.contains('short') || l.contains('weak'))) {
@@ -116,96 +94,64 @@ class AppErrors {
     return 'Could not update password. Please try again.';
   }
 
-  // --- Entry / Data Errors ---
+  /// Error message shown when the current password verification fails.
+  static const String wrongCurrentPassword = 'Your current password is incorrect.';
 
-  /// Handles errors when saving an entry.
+  // --- Data & Storage Errors ---
+
+  /// Returns a user-friendly message for entry saving failures.
   static String saveEntry(String raw) {
-    final l = raw.toLowerCase();
-    if (l.contains('content_length') || l.contains('check constraint')) {
-      return 'Your entry is too long. Please keep it under 10,000 words.';
+    if (raw.toLowerCase().contains('content_length')) {
+      return 'Your entry is too long (max 10,000 words).';
     }
-    if (_isNetwork(l)) return _networkMsg;
-    return 'Could not save your entry. Please try again.';
-  }
-
-  /// Handles errors when deleting an entry.
-  static String deleteEntry(String raw) {
     if (_isNetwork(raw.toLowerCase())) return _networkMsg;
-    return 'Could not delete the entry. Please try again.';
+    return 'Could not save your entry.';
   }
 
-  /// Handles errors when loading entries.
-  static String loadEntries(String raw) {
-    if (_isNetwork(raw.toLowerCase())) return _networkMsg;
-    return 'Could not load your entries. Check your connection and try again.';
-  }
-
-  // --- Photo Errors ---
-
-  /// Handles errors when uploading a photo.
+  /// Returns a user-friendly message for photo upload failures.
   static String uploadPhoto(String raw) {
-    final l = raw.toLowerCase();
-    if (l.contains('too large') || l.contains('payload')) {
+    if (raw.toLowerCase().contains('too large')) {
       return 'This photo is too large. Please choose a smaller image.';
     }
-    if (_isNetwork(l)) return _networkMsg;
-    return 'Could not upload the photo. Please try again.';
-  }
-
-  /// Handles errors when deleting a photo.
-  static String deletePhoto(String raw) {
     if (_isNetwork(raw.toLowerCase())) return _networkMsg;
-    return 'Could not remove the photo. Please try again.';
+    return 'Could not upload the photo.';
   }
 
-  // --- Import / Export Errors ---
+  // --- PIN & Validation ---
 
-  /// Handles errors during the import process.
-  static String importFile(Object error) {
-    if (error is FormatException) return error.message;
-    final l = error.toString().toLowerCase();
-    if (_isNetwork(l)) return _networkMsg;
-    return 'Import failed. Make sure the file is a valid Poppy export.';
-  }
-
-  /// Handles errors during the export process.
-  static String exportFile(Object error) => 'Export failed. Please try again.';
-
-  static const String importWrongAccount =
-      'This export is encrypted with a different account\'s password. '
-      'You can only import it from the original account, or ask for '
-      'a plain (unencrypted) export instead.';
-
-  // --- PIN Errors ---
-
+  /// Error message for incorrect PIN entry.
   static const String pinIncorrect = 'Incorrect PIN. Please try again.';
-  static const String pinMismatch =
-      'PINs do not match. Please try again from the beginning.';
 
-  // --- Validation Errors ---
+  /// Error message when two entered PINs do not match.
+  static const String pinMismatch = 'PINs do not match.';
 
-  static const String emailEmpty = 'Please enter your email address.';
-  static const String emailInvalid = 'Please enter a valid email address.';
-  static const String passwordEmpty = 'Please enter a password.';
-  static const String passwordShort = 'Password must be at least 6 characters.';
-  static const String passwordMismatch = 'Passwords do not match.';
-  static const String confirmEmpty = 'Please confirm your password.';
-
+  /// Validates an email address and returns an error message if invalid.
   static String? validateEmail(String email) {
-    if (email.trim().isEmpty) return emailEmpty;
-    if (!email.contains('@') || !email.contains('.')) return emailInvalid;
+    if (email.trim().isEmpty) return 'Please enter your email.';
+    if (!email.contains('@') || !email.contains('.')) return 'Invalid email.';
     return null;
   }
 
+  /// Validates a password's strength and returns an error message if insufficient.
   static String? validatePassword(String password) {
-    if (password.isEmpty) return passwordEmpty;
-    if (password.length < 6) return passwordShort;
+    if (password.isEmpty) {
+      return 'Please enter a password.';
+    }
+    final isValid = password.length >= 8 &&
+        RegExp(r'[A-Z]').hasMatch(password) &&
+        RegExp(r'[a-z]').hasMatch(password) &&
+        RegExp(r'\d').hasMatch(password) &&
+        RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;/~`]').hasMatch(password);
+    if (!isValid) {
+      return 'Password must be at least 8 characters and include uppercase, lowercase, number, and symbol.';
+    }
     return null;
   }
 
+  /// Validates that a confirmation password matches the primary password.
   static String? validateConfirm(String password, String confirm) {
-    if (confirm.isEmpty) return confirmEmpty;
-    if (password != confirm) return passwordMismatch;
+    if (confirm.isEmpty) return 'Please confirm your password.';
+    if (password != confirm) return 'Passwords do not match.';
     return null;
   }
 }

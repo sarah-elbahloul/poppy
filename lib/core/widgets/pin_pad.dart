@@ -4,24 +4,30 @@ import 'package:poppy/core/style/style.dart';
 import 'package:provider/provider.dart';
 import 'package:poppy/providers/theme_provider.dart';
 
-/// A 4-digit PIN entry pad widget.
+/// A custom numpad widget designed for entering a 4-digit security PIN.
 ///
-/// Supports two modes:
-/// - **Auto-submit:** Automatically triggers [onComplete] when the 4th digit is entered.
-/// - **Manual-submit:** Displays a "Confirm" button after 4 digits are entered.
+/// Features:
+/// - Visual dot indicators tracking input progress.
+/// - A shake animation to provide feedback on incorrect entries.
+/// - Support for both automatic submission and manual confirmation.
 class PinPad extends StatefulWidget {
+  /// Callback triggered when a PIN is completed or confirmed.
   final ValueChanged<String> onComplete;
-  final String label;
-  final bool   hasError;
 
-  /// Whether to automatically submit after 4 digits.
+  /// The instructional label displayed above the PIN dots.
+  final String label;
+
+  /// Whether the widget should display an error state (triggers the shake animation).
+  final bool hasError;
+
+  /// If true, automatically calls [onComplete] immediately when the 4th digit is entered.
   final bool autoSubmit;
 
   const PinPad({
     super.key,
     required this.onComplete,
-    this.label      = 'Enter your PIN',
-    this.hasError   = false,
+    this.label = 'Enter your PIN',
+    this.hasError = false,
     this.autoSubmit = true,
   });
 
@@ -29,11 +35,10 @@ class PinPad extends StatefulWidget {
   State<PinPad> createState() => _PinPadState();
 }
 
-class _PinPadState extends State<PinPad>
-    with SingleTickerProviderStateMixin {
+class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
   String _input = '';
   late AnimationController _shakeController;
-  late Animation<double>   _shakeAnimation;
+  late Animation<double> _shakeAnimation;
 
   bool get _isComplete => _input.length == 4;
 
@@ -41,7 +46,7 @@ class _PinPadState extends State<PinPad>
   void initState() {
     super.initState();
     _shakeController = AnimationController(
-      vsync:    this,
+      vsync: this,
       duration: AppDuration.shake,
     );
     _shakeAnimation = Tween<double>(begin: 0, end: 1).animate(
@@ -55,12 +60,14 @@ class _PinPadState extends State<PinPad>
     if (widget.hasError && !old.hasError) _triggerError();
   }
 
+  /// Triggers the error shake animation and clears the current input.
   Future<void> _triggerError() async {
     await _shakeController.forward();
     _shakeController.reset();
     setState(() => _input = '');
   }
 
+  /// Handles a digit key press.
   void _onDigit(String digit) {
     if (_input.length >= 4) return;
     setState(() => _input += digit);
@@ -70,11 +77,13 @@ class _PinPadState extends State<PinPad>
     }
   }
 
+  /// Handles the backspace/delete key press.
   void _onDelete() {
     if (_input.isEmpty) return;
     setState(() => _input = _input.substring(0, _input.length - 1));
   }
 
+  /// Handles the manual confirmation button press.
   void _onConfirm() {
     if (!_isComplete) return;
     widget.onComplete(_input);
@@ -104,7 +113,8 @@ class _PinPadState extends State<PinPad>
           animation: _shakeAnimation,
           builder: (_, child) => Transform.translate(
             offset: Offset(
-              math.sin(_shakeAnimation.value * math.pi * 6) * 8, 0,
+              math.sin(_shakeAnimation.value * math.pi * 6) * 8,
+              0,
             ),
             child: child,
           ),
@@ -114,10 +124,9 @@ class _PinPadState extends State<PinPad>
               final filled = i < _input.length;
               return AnimatedContainer(
                 duration: AppDuration.fast,
-                width:  AppComponentSize.pinDot,
+                width: AppComponentSize.pinDot,
                 height: AppComponentSize.pinDot,
-                margin: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm),
+                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: filled ? t.accent : AppColors.transparent,
@@ -137,15 +146,15 @@ class _PinPadState extends State<PinPad>
         SizedBox(
           width: 240,
           child: GridView.count(
-            crossAxisCount:  3,
-            shrinkWrap:      true,
+            crossAxisCount: 3,
+            shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing:  AppSpacing.md,
+            mainAxisSpacing: AppSpacing.md,
             crossAxisSpacing: AppSpacing.md,
             children: [
               ...'123456789'.split('').map(
                     (d) => _DigitKey(digit: d, onTap: () => _onDigit(d)),
-              ),
+                  ),
               const SizedBox.shrink(),
               _DigitKey(digit: '0', onTap: () => _onDigit('0')),
               _DeleteKey(onTap: _onDelete),
@@ -182,9 +191,11 @@ class _PinPadState extends State<PinPad>
   }
 }
 
+/// A private helper widget for individual digit keys on the [PinPad].
 class _DigitKey extends StatelessWidget {
   final String digit;
   final VoidCallback onTap;
+
   const _DigitKey({required this.digit, required this.onTap});
 
   @override
@@ -197,21 +208,22 @@ class _DigitKey extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Container(
         decoration: BoxDecoration(
-          shape:  BoxShape.circle,
-          color:  t.surface,
+          shape: BoxShape.circle,
+          color: t.surface,
           border: Border.all(color: t.border, width: AppStroke.hairline),
         ),
         child: Center(
-          child: Text(digit,
-              style: AppTextStyles.pinDigit(t.textPrimary, fp)),
+          child: Text(digit, style: AppTextStyles.pinDigit(t.textPrimary, fp)),
         ),
       ),
     );
   }
 }
 
+/// A private helper widget for the delete/backspace key on the [PinPad].
 class _DeleteKey extends StatelessWidget {
   final VoidCallback onTap;
+
   const _DeleteKey({required this.onTap});
 
   @override
@@ -223,8 +235,7 @@ class _DeleteKey extends StatelessWidget {
       child: Container(
         decoration: const BoxDecoration(shape: BoxShape.circle),
         child: Center(
-          child: Icon(AppIcons.backspace,
-              size: AppIconSize.sm, color: t.textTertiary),
+          child: Icon(AppIcons.backspace, size: AppIconSize.sm, color: t.textTertiary),
         ),
       ),
     );

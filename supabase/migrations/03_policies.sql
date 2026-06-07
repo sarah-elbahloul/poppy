@@ -1,60 +1,43 @@
 -- ═══════════════════════════════════════════════════════════════
 --  POPPY — Migration 03: Row Level Security Policies
 --  File: supabase/migrations/03_policies.sql
---
---  Run after 01_tables.sql.
---  Enables RLS on all tables and creates policies so that
---  every user can only access their own data.
---
---  The handle_new_user trigger (04_functions.sql) inserts
---  the first profile row using security definer, which
---  bypasses RLS — so we need a separate INSERT policy
---  on profiles that allows that insert to succeed.
+-- ──────────────────────────────────────────────────────────────
+--  Enforces strict data isolation. Users can only access their
+--  own profiles, entries, photos, and encryption keys.
 -- ═══════════════════════════════════════════════════════════════
-
 
 -- ──────────────────────────────────────────────────────────────
 --  Enable RLS
 -- ──────────────────────────────────────────────────────────────
 
-alter table public.profiles enable row level security;
-alter table public.entries  enable row level security;
-alter table public.photos   enable row level security;
+alter table public.profiles  enable row level security;
+alter table public.entries   enable row level security;
+alter table public.photos    enable row level security;
 alter table public.user_keys enable row level security;
 
-
 -- ──────────────────────────────────────────────────────────────
---  profiles policies
+--  profiles
 -- ──────────────────────────────────────────────────────────────
 
--- Users can select and update their own profile row.
--- The trigger that creates the row uses security definer
--- so it bypasses this policy — that is intentional.
+-- Allow users to view and manage their own profile.
 drop policy if exists "profiles: own row" on public.profiles;
 create policy "profiles: own row"
   on public.profiles
   for all
   using (auth.uid() = id);
 
--- Allow the trigger (security definer function) to insert
--- a new profile row when a user signs up.
--- Without this policy the insert inside handle_new_user()
--- would be blocked by RLS even though the function is
--- declared as security definer.
+-- Allow profile creation during sign-up.
 drop policy if exists "profiles: insert on signup" on public.profiles;
 create policy "profiles: insert on signup"
   on public.profiles
   for insert
   with check (true);
 
-
 -- ──────────────────────────────────────────────────────────────
---  entries policies
+--  entries
 -- ──────────────────────────────────────────────────────────────
 
--- Full CRUD — users can only touch their own entries.
--- The upsert used during import also passes this policy
--- because we always set user_id = auth.uid() in the app.
+-- Users have full CRUD access to their own journal entries.
 drop policy if exists "entries: own rows" on public.entries;
 create policy "entries: own rows"
   on public.entries
@@ -62,11 +45,11 @@ create policy "entries: own rows"
   using  (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-
 -- ──────────────────────────────────────────────────────────────
---  photos policies
+--  photos
 -- ──────────────────────────────────────────────────────────────
 
+-- Users can only manage metadata for photos they uploaded.
 drop policy if exists "photos: own rows" on public.photos;
 create policy "photos: own rows"
   on public.photos
@@ -74,11 +57,11 @@ create policy "photos: own rows"
   using  (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-
 -- ──────────────────────────────────────────────────────────────
---  user keys policies
+--  user_keys
 -- ──────────────────────────────────────────────────────────────
 
+-- Strict isolation for encryption keys.
 drop policy if exists "user_keys: own row" on public.user_keys;
 create policy "user_keys: own row"
   on public.user_keys
@@ -86,25 +69,12 @@ create policy "user_keys: own row"
   using  (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
-
 -- ──────────────────────────────────────────────────────────────
---  Storage bucket policy (entry-photos)
---
---  Before running this section you must create the bucket
---  manually in the Supabase dashboard:
---    Storage → New bucket
---    Name: entry-photos
---    Public: OFF (private)
---
---  Storage path format enforced by the policy:
---    {user_id}/{entry_id}/{filename}
---  The policy checks that the first folder segment matches
---  the authenticated user's UUID.
+--  Storage (entry-photos bucket)
+--  Path: {user_id}/{entry_id}/{filename}
 -- ──────────────────────────────────────────────────────────────
 
-drop policy if exists "photos storage: own folder"
-  on storage.objects;
-
+drop policy if exists "photos storage: own folder" on storage.objects;
 create policy "photos storage: own folder"
   on storage.objects
   for all

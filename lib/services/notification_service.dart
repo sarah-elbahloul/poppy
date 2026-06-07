@@ -3,69 +3,66 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tz;
 
-/// Poppy — Notification Service
+/// Manages local notifications for daily journal reminders.
 ///
-/// Handles initialization, permission requests, and scheduling of daily 
-/// writing reminders using local notifications.
-///
-/// Call [NotificationService.init] once from `main()` before [runApp].
+/// Responsibilities:
+/// - Initializing the notification plugin and configuring time zones.
+/// - Handling platform-specific permissions (Android 13+ and iOS).
+/// - Scheduling and canceling recurring daily writing prompts.
 class NotificationService {
   NotificationService._();
 
   static final _plugin = FlutterLocalNotificationsPlugin();
 
-  static const _channelId   = 'poppy_reminders';
+  static const _channelId = 'poppy_reminders';
   static const _channelName = 'Writing Reminders';
   static const _channelDesc = 'Daily nudge to write in your diary.';
-  static const _notifId     = 0;
+  static const _notifId = 0;
 
-  // --- Initialisation ---
+  // --- Initialization ---
 
-  /// Initializes the notification plugin and configures time zones.
+  /// Configures the notification system and initializes time zone data.
   static Future<void> init() async {
     tz.initializeTimeZones();
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const ios     = DarwinInitializationSettings(
-      requestAlertPermission:  false,   // Asked explicitly later.
-      requestBadgePermission:  false,
-      requestSoundPermission:  false,
+    const ios = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
 
     await _plugin.initialize(
       const InitializationSettings(android: android, iOS: ios),
     );
 
-    // Create the Android notification channel.
     await _plugin
-        .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(
-      const AndroidNotificationChannel(
-        _channelId,
-        _channelName,
-        description: _channelDesc,
-        importance:  Importance.defaultImportance,
-      ),
-    );
+          const AndroidNotificationChannel(
+            _channelId,
+            _channelName,
+            description: _channelDesc,
+            importance: Importance.defaultImportance,
+          ),
+        );
   }
 
-  // --- Permission Request ---
+  // --- Permissions ---
 
   /// Requests notification permissions from the user.
-  /// Returns true if permission was granted.
+  ///
+  /// Returns true if permissions were granted.
   static Future<bool> requestPermission() async {
-    // Android 13+
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android =
+        _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     if (android != null) {
       final granted = await android.requestNotificationsPermission();
       return granted ?? false;
     }
 
-    // iOS
-    final ios = _plugin.resolvePlatformSpecificImplementation<
-        IOSFlutterLocalNotificationsPlugin>();
+    final ios =
+        _plugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
     if (ios != null) {
       final granted = await ios.requestPermissions(
         alert: true,
@@ -75,23 +72,27 @@ class NotificationService {
       return granted ?? false;
     }
 
-    return true; // Other platforms.
+    return true;
   }
 
-  // --- Schedule Daily Reminder ---
+  // --- Scheduling ---
 
-  /// Schedules a recurring daily notification at the specified [time].
+  /// Schedules a daily notification at the specified [time].
+  ///
+  /// Cancels any existing reminders before scheduling the new one.
   static Future<void> scheduleDailyReminder(TimeOfDay time) async {
-    await _plugin.cancel(_notifId); // Cancel existing reminders.
+    await _plugin.cancel(_notifId);
 
     final now = tz.TZDateTime.now(tz.local);
     var scheduled = tz.TZDateTime(
       tz.local,
-      now.year, now.month, now.day,
-      time.hour, time.minute,
+      now.year,
+      now.month,
+      now.day,
+      time.hour,
+      time.minute,
     );
 
-    // If the time has already passed today, schedule for tomorrow.
     if (scheduled.isBefore(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
@@ -106,9 +107,9 @@ class NotificationService {
           _channelId,
           _channelName,
           channelDescription: _channelDesc,
-          importance:         Importance.defaultImportance,
-          priority:           Priority.defaultPriority,
-          icon:               '@mipmap/ic_launcher',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          icon: '@mipmap/ic_launcher',
         ),
         iOS: DarwinNotificationDetails(
           presentAlert: true,
@@ -122,9 +123,7 @@ class NotificationService {
     );
   }
 
-  // --- Cancellation ---
-
-  /// Cancels all scheduled writing reminders.
+  /// Disables and removes all active writing reminders.
   static Future<void> cancelReminders() async {
     await _plugin.cancel(_notifId);
   }

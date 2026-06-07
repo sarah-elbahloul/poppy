@@ -26,14 +26,25 @@ class SetNewPasswordScreen extends StatefulWidget {
 class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
   final _newPassController     = TextEditingController();
   final _confirmPassController = TextEditingController();
+  final _newPassFocus          = FocusNode();
 
   bool _obscureNew     = true;
   bool _obscureConfirm = true;
+  bool _newPassFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _newPassFocus.addListener(() {
+      setState(() => _newPassFocused = _newPassFocus.hasFocus);
+    });
+  }
 
   @override
   void dispose() {
     _newPassController.dispose();
     _confirmPassController.dispose();
+    _newPassFocus.dispose();
     super.dispose();
   }
 
@@ -62,7 +73,10 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
   Widget build(BuildContext context) {
     final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
-    final fp = context.read<ThemeProvider>().currentFontPairData;
+    final fp   = context.read<ThemeProvider>().currentFontPairData;
+
+    final showChecker = _newPassFocused ||
+        _newPassController.text.isNotEmpty;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -86,16 +100,35 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                     .copyWith(height: 1.6),
               ),
               const SizedBox(height: AppSpacing.lg),
+
+              // ── New password + live rules ──────────────────
               _Field(
                 controller:  _newPassController,
                 label:       'New password',
                 obscureText: _obscureNew,
+                focusNode:   _newPassFocus,
                 suffixIcon: _VisToggle(
                   obscure:  _obscureNew,
                   onToggle: () => setState(() => _obscureNew = !_obscureNew),
                 ),
               ),
+
+              AnimatedSize(
+                duration: AppDuration.normal,
+                curve:    Curves.easeOutCubic,
+                child: showChecker
+                    ? Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.sm),
+                  child: PasswordRulesChecker(
+                    controller: _newPassController,
+                  ),
+                )
+                    : const SizedBox.shrink(),
+              ),
+
               const SizedBox(height: AppSpacing.sm),
+
+              // ── Confirm password ───────────────────────────
               _Field(
                 controller:  _confirmPassController,
                 label:       'Confirm new password',
@@ -106,6 +139,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                       setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
               ),
+
               if (auth.errorMessage != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 _ErrorBanner(message: auth.errorMessage!),
@@ -140,19 +174,28 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Private sub-widgets
+// ─────────────────────────────────────────────────────────────
+
 class _Field extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final bool obscureText;
   final Widget? suffixIcon;
+  final FocusNode? focusNode;
+
   const _Field({
-    required this.controller, required this.label,
-    this.obscureText = false, this.suffixIcon,
+    required this.controller,
+    required this.label,
+    this.obscureText = false,
+    this.suffixIcon,
+    this.focusNode,
   });
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Container(
@@ -162,7 +205,9 @@ class _Field extends StatelessWidget {
         border: Border.all(color: t.border, width: AppStroke.hairline),
       ),
       child: TextField(
-        controller: controller, obscureText: obscureText,
+        controller:  controller,
+        focusNode:   focusNode,
+        obscureText: obscureText,
         style: AppTextStyles.bodyMedium(t.textPrimary, fp),
         decoration: InputDecoration(
           labelText:  label,
@@ -202,7 +247,7 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Container(

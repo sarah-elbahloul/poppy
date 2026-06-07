@@ -802,9 +802,12 @@ class _PhotoPendingThumb extends StatelessWidget {
               color: t.accent.withOpacity(0.5),
               width: AppStroke.thin,
             ),
+            color: t.accentLight,
           ),
-          clipBehavior: Clip.antiAlias,
-          child: image,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.sm - AppStroke.hairline,),
+            child: image,
+          ),
         ),
         Positioned(
           top: AppSpacing.xs,

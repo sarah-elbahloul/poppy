@@ -53,6 +53,11 @@ dependencies:
   flutter_bidi_text: ^1.1.1
   package_info_plus: ^9.0.1
 
+  # ── Offline support ───────────────────────────────────────────
+  sqflite: ^2.3.3              # local SQLite database
+  connectivity_plus: ^6.0.5   # detect network changes
+  uuid: ^4.4.0                 # client-side UUID generation for offline creates
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

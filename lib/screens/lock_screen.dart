@@ -4,11 +4,10 @@ import 'package:poppy/services/pin_service.dart';
 import 'package:provider/provider.dart';
 import 'package:poppy/providers/providers.dart';
 
-/// Poppy — Lock Screen
+/// A security screen that prevents access to the application until the correct PIN is entered.
 ///
-/// Prevents access to the app until the correct PIN is entered.
-/// If the user forgets their PIN, they must sign out and sign back in,
-/// which effectively resets the PIN lock state.
+/// If a user forgets their PIN, they are encouraged to sign out and sign back in,
+/// which resets the local security state.
 class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
 
@@ -23,23 +22,24 @@ class _LockScreenState extends State<LockScreen> {
   @override
   void initState() {
     super.initState();
-    // Ensure any open keyboard is dismissed when the lock screen appears.
+    // Ensure any active keyboard is dismissed when the lock screen is presented.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusManager.instance.primaryFocus?.unfocus();
     });
   }
 
-  // ─── Actions ───
+  // --- Actions ---
 
-  /// Validates the entered PIN.
+  /// Validates the entered [pin] against the stored hash.
   ///
-  /// On success, notifies the [AuthProvider] to unlock.
+  /// On success, unlocks the [AuthProvider]. On failure, triggers the error
+  /// animation on the [PinPad].
   Future<void> _onPinComplete(String pin) async {
     final isCorrect = await _pinService.verify(pin);
     if (!mounted) return;
 
     if (isCorrect) {
-      // Unlocking the provider triggers a rebuild in the RootRouter.
+      // Unlocking the provider triggers a state change in the RootRouter.
       context.read<AuthProvider>().unlock();
     } else {
       setState(() => _hasError = true);
@@ -48,7 +48,7 @@ class _LockScreenState extends State<LockScreen> {
     }
   }
 
-  /// Signs out the user as a fallback if they cannot enter the PIN.
+  /// Terminates the current session as a fallback for forgotten PINs.
   Future<void> _onSignOut() async {
     await context.read<AuthProvider>().signOut();
   }
@@ -71,8 +71,10 @@ class _LockScreenState extends State<LockScreen> {
                 children: [
                   const PoppyLogo(size: AppIconSize.logoLg),
                   const SizedBox(height: AppSpacing.md),
-                  Text(kAppName,
-                      style: AppTextStyles.displayLarge(t.textPrimary)),
+                  Text(
+                    AppConstants.AppName,
+                    style: AppTextStyles.displayLarge(t.textPrimary),
+                  ),
                 ],
               ),
               const Spacer(flex: 2),
@@ -84,8 +86,10 @@ class _LockScreenState extends State<LockScreen> {
               const Spacer(flex: 3),
               TextButton(
                 onPressed: _onSignOut,
-                child: Text('Sign out instead',
-                    style: AppTextStyles.bodySmallSans(t.textTertiary, fp)),
+                child: Text(
+                  'Sign out instead',
+                  style: AppTextStyles.bodySmallSans(t.textTertiary, fp),
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],

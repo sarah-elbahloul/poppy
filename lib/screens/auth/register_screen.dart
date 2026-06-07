@@ -10,7 +10,7 @@ import 'package:poppy/providers/providers.dart';
 
 /// Handles the account creation flow:
 /// 1. User provides email and password.
-/// 2. [AuthProvider.signUp] is called, creating a pending account and 
+/// 2. [AuthProvider.signUp] is called, creating a pending account and
 ///    generating the initial encryption data key.
 /// 3. A confirmation screen is shown instructing the user to check their email.
 class RegisterScreen extends StatefulWidget {
@@ -24,22 +24,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController    = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController  = TextEditingController();
-  bool _obscurePassword     = true;
-  bool _obscureConfirm      = true;
-  bool _signUpDone          = false;
-  String _confirmedEmail    = '';
+  final _passwordFocus      = FocusNode();
+
+  bool _obscurePassword = true;
+  bool _obscureConfirm  = true;
+  bool _signUpDone      = false;
+  String _confirmedEmail = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmController.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
   // ─── Logic ───
 
-  /// Validates the registration form input.
   String? _validate() {
     final e = AppErrors.validateEmail(_emailController.text);
     if (e != null) return e;
@@ -50,7 +58,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  /// Attempts to register a new account.
   Future<void> _onRegister() async {
     final err = _validate();
     if (err != null) { _showSnack(err); return; }
@@ -79,7 +86,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
-    final fp = context.read<ThemeProvider>().currentFontPairData;
+    final fp   = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -94,9 +101,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: AppSpacing.xl),
               const Center(child: PoppyLogo(size: AppIconSize.logo)),
               const SizedBox(height: AppSpacing.md),
-              Center(child: Text(kAppName,
+              Center(child: Text(AppConstants.AppName,
                   style: AppTextStyles.displayLarge(t.textPrimary))),
-              Center(child: Text(kAppTagline,
+              Center(child: Text(AppConstants.AppTagline,
                   style: AppTextStyles.bodySmallSerif(t.textTertiary, fp))),
               const SizedBox(height: AppSpacing.xl * 1.5),
               Text('Create your diary',
@@ -105,23 +112,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Text('Your entries are private and encrypted.',
                   style: AppTextStyles.bodySmallSans(t.textTertiary, fp)),
               const SizedBox(height: AppSpacing.lg),
+
+              // ── Email ──────────────────────────────────────
               _Field(
                 controller:   _emailController,
                 label:        'Email address',
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: AppSpacing.sm),
+
+              // ── Password + live rules ──────────────────────
               _Field(
                 controller:  _passwordController,
                 label:       'Password',
                 obscureText: _obscurePassword,
+                focusNode:   _passwordFocus,
                 suffixIcon: _VisToggle(
                   obscure:  _obscurePassword,
                   onToggle: () => setState(
                           () => _obscurePassword = !_obscurePassword),
                 ),
               ),
+
+              // Animate the checker in/out smoothly.
+              AnimatedSize(
+                duration: AppDuration.normal,
+                curve:    Curves.easeOutCubic,
+                child: _passwordController.text.isNotEmpty
+                    ? Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.sm),
+                  child: PasswordRulesChecker(
+                    controller: _passwordController,
+                  ),
+                )
+                    : const SizedBox.shrink(),
+              ),
+
               const SizedBox(height: AppSpacing.sm),
+
+              // ── Confirm password ──────────────────────────
               _Field(
                 controller:  _confirmController,
                 label:       'Confirm password',
@@ -132,6 +161,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           () => _obscureConfirm = !_obscureConfirm),
                 ),
               ),
+
               if (auth.errorMessage != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 _ErrorBanner(message: auth.errorMessage!),
@@ -174,14 +204,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-/// Shown after successful registration, prompting the user to confirm their email.
+// ─────────────────────────────────────────────────────────────
+//  Confirmation screen (shown after successful sign-up)
+// ─────────────────────────────────────────────────────────────
+
 class _ConfirmationScreen extends StatelessWidget {
   final String email;
   const _ConfirmationScreen({required this.email});
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
@@ -240,20 +273,30 @@ class _ConfirmationScreen extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Private sub-widgets
+// ─────────────────────────────────────────────────────────────
+
 class _Field extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final bool obscureText;
   final TextInputType? keyboardType;
   final Widget? suffixIcon;
+  final FocusNode? focusNode;
+
   const _Field({
-    required this.controller, required this.label,
-    this.obscureText = false, this.keyboardType, this.suffixIcon,
+    required this.controller,
+    required this.label,
+    this.obscureText = false,
+    this.keyboardType,
+    this.suffixIcon,
+    this.focusNode,
   });
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Container(
@@ -263,7 +306,9 @@ class _Field extends StatelessWidget {
         border: Border.all(color: t.border, width: AppStroke.hairline),
       ),
       child: TextField(
-        controller: controller, obscureText: obscureText,
+        controller:   controller,
+        focusNode:    focusNode,
+        obscureText:  obscureText,
         keyboardType: keyboardType,
         style: AppTextStyles.bodyMedium(t.textPrimary, fp),
         decoration: InputDecoration(
@@ -304,7 +349,7 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Container(

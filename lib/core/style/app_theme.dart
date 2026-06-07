@@ -1,24 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
 
-/// Poppy — Flower Theme System
-///
-/// Defines the theme identifiers and the data structure for the app's 
-/// custom "Flower" themes.
+/// Supported application theme identifiers.
 enum PoppyTheme { poppy, iris, lily, marigold, lavender }
 
-/// Data structure containing all color information for a specific [PoppyTheme].
+/// Encapsulates the color scheme and Material [ThemeData] generation for the application.
 class PoppyThemeData {
+  /// Unique identifier for the theme.
   final PoppyTheme id;
+
+  /// Display name of the theme.
   final String name;
+
+  /// Primary accent color.
   final Color accent;
+
+  /// Light variation of the accent color, used for backgrounds or highlights.
   final Color accentLight;
+
+  /// Muted variation of the accent color.
   final Color accentMuted;
+
+  /// Surface color for cards and secondary backgrounds.
   final Color surface;
+
+  /// Main application background color.
   final Color background;
+
+  /// Primary text color.
   final Color textPrimary;
+
+  /// Secondary text color for subheadings and body text.
   final Color textSecondary;
+
+  /// Tertiary text color for hints and metadata.
   final Color textTertiary;
+
+  /// Border and divider color.
   final Color border;
 
   const PoppyThemeData({
@@ -35,7 +53,7 @@ class PoppyThemeData {
     required this.border,
   });
 
-  /// Converts this [PoppyThemeData] into a standard Flutter [ThemeData].
+  /// Maps the Poppy theme properties to a standard Flutter [ThemeData] object.
   ThemeData toThemeData() {
     return ThemeData(
       useMaterial3: true,
@@ -157,8 +175,7 @@ class PoppyThemeData {
   }
 }
 
-/// A [ThemeExtension] that allows easy access to Poppy-specific colors 
-/// from the [ThemeData].
+/// A [ThemeExtension] that allows direct access to Poppy's custom color tokens.
 class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
   final Color accent;
   final Color accentLight;
@@ -228,8 +245,9 @@ class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
   }
 }
 
-/// Helper extension to access [PoppyThemeExtension] from [BuildContext].
+/// Provides convenient access to the [PoppyThemeExtension] from the [BuildContext].
 extension PoppyThemeContext on BuildContext {
+  /// Returns the current [PoppyThemeExtension] from the theme.
   PoppyThemeExtension get poppyTheme =>
       Theme.of(this).extension<PoppyThemeExtension>()!;
 }

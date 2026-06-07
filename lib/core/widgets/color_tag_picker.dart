@@ -4,12 +4,14 @@ import 'package:poppy/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:poppy/core/widgets/color_dot.dart';
 
-/// A horizontal picker for choosing an [EntryColorData] tag.
+/// A horizontal selector for assigning a color tag (mood/category) to a journal entry.
 ///
-/// Displays a label and a row of [ColorDot] widgets representing 
-/// the available entry colors.
+/// Displays a label and a row of available [EntryColorData] options as interactive dots.
 class ColorTagPicker extends StatelessWidget {
+  /// The currently selected color tag.
   final EntryColorData selected;
+
+  /// Callback triggered when a new color tag is selected.
   final ValueChanged<EntryColorData> onSelected;
 
   const ColorTagPicker({
@@ -20,7 +22,7 @@ class ColorTagPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t  = context.poppyTheme;
+    final t = context.poppyTheme;
     final fp = context.watch<ThemeProvider>().currentFontPairData;
 
     return Row(
@@ -30,11 +32,11 @@ class ColorTagPicker extends StatelessWidget {
           style: AppTextStyles.labelLargeSerif(t.textTertiary, fp),
         ),
         ...EntryColors.all.map((colorData) => ColorDot(
-          colorData:  colorData,
-          isSelected: selected.id == colorData.id,
-          size:       AppComponentSize.colorDotPicker,
-          onTap:      () => onSelected(colorData),
-        )),
+              colorData: colorData,
+              isSelected: selected.id == colorData.id,
+              size: AppComponentSize.colorDotPicker,
+              onTap: () => onSelected(colorData),
+            )),
       ],
     );
   }
