@@ -23,6 +23,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final Set<String> _selectedIds = {};
   final TextEditingController _searchController = TextEditingController();
 
@@ -37,6 +38,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   bool _fetchedOnce = false;
   String _greeting = '';
+
+  DateTime? _lastBackPress;
 
   @override
   void initState() {
@@ -244,20 +247,20 @@ class _HomeScreenState extends State<HomeScreen> {
     if (confirmed != true) return;
 
     final provider = context.read<EntriesProvider>();
-    for (final id in _selectedIds.toList()) {
-      await provider.deleteEntry(id);
-    }
+    await provider.deleteEntries(_selectedIds.toList());
     setState(() => _selectedIds.clear());
   }
 
   Future<void> _changeColorBatch(EntryColorData color) async {
     final provider = context.read<EntriesProvider>();
-    for (final id in _selectedIds.toList()) {
-      final entry = provider.getById(id);
-      if (entry == null) continue;
-      await provider.updateEntry(
-        entry.copyWith(colorTag: color),
-      );
+    final toUpdate = _selectedIds
+        .map((id) => provider.getById(id))
+        .whereType<Entry>()
+        .map((e) => e.copyWith(colorTag: color))
+        .toList();
+
+    if (toUpdate.isNotEmpty) {
+      await provider.updateEntries(toUpdate);
     }
     setState(() => _selectedIds.clear());
   }
@@ -282,18 +285,56 @@ class _HomeScreenState extends State<HomeScreen> {
     final provider = context.watch<EntriesProvider>();
     final entries = provider.filteredEntries;
 
-    return Scaffold(
-      backgroundColor: t.background,
-      drawer: const SettingsDrawer(),
-      appBar: _isBatchMode ? _batchAppBar(t) : _normalAppBar(t, provider),
-      body: _body(context, t, provider, entries),
-      floatingActionButton: _isBatchMode
-          ? null
-          : FloatingActionButton(
-              onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
-              tooltip: 'New entry',
-              child: const Icon(AppIcons.add, size: AppIconSize.sm),
-            ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+
+        // 1. Close drawer if open
+        if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          _scaffoldKey.currentState?.closeDrawer();
+          return;
+        }
+
+        // 2. Exit batch mode
+        if (_isBatchMode) {
+          _cancelBatch();
+          return;
+        }
+
+        // 3. Exit search mode (optional)
+        if (_searching) {
+          _exitSearch();
+          return;
+        }
+
+        // 4. Double-back to exit
+        final now = DateTime.now();
+
+        if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+          _lastBackPress = now;
+
+          AppSnackbar.info(context, 'Press back again to exit',);
+
+          return;
+        }
+
+        Navigator.of(context).maybePop();
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: t.background,
+        drawer: const SettingsDrawer(),
+        appBar: _isBatchMode ? _batchAppBar(t) : _normalAppBar(t, provider),
+        body: _body(context, t, provider, entries),
+        floatingActionButton: _isBatchMode
+            ? null
+            : FloatingActionButton(
+                onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
+                tooltip: 'New entry',
+                child: const Icon(AppIcons.add, size: AppIconSize.sm),
+              ),
+      ),
     );
   }
 

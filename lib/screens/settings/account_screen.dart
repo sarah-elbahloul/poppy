@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/providers/providers.dart';
 import 'package:provider/provider.dart';
 
@@ -59,7 +60,10 @@ class _AccountScreenState extends State<AccountScreen> {
 
   Future<void> _onUpdateDisplayName() async {
     final name = _displayNameController.text.trim();
-    if (name.isEmpty) { _showSnack('Please enter a display name.'); return; }
+    if (name.isEmpty) {
+      AppSnackbar.warning(context, 'Please enter a display name.');
+      return;
+    }
     final auth = context.read<AuthProvider>();
     auth.clearError();
     final ok = await auth.updateDisplayName(name);
@@ -67,13 +71,16 @@ class _AccountScreenState extends State<AccountScreen> {
     if (ok) {
       setState(() => _openPanel = null);
       _displayNameController.clear();
-      _showSnack('Display name updated.');
+      AppSnackbar.success(context, 'Display name updated.');
     }
   }
 
   Future<void> _onUpdateEmail() async {
     final err = AppErrors.validateEmail(_emailController.text);
-    if (err != null) { _showSnack(err); return; }
+    if (err != null) {
+      AppSnackbar.error(context, err);
+      return;
+    }
     final auth = context.read<AuthProvider>();
     auth.clearError();
     final ok = await auth.updateEmail(_emailController.text);
@@ -81,20 +88,27 @@ class _AccountScreenState extends State<AccountScreen> {
     if (ok) {
       setState(() => _openPanel = null);
       _emailController.clear();
-      _showSnack('Check your new email for a confirmation link.');
+      AppSnackbar.success(context, 'Check your new email for a confirmation link.', title: 'Verification sent');
     }
   }
 
   Future<void> _onUpdatePassword() async {
     if (_currentPassController.text.isEmpty) {
-      _showSnack('Please enter your current password.'); return;
+      AppSnackbar.warning(context, 'Please enter your current password.');
+      return;
     }
     final passErr = AppErrors.validatePassword(_newPassController.text);
-    if (passErr != null) { _showSnack(passErr); return; }
+    if (passErr != null) {
+      AppSnackbar.error(context, passErr);
+      return;
+    }
     final confirmErr = AppErrors.validateConfirm(
       _newPassController.text, _confirmPassController.text,
     );
-    if (confirmErr != null) { _showSnack(confirmErr); return; }
+    if (confirmErr != null) {
+      AppSnackbar.error(context, confirmErr);
+      return;
+    }
 
     final auth = context.read<AuthProvider>();
     auth.clearError();
@@ -108,12 +122,9 @@ class _AccountScreenState extends State<AccountScreen> {
       _currentPassController.clear();
       _newPassController.clear();
       _confirmPassController.clear();
-      _showSnack('Password updated successfully.');
+      AppSnackbar.success(context, 'Password updated successfully.');
     }
   }
-
-  void _showSnack(String msg) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(msg)));
 
   @override
   Widget build(BuildContext context) {
@@ -339,7 +350,7 @@ class _ExpandablePanel extends StatelessWidget {
         color: t.surface,
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(
-          color: isOpen ? t.accent.withOpacity(0.4) : t.border,
+          color: isOpen ? t.accent.withValues(alpha: 0.4) : t.border,
           width: AppStroke.hairline,
         ),
       ),

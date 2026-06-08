@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/providers/providers.dart';
 import 'package:poppy/services/pin_service.dart';
 import 'package:provider/provider.dart';
@@ -46,7 +47,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     } else {
       await _pinService.removePin();
       await context.read<AuthProvider>().setPinEnabled(false);
-      if (mounted) _showSnack('PIN lock removed.');
+      if (mounted) AppSnackbar.info(context, 'PIN lock removed.');
     }
   }
 
@@ -65,7 +66,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         await context.read<AuthProvider>().setPinEnabled(true);
         if (mounted) {
           setState(() => _step = _PinStep.idle);
-          _showSnack('PIN lock enabled.');
+          AppSnackbar.success(context, 'PIN lock enabled.');
         }
       } else {
         await _shake();
@@ -74,7 +75,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
             _firstPin = '';
             _step     = _PinStep.setNew;
           });
-          _showSnack(AppErrors.pinMismatch);
+          AppSnackbar.error(context, AppErrors.pinMismatch);
         }
       }
     }
@@ -88,7 +89,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         setState(() => _step = _PinStep.changeNew);
       } else {
         await _shake();
-        if (mounted) _showSnack(AppErrors.pinIncorrect);
+        if (mounted) AppSnackbar.error(context, AppErrors.pinIncorrect);
       }
       return;
     }
@@ -104,7 +105,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         await _pinService.savePin(pin);
         if (mounted) {
           setState(() => _step = _PinStep.idle);
-          _showSnack('PIN updated successfully.');
+          AppSnackbar.success(context, 'PIN updated successfully.');
         }
       } else {
         await _shake();
@@ -113,7 +114,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
             _firstPin = '';
             _step     = _PinStep.changeNew;
           });
-          _showSnack(AppErrors.pinMismatch);
+          AppSnackbar.error(context, AppErrors.pinMismatch);
         }
       }
     }
@@ -139,11 +140,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
       case _PinStep.idle:
         break;
     }
-  }
-
-  void _showSnack(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   String get _pinLabel => switch (_step) {
@@ -267,7 +263,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
             color: t.accentLight,
             borderRadius: BorderRadius.circular(AppRadius.sm),
             border: Border.all(
-                color: t.accent.withOpacity(0.2),
+                color: t.accent.withValues(alpha: 0.2),
                 width: AppStroke.hairline),
           ),
           child: Row(

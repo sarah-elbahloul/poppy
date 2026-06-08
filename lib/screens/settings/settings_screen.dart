@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/providers/providers.dart';
 import 'package:poppy/services/export_service.dart';
 import 'package:provider/provider.dart';
@@ -177,9 +178,7 @@ class SettingsScreen extends StatelessWidget {
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
     if (entries.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No entries to export.')),
-      );
+      AppSnackbar.warning(context, 'No entries to export.');
       return;
     }
 
@@ -207,10 +206,10 @@ class SettingsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
-                color:        AppColors.error.withOpacity(0.06),
+                color:        AppColors.error.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(AppRadius.sm),
                 border:       Border.all(
-                  color: AppColors.error.withOpacity(0.25),
+                  color: AppColors.error.withValues(alpha: 0.25),
                   width: AppStroke.hairline,
                 ),
               ),
@@ -253,7 +252,7 @@ class SettingsScreen extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Plain text',
-                style: const TextStyle(color: AppColors.error)),
+                style: TextStyle(color: AppColors.error)),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
@@ -274,26 +273,20 @@ class SettingsScreen extends StatelessWidget {
 
       if (savedPath != null) {
         final filename = savedPath.split('/').last;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Saved to Downloads/$filename'),
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(
-              label: 'Share',
-              onPressed: () => svc.shareExportFile(savedPath),
-            ),
+        AppSnackbar.success(
+          context, 
+          'Saved to Downloads/$filename',
+          action: SnackBarAction(
+            label: 'Share',
+            onPressed: () => svc.shareExportFile(savedPath),
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Export ready to share.')),
-        );
+        AppSnackbar.info(context, 'Export ready to share.');
       }
     } catch (_) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Export failed. Please try again.')),
-        );
+        AppSnackbar.error(context, 'Export failed. Please try again.');
       }
     }
   }
@@ -310,12 +303,11 @@ class SettingsScreen extends StatelessWidget {
       return;
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e is FormatException
-                ? e.message
-                : 'Could not read the file. Is it a valid Poppy export?'),
-          ),
+        AppSnackbar.error(
+          context,
+          e is FormatException
+              ? e.message
+              : 'Could not read the file. Is it a valid Poppy export?',
         );
       }
       return;
@@ -345,7 +337,7 @@ class SettingsScreen extends StatelessWidget {
                 color:        t.accentLight,
                 borderRadius: BorderRadius.circular(AppRadius.sm),
                 border:       Border.all(
-                  color: t.accent.withOpacity(0.2),
+                  color: t.accent.withValues(alpha: 0.2),
                   width: AppStroke.hairline,
                 ),
               ),
@@ -415,28 +407,21 @@ class SettingsScreen extends StatelessWidget {
       if (count > 0) {
         await context.read<EntriesProvider>().fetchEntries();
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('$count '
-                  '${count == 1 ? 'entry' : 'entries'} imported.'),
-            ),
+          AppSnackbar.success(
+            context,
+            '$count ${count == 1 ? 'entry' : 'entries'} imported.',
           );
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('No new entries found in the selected file.')),
-        );
+        AppSnackbar.info(context, 'No new entries found in the selected file.');
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e is FormatException
-                ? e.message
-                : 'Import failed. Make sure the file is a valid '
-                'Poppy export from the same account.'),
-          ),
+        AppSnackbar.error(
+          context,
+          e is FormatException
+              ? e.message
+              : 'Import failed. Make sure the file is a valid Poppy export from the same account.',
         );
       }
     }
@@ -453,8 +438,7 @@ class SettingsScreen extends StatelessWidget {
         backgroundColor: t.surface,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.lg)),
-        title: Text('Send feedback',
-            style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
+        title: Text('Send feedback', style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,10 +455,7 @@ class SettingsScreen extends StatelessWidget {
                 Clipboard.setData(
                     const ClipboardData(text: email));
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Email address copied.')),
-                );
+                AppSnackbar.info(context, 'Email address copied.');
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -486,7 +467,7 @@ class SettingsScreen extends StatelessWidget {
                   borderRadius:
                   BorderRadius.circular(AppRadius.sm),
                   border: Border.all(
-                    color: t.accent.withOpacity(0.25),
+                    color: t.accent.withValues(alpha: 0.25),
                     width: AppStroke.hairline,
                   ),
                 ),
@@ -509,13 +490,6 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Close',
-                style: TextStyle(color: t.textTertiary)),
-          ),
-        ],
       ),
     );
   }
@@ -606,7 +580,7 @@ class SettingsScreen extends StatelessWidget {
                   borderRadius:
                   BorderRadius.circular(AppRadius.sm),
                   border: Border.all(
-                    color: t.accent.withOpacity(0.3),
+                    color: t.accent.withValues(alpha: 0.3),
                     width: AppStroke.hairline,
                   ),
                 ),
@@ -675,16 +649,11 @@ class SettingsScreen extends StatelessWidget {
       context.read<EntriesProvider>().clear();
       Navigator.of(context)
           .pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Your account has been deleted.')),
-      );
+      AppSnackbar.success(context, 'Your account has been deleted.');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(auth.errorMessage ??
-              'Could not delete account. Please try again.'),
-        ),
+      AppSnackbar.error(
+        context,
+        auth.errorMessage ?? 'Could not delete account. Please try again.',
       );
     }
   }
@@ -1000,7 +969,7 @@ class _DeleteAccountConfirmDialogState
           style: FilledButton.styleFrom(
             backgroundColor: t.accent,
             disabledBackgroundColor:
-            t.accent.withOpacity(0.3),
+            t.accent.withValues(alpha: 0.3),
           ),
           child: const Text('Delete my account'),
         ),

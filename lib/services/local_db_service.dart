@@ -156,6 +156,43 @@ class LocalDbService {
     }
   }
 
+  /// Marks multiple entries for deletion in a single batch.
+  Future<void> markDeleteBatchPending(List<String> ids) async {
+    if (ids.isEmpty) return;
+
+    final batch = _database.batch();
+    
+    // Fetch statuses for all targeted IDs to decide on hard vs soft delete.
+    final placeholders = List.filled(ids.length, '?').join(',');
+    final existing = await _database.query(
+      'entries',
+      columns: ['id', 'sync_status'],
+      where: 'id IN ($placeholders)',
+      whereArgs: ids,
+    );
+
+    final statusMap = {
+      for (final row in existing) 
+        row['id'] as String: row['sync_status'] as String
+    };
+
+    for (final id in ids) {
+      final status = statusMap[id] ?? SyncStatus.synced;
+      if (status == SyncStatus.pendingCreate) {
+        batch.delete('entries', where: 'id = ?', whereArgs: [id]);
+      } else {
+        batch.update(
+          'entries',
+          {'sync_status': SyncStatus.pendingDelete},
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
+    }
+
+    await batch.commit(noResult: true);
+  }
+
   // --- Sync Management ---
 
   /// Returns all records for a [userId] that have pending local changes.

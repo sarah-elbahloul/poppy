@@ -159,6 +159,29 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
+  /// Updates multiple entries in bulk and refreshes the local state.
+  Future<bool> updateEntries(List<Entry> updatedEntries) async {
+    try {
+      // For now, we update them sequentially but wait for all to finish
+      // before notifying listeners once. 
+      // Ideally, EntriesService would have a batch update as well.
+      await Future.wait(updatedEntries.map((e) => _entriesService.update(e)));
+
+      for (final updated in updatedEntries) {
+        final index = _entries.indexWhere((e) => e.id == updated.id);
+        if (index != -1) {
+          _entries[index] = updated;
+        }
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Deletes an entry by its [entryId] and removes associated photos.
   Future<bool> deleteEntry(String entryId) async {
     try {
@@ -175,6 +198,30 @@ class EntriesProvider extends ChangeNotifier {
 
       // Mark for deletion in local DB and queue for sync.
       await _entriesService.delete(entryId);
+
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Deletes multiple entries by their [entryIds] and removes associated photos.
+  Future<bool> deleteEntries(List<String> entryIds) async {
+    try {
+      // Optimistic UI update: remove from memory immediately.
+      _entries.removeWhere((e) => entryIds.contains(e.id));
+      notifyListeners();
+
+      // Best-effort photo cleanup for all entries.
+      // We do this in parallel to speed it up.
+      await Future.wait(
+        entryIds.map((id) => _photosService.deleteAllForEntry(id).catchError((_) {}))
+      );
+
+      // Mark for deletion in local DB and queue for sync.
+      await _entriesService.deleteBatch(entryIds);
 
       return true;
     } catch (e) {

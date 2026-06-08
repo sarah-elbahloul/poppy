@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/core/widgets/widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:poppy/providers/providers.dart';
 
@@ -60,7 +61,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _onRegister() async {
     final err = _validate();
-    if (err != null) { _showSnack(err); return; }
+    if (err != null) {
+      AppSnackbar.error(context, err);
+      return;
+    }
 
     final auth = context.read<AuthProvider>();
     auth.clearError();
@@ -76,9 +80,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
     }
   }
-
-  void _showSnack(String msg) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(msg)));
 
   @override
   Widget build(BuildContext context) {
@@ -358,7 +359,7 @@ class _ErrorBanner extends StatelessWidget {
         color: t.accentLight,
         borderRadius: BorderRadius.circular(AppRadius.sm),
         border: Border.all(
-            color: t.accent.withOpacity(0.3), width: AppStroke.hairline),
+            color: t.accent.withValues(alpha: 0.3), width: AppStroke.hairline),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

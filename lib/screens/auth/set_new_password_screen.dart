@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/providers/providers.dart';
 import 'package:provider/provider.dart';
 
@@ -52,12 +53,18 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
 
   Future<void> _onSubmit() async {
     final passErr = AppErrors.validatePassword(_newPassController.text);
-    if (passErr != null) { _showSnack(passErr); return; }
+    if (passErr != null) {
+      AppSnackbar.error(context, passErr);
+      return;
+    }
 
     final confirmErr = AppErrors.validateConfirm(
       _newPassController.text, _confirmPassController.text,
     );
-    if (confirmErr != null) { _showSnack(confirmErr); return; }
+    if (confirmErr != null) {
+      AppSnackbar.error(context, confirmErr);
+      return;
+    }
 
     context.read<AuthProvider>().clearError();
     await context.read<AuthProvider>().completePasswordReset(
@@ -65,9 +72,6 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
     );
     // Navigation handled by _RootRouter watching AuthStatus.
   }
-
-  void _showSnack(String msg) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(msg)));
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +260,7 @@ class _ErrorBanner extends StatelessWidget {
         color: t.accentLight,
         borderRadius: BorderRadius.circular(AppRadius.sm),
         border: Border.all(
-            color: t.accent.withOpacity(0.3), width: AppStroke.hairline),
+            color: t.accent.withValues(alpha: 0.3), width: AppStroke.hairline),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

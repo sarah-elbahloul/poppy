@@ -87,6 +87,12 @@ class EntriesService {
     _sync.syncNow();
   }
 
+  /// Marks multiple entries for deletion locally and triggers a cloud sync.
+  Future<void> deleteBatch(List<String> entryIds) async {
+    await _local.markDeleteBatchPending(entryIds);
+    _sync.syncNow();
+  }
+
   // --- Search & Filter ---
 
   /// Performs a client-side search across decrypted entries.

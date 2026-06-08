@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/providers/providers.dart';
 import 'package:poppy/services/services.dart';
 import 'package:provider/provider.dart';
@@ -77,12 +78,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
       if (!granted) {
         setState(() { _saving = false; });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Please allow notifications for Poppy in your device settings.',
-            ),
-          ),
+        AppSnackbar.error(
+          context,
+          'Please allow notifications for Poppy in your device settings.',
+          title: 'Permission Required',
         );
         return;
       }
@@ -96,12 +95,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await _persist();
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(value
-            ? 'Reminder set for ${_reminderAt.format(context)}.'
-            : 'Reminders turned off.'),
-      ),
+    AppSnackbar.success(
+      context,
+      value
+          ? 'Reminder set for ${_reminderAt.format(context)}.'
+          : 'Reminders turned off.',
     );
   }
 
@@ -122,8 +120,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Reminder updated to ${picked.format(context)}.')),
+    AppSnackbar.success(
+      context,
+      'Reminder updated to ${picked.format(context)}.',
     );
   }
 
@@ -229,7 +228,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               color: t.accentLight,
               borderRadius: BorderRadius.circular(AppRadius.sm),
               border: Border.all(
-                color: t.accent.withOpacity(0.2),
+                color: t.accent.withValues(alpha: 0.2),
                 width: AppStroke.hairline,
               ),
             ),

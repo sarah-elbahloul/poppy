@@ -7,6 +7,7 @@ import 'package:flutter_bidi_text/bidi_text_field.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/models/photo.dart';
 import 'package:poppy/providers/providers.dart';
@@ -227,25 +228,60 @@ class _WriteScreenState extends State<WriteScreen> {
 
   Future<void> _onAddPhoto() async {
     if (_totalPhotos >= 10) return;
-    String? source;
-    if (!kIsWeb) {
-      source = await _showSourceSheet();
-      if (source == null) return;
-    }
-    final xFile = await _picker.pickImage(
-      source: (!kIsWeb && source == 'camera')
-          ? ImageSource.camera
-          : ImageSource.gallery,
-      imageQuality: 85,
-    );
-    if (xFile == null) return;
-    Uint8List? bytes;
-    if (kIsWeb) bytes = await xFile.readAsBytes();
 
-    setState(() {
-      _pendingPhotos.add(_PendingPhoto(xFile: xFile, bytes: bytes));
-      _photosExpanded = true;
-    });
+    bool useCamera = false;
+    if (!kIsWeb) {
+      final source = await _showSourceSheet();
+      if (source == null) return;
+      useCamera = (source == 'camera');
+    }
+
+    if (useCamera) {
+      final xFile = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      if (xFile == null) return;
+
+      Uint8List? bytes;
+      if (kIsWeb) bytes = await xFile.readAsBytes();
+
+      setState(() {
+        _pendingPhotos.add(_PendingPhoto(xFile: xFile, bytes: bytes));
+        _photosExpanded = true;
+      });
+    } else {
+      final List<XFile> pickedFiles = await _picker.pickMultiImage(
+        imageQuality: 85,
+      );
+      if (pickedFiles.isEmpty) return;
+
+      final int remaining = 10 - _totalPhotos;
+      final int countToTake =
+          pickedFiles.length > remaining ? remaining : pickedFiles.length;
+      final List<XFile> toProcess = pickedFiles.take(countToTake).toList();
+
+      final List<_PendingPhoto> newPhotos = [];
+      for (final xFile in toProcess) {
+        Uint8List? bytes;
+        if (kIsWeb) bytes = await xFile.readAsBytes();
+        newPhotos.add(_PendingPhoto(xFile: xFile, bytes: bytes));
+      }
+
+      if (mounted) {
+        setState(() {
+          _pendingPhotos.addAll(newPhotos);
+          if (newPhotos.isNotEmpty) _photosExpanded = true;
+        });
+
+        if (pickedFiles.length > remaining) {
+          AppSnackbar.warning(
+            context,
+            'Only 10 photos allowed. ${pickedFiles.length - remaining} photos were skipped.',
+          );
+        }
+      }
+    }
   }
 
   Future _showSourceSheet() {
@@ -339,14 +375,9 @@ class _WriteScreenState extends State<WriteScreen> {
     _lastLimitSnackbarTime = now;
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content:
-        Text('You’ve hit the word limit. Try shortening your entry to save.'),
-        duration: Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-      ),
+    AppSnackbar.warning(
+      context,
+      'You’ve hit the word limit. Try shortening your entry to save.',
     );
   }
 
@@ -701,6 +732,20 @@ class _PhotoSection extends StatelessWidget {
     final t = context.poppyTheme;
     final fp = context.watch<ThemeProvider>().currentFontPairData;
 
+    final allPhotos = [...pendingPhotos, ...savedPhotos];
+
+    void openViewer(int index) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => _FullscreenViewer(
+            photos: allPhotos,
+            initialIndex: index,
+          ),
+        ),
+      );
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -751,18 +796,18 @@ class _PhotoSection extends StatelessWidget {
                 AppSpacing.md,
               ),
               children: [
-                ...pendingPhotos.map(
-                      (p) => _PhotoPendingThumb(
-                    pending: p,
-                    onDelete: () => onDeletePending(p),
+                for (int i = 0; i < pendingPhotos.length; i++)
+                  _PhotoPendingThumb(
+                    pending: pendingPhotos[i],
+                    onDelete: () => onDeletePending(pendingPhotos[i]),
+                    onTap: () => openViewer(i),
                   ),
-                ),
-                ...savedPhotos.map(
-                      (p) => _PhotoSavedThumb(
-                    photo: p,
-                    onDelete: () => onDeleteSaved(p),
+                for (int i = 0; i < savedPhotos.length; i++)
+                  _PhotoSavedThumb(
+                    photo: savedPhotos[i],
+                    onDelete: () => onDeleteSaved(savedPhotos[i]),
+                    onTap: () => openViewer(pendingPhotos.length + i),
                   ),
-                ),
                 if (totalCount < maxPhotos) _AddPhotoButton(onTap: onAdd),
               ],
             ),
@@ -776,10 +821,12 @@ class _PhotoSection extends StatelessWidget {
 class _PhotoPendingThumb extends StatelessWidget {
   final _PendingPhoto pending;
   final VoidCallback onDelete;
+  final VoidCallback onTap;
 
   const _PhotoPendingThumb({
     required this.pending,
     required this.onDelete,
+    required this.onTap,
   });
 
   @override
@@ -790,43 +837,46 @@ class _PhotoPendingThumb extends StatelessWidget {
         ? Image.memory(pending.bytes!, fit: BoxFit.cover)
         : Image.file(File(pending.xFile.path), fit: BoxFit.cover);
 
-    return Stack(
-      children: [
-        Container(
-          width: AppComponentSize.photoThumbSize,
-          height: AppComponentSize.photoThumbSize,
-          margin: const EdgeInsets.only(right: AppSpacing.sm),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(
-              color: t.accent.withOpacity(0.5),
-              width: AppStroke.thin,
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        children: [
+          Container(
+            width: AppComponentSize.photoThumbSize,
+            height: AppComponentSize.photoThumbSize,
+            margin: const EdgeInsets.only(right: AppSpacing.sm),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              border: Border.all(
+                color: t.accent.withOpacity(0.5),
+                width: AppStroke.thin,
+              ),
+              color: t.accentLight,
             ),
-            color: t.accentLight,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.sm - AppStroke.hairline,),
-            child: image,
-          ),
-        ),
-        Positioned(
-          top: AppSpacing.xs,
-          left: AppSpacing.xs,
-          child: Container(
-            width: AppSpacing.sm,
-            height: AppSpacing.sm,
-            decoration: const BoxDecoration(
-              color: AppColors.error,
-              shape: BoxShape.circle,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.sm - AppStroke.hairline,),
+              child: image,
             ),
           ),
-        ),
-        Positioned(
-          top: AppSpacing.xs,
-          right: AppSpacing.md,
-          child: _DeletePhotoButton(onTap: onDelete),
-        ),
-      ],
+          Positioned(
+            top: AppSpacing.xs,
+            left: AppSpacing.xs,
+            child: Container(
+              width: AppSpacing.sm,
+              height: AppSpacing.sm,
+              decoration: const BoxDecoration(
+                color: AppColors.error,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Positioned(
+            top: AppSpacing.xs,
+            right: AppSpacing.md,
+            child: _DeletePhotoButton(onTap: onDelete),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -834,10 +884,12 @@ class _PhotoPendingThumb extends StatelessWidget {
 class _PhotoSavedThumb extends StatelessWidget {
   final Photo photo;
   final VoidCallback onDelete;
+  final VoidCallback onTap;
 
   const _PhotoSavedThumb({
     required this.photo,
     required this.onDelete,
+    required this.onTap,
   });
 
   @override
@@ -845,12 +897,7 @@ class _PhotoSavedThumb extends StatelessWidget {
     final t = context.poppyTheme;
 
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (_) => _FullscreenViewer(url: photo.signedUrl ?? ''),
-        ),
-      ),
+      onTap: onTap,
       child: Stack(
         children: [
           Container(
@@ -952,10 +999,35 @@ class _AddPhotoButton extends StatelessWidget {
   }
 }
 
-class _FullscreenViewer extends StatelessWidget {
-  final String url;
+class _FullscreenViewer extends StatefulWidget {
+  final List<dynamic> photos;
+  final int initialIndex;
 
-  const _FullscreenViewer({required this.url});
+  const _FullscreenViewer({
+    required this.photos,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_FullscreenViewer> createState() => _FullscreenViewerState();
+}
+
+class _FullscreenViewerState extends State<_FullscreenViewer> {
+  late final PageController _controller;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _controller = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -963,15 +1035,50 @@ class _FullscreenViewer extends StatelessWidget {
       backgroundColor: AppColors.photoViewerBg,
       appBar: AppBar(
         backgroundColor: AppColors.photoViewerBg,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          '${_currentIndex + 1} of ${widget.photos.length}',
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
         iconTheme: const IconThemeData(color: AppColors.white),
       ),
-      body: InteractiveViewer(
-        child: Center(
-          child: url.isNotEmpty
-              ? Image.network(url, fit: BoxFit.contain)
-              : const Icon(AppIcons.imageBroken,
-              color: Colors.white54, size: AppIconSize.xl),
-        ),
+      body: PageView.builder(
+        controller: _controller,
+        onPageChanged: (index) => setState(() => _currentIndex = index),
+        itemCount: widget.photos.length,
+        itemBuilder: (context, index) {
+          final item = widget.photos[index];
+
+          Widget image;
+          if (item is Photo) {
+            image = Image.network(
+              item.signedUrl ?? '',
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Icon(
+                AppIcons.imageBroken,
+                color: Colors.white54,
+                size: AppIconSize.xl,
+              ),
+            );
+          } else if (item is _PendingPhoto) {
+            image = kIsWeb && item.bytes != null
+                ? Image.memory(item.bytes!, fit: BoxFit.contain)
+                : Image.file(File(item.xFile.path), fit: BoxFit.contain);
+          } else {
+            image = const Icon(
+              AppIcons.imageBroken,
+              color: Colors.white54,
+              size: AppIconSize.xl,
+            );
+          }
+
+          return InteractiveViewer(
+            minScale: 1.0,
+            maxScale: 4.0,
+            child: Center(child: image),
+          );
+        },
       ),
     );
   }

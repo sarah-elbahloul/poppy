@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/providers/providers.dart';
 import 'package:provider/provider.dart';
 
@@ -38,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _onSignIn() async {
     final emailErr = AppErrors.validateEmail(_emailController.text);
     if (emailErr != null) {
-      _showSnack(emailErr);
+      AppSnackbar.error(context, emailErr);
       return;
     }
     final auth = context.read<AuthProvider>();
@@ -53,14 +54,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _onSendResetEmail() async {
     final emailErr = AppErrors.validateEmail(_emailController.text);
     if (emailErr != null) {
-      _showSnack(emailErr);
+      AppSnackbar.error(context, emailErr);
       return;
     }
     final auth = context.read<AuthProvider>();
     auth.clearError();
     final ok = await auth.sendPasswordResetEmail(_emailController.text);
     if (ok && mounted) {
-      _showSnack('Reset link sent — check your inbox and tap the link.');
+      AppSnackbar.success(
+        context, 
+        'Reset link sent — check your inbox and tap the link.',
+        title: 'Check your email',
+      );
       setState(() => _forgotMode = false);
     }
   }
@@ -69,9 +74,6 @@ class _LoginScreenState extends State<LoginScreen> {
     context.read<AuthProvider>().clearError();
     setState(() => _forgotMode = forgot);
   }
-
-  void _showSnack(String msg) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(msg)));
 
   @override
   Widget build(BuildContext context) {
@@ -269,7 +271,7 @@ class _ErrorBanner extends StatelessWidget {
         color: t.accentLight,
         borderRadius: BorderRadius.circular(AppRadius.sm),
         border: Border.all(
-            color: t.accent.withOpacity(0.3), width: AppStroke.hairline),
+            color: t.accent.withValues(alpha: 0.3), width: AppStroke.hairline),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

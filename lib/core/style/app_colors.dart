@@ -25,9 +25,21 @@ class AppColors {
   static const tagStone = Color(0xFF888888);
 
   // --- Semantic & Absolute ---
-  static const error = Color(0xFFB00020);
+// Success
   static const success = Color(0xFF2E7D32);
+  static const successLight = Color(0xFFEAF7EC);
+  static const successMuted = Color(0xFFA5D6A7);
+
+// Warning
   static const warning = Color(0xFFF57F17);
+  static const warningLight = Color(0xFFFFF4E5);
+  static const warningMuted = Color(0xFFFFCC80);
+
+// Error
+  static const error = Color(0xFFB00020);
+  static const errorLight = Color(0xFFFDECEC);
+  static const errorMuted = Color(0xFFF5A3B1);
+
   static const white = Color(0xFFFFFFFF);
   static const black = Color(0xFF000000);
   static const transparent = Colors.transparent;
