@@ -250,10 +250,10 @@ class _BatchCheckbox extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: AppDuration.fast,
-      width: 22,
-      height: 22,
+      width: AppIconSize.sm,
+      height: AppIconSize.sm,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
+        borderRadius: BorderRadiusGeometry.circular(50),
         color: isSelected ? accent : Colors.transparent,
         border: Border.all(
           color: isSelected ? accent : border,
@@ -261,7 +261,7 @@ class _BatchCheckbox extends StatelessWidget {
         ),
       ),
       child: isSelected
-          ? const Icon(AppIcons.check, size: 12, color: AppColors.white)
+          ? const Icon(AppIcons.check, size: AppIconSize.sm * 0.65, color: AppColors.white)
           : null,
     );
   }

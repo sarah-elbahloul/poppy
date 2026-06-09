@@ -209,7 +209,7 @@ class _NewEntryButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: t.accent.withValues(alpha: 0.08),
+          color: t.accentLight,
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(color: t.accent.withValues(alpha: 0.1)),
         ),

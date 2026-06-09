@@ -13,7 +13,7 @@ import 'package:poppy/screens/home/settings_drawer.dart';
 // ─────────────────────────────────────────────────────────────
 
 /// The main entry point of the application once the user is authenticated.
-/// Displays a list of journal entries with search, filter, and batch 
+/// Displays a list of journal entries with search, filter, and batch
 /// operation capabilities.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -77,7 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ─── Filter Logic ───
 
-  /// Aggregates all active filters (search, year, color) and applies 
+  /// Aggregates all active filters (search, year, color) and applies
   /// them to the [EntriesProvider].
   void _applyAllFilters() {
     final provider = context.read<EntriesProvider>();
@@ -311,10 +311,14 @@ class _HomeScreenState extends State<HomeScreen> {
         // 4. Double-back to exit
         final now = DateTime.now();
 
-        if (_lastBackPress == null || now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+        if (_lastBackPress == null ||
+            now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
           _lastBackPress = now;
 
-          AppSnackbar.info(context, 'Press back again to exit',);
+          AppSnackbar.info(
+            context,
+            'Press back again to exit',
+          );
 
           return;
         }
@@ -330,7 +334,8 @@ class _HomeScreenState extends State<HomeScreen> {
         floatingActionButton: _isBatchMode
             ? null
             : FloatingActionButton(
-                onPressed: () => Navigator.of(context).pushNamed(AppRoutes.write),
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.write),
                 tooltip: 'New entry',
                 child: const Icon(AppIcons.add, size: AppIconSize.sm),
               ),
@@ -463,16 +468,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 ..addAll(provider.filteredEntries.map((e) => e.id));
             });
           },
-          icon: Icon(AppIcons.selectAll, color: t.accent, size: AppIconSize.sm),
+          icon: Icon(AppIcons.checkCircle, color: t.accent, size: AppIconSize.sm),
         ),
         IconButton(
           tooltip: 'Set Color Tag',
           onPressed: _selectedIds.isEmpty ? null : _openColorPicker,
           icon: Icon(AppIcons.color, color: t.accent, size: AppIconSize.sm),
         ),
-        const SizedBox(width: AppSpacing.md),
         IconButton(
-          icon: Icon(AppIcons.delete, color: t.accent, size: AppIconSize.sm),
+          icon: const Icon(AppIcons.delete, color: AppColors.error, size: AppIconSize.sm),
           onPressed: _selectedIds.isEmpty ? null : _deleteBatch,
           tooltip: 'Delete Selected Entries',
         ),
@@ -535,7 +539,18 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    if (provider.entries.isEmpty) return _EmptyState();
+    if (provider.entries.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: () => provider.fetchEntries(),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.heightOf(context) / 4),
+            _EmptyState(),
+          ],
+        ),
+      );
+    }
 
     final years = _extractYears(provider.entries);
     final displayedEntries = _sortDesc ? entries.reversed.toList() : entries;
@@ -576,9 +591,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             const Offset(-AppSpacing.sm, AppSpacing.xs),
                         style: MenuStyle(
                           minimumSize: WidgetStatePropertyAll(Size(
-                              AppComponentSize.searchFieldWidth(context) / 2.7, 50)),
-                          maximumSize: WidgetStatePropertyAll(
-                              Size(AppComponentSize.searchFieldWidth(context) / 2, 300)),
+                              AppComponentSize.searchFieldWidth(context) / 2.7,
+                              50)),
+                          maximumSize: WidgetStatePropertyAll(Size(
+                              AppComponentSize.searchFieldWidth(context) / 2,
+                              300)),
                           backgroundColor: WidgetStatePropertyAll(t.surface),
                           shape: const WidgetStatePropertyAll(
                               RoundedRectangleBorder(
@@ -596,7 +613,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: ButtonStyle(
                               alignment: AlignmentDirectional.centerStart,
                               minimumSize: WidgetStatePropertyAll(Size(
-                                  AppComponentSize.searchFieldWidth(context) / 2.7,
+                                  AppComponentSize.searchFieldWidth(context) /
+                                      2.7,
                                   AppComponentSize.filterBarHeight / 2)),
                             ),
                             onPressed: () {
@@ -712,8 +730,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   horizontal: AppSpacing.xs),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? (colorData.color)
-                                        .withValues(alpha: 0.12)
+                                    ? (colorData.color).withValues(alpha: 0.12)
                                     : Colors.transparent,
                                 borderRadius:
                                     BorderRadius.circular(AppRadius.full),
