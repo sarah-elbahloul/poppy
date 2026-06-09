@@ -56,6 +56,7 @@ dependencies:
   # ── Offline support ───────────────────────────────────────────
   sqflite: ^2.3.3              # local SQLite database
   connectivity_plus: ^6.0.5   # detect network changes
+  flutter_timezone: ^5.1.0    # get device IANA timezone name for notifications
   uuid: ^4.4.0                 # client-side UUID generation for offline creates
 
 dev_dependencies:
