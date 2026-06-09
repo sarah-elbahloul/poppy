@@ -51,7 +51,7 @@ class SettingsDrawer extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: t.accentLight,
-                      border: Border.all(color: t.accent.withOpacity(0.1), width: 2),
+                      border: Border.all(color: t.accent.withValues(alpha: 0.1), width: 2),
                     ),
                     child: Center(
                       child: Text(
@@ -209,9 +209,9 @@ class _NewEntryButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: t.accent.withOpacity(0.08),
+          color: t.accent.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: t.accent.withOpacity(0.1)),
+          border: Border.all(color: t.accent.withValues(alpha: 0.1)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -261,7 +261,7 @@ class _DrawerItem extends StatelessWidget {
       trailing: trailing != null
           ? Text(trailing!, style: AppTextStyles.labelLargeSans(t.textTertiary, fp))
           : !isDestructive
-          ? Icon(AppIcons.chevronRight, size: AppIconSize.xs, color: t.textTertiary.withOpacity(0.5))
+          ? Icon(AppIcons.chevronRight, size: AppIconSize.xs, color: t.textTertiary.withValues(alpha: 0.5))
           : null,
     );
   }

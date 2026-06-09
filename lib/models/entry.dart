@@ -8,9 +8,9 @@ import 'package:poppy/services/local_db_service.dart';
 /// This model always holds decrypted values in memory. It does not handle ciphertext directly.
 /// Decryption is handled by the service layer before instantiation via [Entry.fromMap].
 ///
-/// **Sync Status:**
-/// The [syncStatus] reflects the local database state and is used to track
-/// whether changes have been successfully synchronized with the remote backend.
+/// **Offline-First:**
+/// Uses [syncStatus] and [isDeleted] to manage local-first CRUD operations
+/// and background synchronization with Supabase.
 class Entry {
   /// Unique identifier for the entry.
   final String id;
@@ -45,6 +45,9 @@ class Entry {
   /// Local synchronization state (e.g., 'synced', 'pending_create', 'pending_update').
   final String syncStatus;
 
+  /// Whether the entry is marked for deletion locally but not yet synced.
+  final bool isDeleted;
+
   const Entry({
     required this.id,
     required this.userId,
@@ -57,6 +60,7 @@ class Entry {
     required this.updatedAt,
     this.photoUrls = const [],
     this.syncStatus = SyncStatus.synced,
+    this.isDeleted = false,
   });
 
   /// Returns true if the entry has local changes that haven't been synced to the server.
@@ -78,30 +82,37 @@ class Entry {
           map[DBColumn.entryDate] as String? ?? map[DBColumn.createdAt] as String),
       createdAt: DateTime.parse(map[DBColumn.createdAt] as String),
       updatedAt: DateTime.parse(map[DBColumn.updatedAt] as String),
-      syncStatus: map['sync_status'] as String? ?? SyncStatus.synced,
+      syncStatus: map[DBColumn.syncStatus] as String? ?? SyncStatus.synced,
+      isDeleted: (map[DBColumn.isDeleted] as int? ?? 0) == 1,
     );
   }
 
-  /// Converts the entry to a map suitable for database insertion.
-  ///
-  /// Note: The service layer typically handles encryption of title and content
-  /// before final persistence.
-  Map<String, dynamic> toInsertMap() => {
-    DBColumn.titleEnc: title,
+  /// Converts the entry to a full map suitable for local database storage.
+  Map<String, dynamic> toMap() => {
+    DBColumn.id: id,
+    DBColumn.userId: userId,
+    DBColumn.titleEnc: title, 
     DBColumn.contentEnc: content,
     DBColumn.colorTag: colorTag.dbValue,
     DBColumn.wordCount: wordCount,
     DBColumn.entryDate: entryDate.toIso8601String().substring(0, 10),
+    DBColumn.createdAt: createdAt.toIso8601String(),
+    DBColumn.updatedAt: updatedAt.toIso8601String(),
+    DBColumn.syncStatus: syncStatus,
+    DBColumn.isDeleted: isDeleted ? 1 : 0,
   };
 
-  /// Converts the entry to a map suitable for database updates.
-  Map<String, dynamic> toUpdateMap() => {
-    DBColumn.titleEnc: title,
-    DBColumn.contentEnc: content,
-    DBColumn.colorTag: colorTag.dbValue,
-    DBColumn.wordCount: wordCount,
-    DBColumn.entryDate: entryDate.toIso8601String().substring(0, 10),
-    DBColumn.updatedAt: DateTime.now().toIso8601String(),
+  /// Converts the entry to a map for data export.
+  Map<String, dynamic> toExportMap() => {
+    'id': id,
+    'title': title,
+    'content': content,
+    'color_tag': colorTag.dbValue,
+    'word_count': wordCount,
+    'entry_date': entryDate.toIso8601String().substring(0, 10),
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    'photo_urls': photoUrls,
   };
 
   /// Returns a short preview of the entry content.
@@ -134,6 +145,7 @@ class Entry {
     DateTime? updatedAt,
     List<String>? photoUrls,
     String? syncStatus,
+    bool? isDeleted,
   }) =>
       Entry(
         id: id ?? this.id,
@@ -147,35 +159,8 @@ class Entry {
         updatedAt: updatedAt ?? this.updatedAt,
         photoUrls: photoUrls ?? this.photoUrls,
         syncStatus: syncStatus ?? this.syncStatus,
+        isDeleted: isDeleted ?? this.isDeleted,
       );
-
-  /// Converts the entry to a map for data export.
-  Map<String, dynamic> toExportMap() => {
-    'id': id,
-    'title': title,
-    'content': content,
-    'color_tag': colorTag.dbValue,
-    'word_count': wordCount,
-    'entry_date': entryDate.toIso8601String().substring(0, 10),
-    'created_at': createdAt.toIso8601String(),
-    'updated_at': updatedAt.toIso8601String(),
-    'photo_urls': photoUrls,
-  };
-
-  /// Creates an [Entry] from an exported map.
-  factory Entry.fromExportMap(Map<String, dynamic> map, String userId) => Entry(
-    id: map['id'] as String,
-    userId: userId,
-    title: map['title'] as String? ?? '',
-    content: map['content'] as String? ?? '',
-    colorTag: EntryColors.fromDbValue(map['color_tag'] as String? ?? 'stone'),
-    wordCount: map['word_count'] as int? ?? 0,
-    entryDate: DateTime.parse(
-        map['entry_date'] as String? ?? map['created_at'] as String),
-    createdAt: DateTime.parse(map['created_at'] as String),
-    updatedAt: DateTime.parse(map['updated_at'] as String),
-    photoUrls: List<String>.from(map['photo_urls'] as List? ?? []),
-  );
 
   @override
   bool operator ==(Object other) =>
@@ -185,5 +170,5 @@ class Entry {
   int get hashCode => id.hashCode;
 
   @override
-  String toString() => 'Entry(id: $id, title: $title, sync: $syncStatus)';
+  String toString() => 'Entry(id: $id, title: $title, sync: $syncStatus, deleted: $isDeleted)';
 }

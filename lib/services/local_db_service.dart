@@ -1,40 +1,29 @@
 import 'dart:convert';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:poppy/core/constants.dart';
 
-/// Supported synchronization states for local database records.
 class SyncStatus {
   SyncStatus._();
-
-  /// Record is fully synchronized with the remote backend.
   static const String synced = 'synced';
-
-  /// Record was created locally and has not yet been sent to the server.
   static const String pendingCreate = 'pending_create';
-
-  /// Record was updated locally and the changes are pending synchronization.
   static const String pendingUpdate = 'pending_update';
-
-  /// Record was marked for deletion locally and is awaiting remote removal.
   static const String pendingDelete = 'pending_delete';
+  static const String failed = 'failed';
 }
 
-/// Manages the local SQLite database for offline-first journal entries.
-///
-/// This service stores encrypted entry blobs to maintain privacy at rest.
-/// It uses a [SyncStatus] to track and manage data consistency between
-/// the local cache and the remote Supabase backend.
+class SyncOp {
+  static const String create = 'create';
+  static const String update = 'update';
+  static const String delete = 'delete';
+}
+
 class LocalDbService {
   LocalDbService._();
-
-  /// Singleton instance of [LocalDbService].
   static final LocalDbService instance = LocalDbService._();
 
   Database? _db;
 
-  /// Initializes the local database and sets up the schema.
-  ///
-  /// This must be called before any data access operations.
   Future<void> init() async {
     if (_db != null) return;
     final dbPath = await getDatabasesPath();
@@ -42,266 +31,281 @@ class LocalDbService {
 
     _db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
-  /// Creates the database tables and indexes.
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE entries (
-        id           TEXT    PRIMARY KEY,
-        user_id      TEXT    NOT NULL,
-        title_enc    TEXT,
-        content_enc  TEXT,
-        color_tag    TEXT    NOT NULL DEFAULT 'stone',
-        word_count   INTEGER NOT NULL DEFAULT 0,
-        entry_date   TEXT    NOT NULL,
-        created_at   TEXT    NOT NULL,
-        updated_at   TEXT    NOT NULL,
-        sync_status  TEXT    NOT NULL DEFAULT '${SyncStatus.synced}'
+        ${DBColumn.id}           TEXT    PRIMARY KEY,
+        ${DBColumn.userId}       TEXT    NOT NULL,
+        ${DBColumn.titleEnc}     TEXT,
+        ${DBColumn.contentEnc}   TEXT,
+        ${DBColumn.colorTag}     TEXT    NOT NULL DEFAULT 'stone',
+        ${DBColumn.wordCount}    INTEGER NOT NULL DEFAULT 0,
+        ${DBColumn.entryDate}    TEXT    NOT NULL,
+        ${DBColumn.createdAt}    TEXT    NOT NULL,
+        ${DBColumn.updatedAt}    TEXT    NOT NULL,
+        ${DBColumn.syncStatus}   TEXT    NOT NULL DEFAULT '${SyncStatus.synced}',
+        ${DBColumn.isDeleted}    INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
-    await db.execute('CREATE INDEX idx_entries_user ON entries (user_id)');
-    await db.execute('CREATE INDEX idx_entries_sync ON entries (sync_status)');
+    await db.execute('''
+      CREATE TABLE photos (
+        ${DBColumn.id}           TEXT    PRIMARY KEY,
+        ${DBColumn.entryId}      TEXT    NOT NULL,
+        ${DBColumn.userId}       TEXT    NOT NULL,
+        ${DBColumn.storagePath}  TEXT,
+        ${DBColumn.localPath}    TEXT,
+        ${DBColumn.orderIndex}   INTEGER NOT NULL DEFAULT 0,
+        ${DBColumn.uploaded}     INTEGER NOT NULL DEFAULT 0,
+        ${DBColumn.createdAt}    TEXT    NOT NULL,
+        ${DBColumn.syncStatus}   TEXT    NOT NULL DEFAULT '${SyncStatus.synced}'
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE sync_queue (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type  TEXT    NOT NULL,
+        entity_id    TEXT    NOT NULL,
+        operation    TEXT    NOT NULL,
+        created_at   TEXT    NOT NULL
+      )
+    ''');
+
+    await db.execute('CREATE INDEX idx_entries_user ON entries (${DBColumn.userId})');
+    await db.execute('CREATE INDEX idx_entries_sync ON entries (${DBColumn.syncStatus})');
+    await db.execute('CREATE INDEX idx_photos_entry ON photos (${DBColumn.entryId})');
+    await db.execute('CREATE INDEX idx_sync_queue_created ON sync_queue (created_at)');
   }
 
-  /// Internal getter for the database instance, ensuring it is initialized.
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Safely add columns and tables for v2 migration
+      try { await db.execute('ALTER TABLE entries ADD COLUMN ${DBColumn.isDeleted} INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
+      try { await db.execute('ALTER TABLE entries ADD COLUMN ${DBColumn.syncStatus} TEXT NOT NULL DEFAULT "${SyncStatus.synced}"'); } catch (_) {}
+      
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS photos (
+          ${DBColumn.id}           TEXT    PRIMARY KEY,
+          ${DBColumn.entryId}      TEXT    NOT NULL,
+          ${DBColumn.userId}       TEXT    NOT NULL,
+          ${DBColumn.storagePath}  TEXT,
+          ${DBColumn.localPath}    TEXT,
+          ${DBColumn.orderIndex}   INTEGER NOT NULL DEFAULT 0,
+          ${DBColumn.uploaded}     INTEGER NOT NULL DEFAULT 0,
+          ${DBColumn.createdAt}    TEXT    NOT NULL,
+          ${DBColumn.syncStatus}   TEXT    NOT NULL DEFAULT '${SyncStatus.synced}'
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS sync_queue (
+          id           INTEGER PRIMARY KEY AUTOINCREMENT,
+          entity_type  TEXT    NOT NULL,
+          entity_id    TEXT    NOT NULL,
+          operation    TEXT    NOT NULL,
+          created_at   TEXT    NOT NULL
+        )
+      ''');
+    }
+  }
+
   Database get _database {
     assert(_db != null, 'LocalDbService.init() was not called.');
     return _db!;
   }
 
-  // --- Querying ---
+  Future<void> _enqueue(Batch batch, String type, String id, String op) async {
+    batch.insert('sync_queue', {
+      'entity_type': type,
+      'entity_id': id,
+      'operation': op,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
 
-  /// Retrieves all entries for a specific [userId], excluding those marked for deletion.
-  ///
-  /// Entries are returned ordered by date (descending).
-  Future<List<Map<String, dynamic>>> getAll(String userId) async {
-    return _database.query(
-      'entries',
-      where: 'user_id = ? AND sync_status != ?',
-      whereArgs: [userId, SyncStatus.pendingDelete],
-      orderBy: 'entry_date DESC, created_at DESC',
+  // --- Entry CRUD ---
+
+  Future<List<Map<String, dynamic>>> getAllEntries(String userId) async {
+    return _database.query('entries', 
+      where: '${DBColumn.userId} = ? AND ${DBColumn.isDeleted} = 0', 
+      whereArgs: [userId], 
+      orderBy: '${DBColumn.entryDate} DESC, ${DBColumn.createdAt} DESC'
     );
   }
 
-  /// Retrieves a single entry by its unique [id].
-  Future<Map<String, dynamic>?> getById(String id) async {
-    final rows = await _database.query(
-      'entries',
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
+  Future<Map<String, dynamic>?> getEntryById(String id) async {
+    final rows = await _database.query('entries', where: '${DBColumn.id} = ?', whereArgs: [id], limit: 1);
     return rows.isEmpty ? null : rows.first;
   }
 
-  // --- Local Writes ---
-
-  /// Inserts a new entry locally, marking it as [SyncStatus.pendingCreate].
-  Future<void> insertPending(Map<String, dynamic> row) async {
+  Future<void> insertEntry(Map<String, dynamic> row) async {
     final data = Map<String, dynamic>.from(row);
-    data['sync_status'] = SyncStatus.pendingCreate;
-    await _database.insert(
-      'entries',
-      data,
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
-
-  /// Updates an entry locally.
-  ///
-  /// If the entry is not already [SyncStatus.pendingCreate], it is marked as
-  /// [SyncStatus.pendingUpdate].
-  Future<void> updatePending(String id, Map<String, dynamic> fields) async {
-    final existing = await getById(id);
-    final currentStatus = existing?['sync_status'] as String? ?? SyncStatus.synced;
-
-    final data = Map<String, dynamic>.from(fields);
-    if (currentStatus != SyncStatus.pendingCreate) {
-      data['sync_status'] = SyncStatus.pendingUpdate;
-    }
-    await _database.update(
-      'entries',
-      data,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  /// Marks an entry for deletion.
-  ///
-  /// If the entry was never synced ([SyncStatus.pendingCreate]), it is permanently
-  /// removed immediately. Otherwise, its status is changed to [SyncStatus.pendingDelete].
-  Future<void> markDeletePending(String id) async {
-    final existing = await getById(id);
-    final currentStatus = existing?['sync_status'] as String? ?? SyncStatus.synced;
-
-    if (currentStatus == SyncStatus.pendingCreate) {
-      await _database.delete(
-        'entries',
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-    } else {
-      await _database.update(
-        'entries',
-        {'sync_status': SyncStatus.pendingDelete},
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-    }
-  }
-
-  /// Marks multiple entries for deletion in a single batch.
-  Future<void> markDeleteBatchPending(List<String> ids) async {
-    if (ids.isEmpty) return;
-
+    data[DBColumn.syncStatus] = SyncStatus.pendingCreate;
+    data[DBColumn.isDeleted] = 0;
     final batch = _database.batch();
-    
-    // Fetch statuses for all targeted IDs to decide on hard vs soft delete.
-    final placeholders = List.filled(ids.length, '?').join(',');
-    final existing = await _database.query(
-      'entries',
-      columns: ['id', 'sync_status'],
-      where: 'id IN ($placeholders)',
-      whereArgs: ids,
-    );
+    batch.insert('entries', data, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _enqueue(batch, 'entry', data[DBColumn.id] as String, SyncOp.create);
+    await batch.commit(noResult: true);
+  }
 
-    final statusMap = {
-      for (final row in existing) 
-        row['id'] as String: row['sync_status'] as String
-    };
+  Future<void> updateEntry(String id, Map<String, dynamic> fields) async {
+    final existing = await getEntryById(id);
+    if (existing == null) return;
+    final data = Map<String, dynamic>.from(fields);
+    if (existing[DBColumn.syncStatus] != SyncStatus.pendingCreate) {
+      data[DBColumn.syncStatus] = SyncStatus.pendingUpdate;
+    }
+    final batch = _database.batch();
+    batch.update('entries', data, where: '${DBColumn.id} = ?', whereArgs: [id]);
+    await _enqueue(batch, 'entry', id, SyncOp.update);
+    await batch.commit(noResult: true);
+  }
 
+  Future<void> markEntryDeleted(String id) async {
+    final existing = await getEntryById(id);
+    if (existing == null) return;
+    final batch = _database.batch();
+    if (existing[DBColumn.syncStatus] == SyncStatus.pendingCreate) {
+      batch.delete('entries', where: '${DBColumn.id} = ?', whereArgs: [id]);
+      batch.delete('sync_queue', where: 'entity_id = ? AND entity_type = ?', whereArgs: [id, 'entry']);
+    } else {
+      batch.update('entries', {DBColumn.syncStatus: SyncStatus.pendingDelete, DBColumn.isDeleted: 1}, where: '${DBColumn.id} = ?', whereArgs: [id]);
+      await _enqueue(batch, 'entry', id, SyncOp.delete);
+    }
+    await batch.commit(noResult: true);
+  }
+
+  Future<void> markEntriesDeleted(List<String> ids) async {
+    final batch = _database.batch();
     for (final id in ids) {
-      final status = statusMap[id] ?? SyncStatus.synced;
-      if (status == SyncStatus.pendingCreate) {
-        batch.delete('entries', where: 'id = ?', whereArgs: [id]);
+      final existing = await getEntryById(id);
+      if (existing == null) continue;
+      if (existing[DBColumn.syncStatus] == SyncStatus.pendingCreate) {
+        batch.delete('entries', where: '${DBColumn.id} = ?', whereArgs: [id]);
+        batch.delete('sync_queue', where: 'entity_id = ? AND entity_type = ?', whereArgs: [id, 'entry']);
       } else {
-        batch.update(
-          'entries',
-          {'sync_status': SyncStatus.pendingDelete},
-          where: 'id = ?',
-          whereArgs: [id],
-        );
+        batch.update('entries', {DBColumn.syncStatus: SyncStatus.pendingDelete, DBColumn.isDeleted: 1}, where: '${DBColumn.id} = ?', whereArgs: [id]);
+        batch.insert('sync_queue', {
+          'entity_type': 'entry',
+          'entity_id': id,
+          'operation': SyncOp.delete,
+          'created_at': DateTime.now().toUtc().toIso8601String(),
+        });
       }
     }
-
     await batch.commit(noResult: true);
   }
 
-  // --- Sync Management ---
+  // --- Photo CRUD ---
 
-  /// Returns all records for a [userId] that have pending local changes.
-  Future<List<Map<String, dynamic>>> getPending(String userId) async {
-    return _database.query(
-      'entries',
-      where: 'user_id = ? AND sync_status != ?',
-      whereArgs: [userId, SyncStatus.synced],
+  Future<List<Map<String, dynamic>>> getPhotosForEntry(String entryId) async {
+    return _database.query('photos', 
+      where: '${DBColumn.entryId} = ? AND ${DBColumn.syncStatus} != ?', 
+      whereArgs: [entryId, SyncStatus.pendingDelete], 
+      orderBy: '${DBColumn.orderIndex} ASC'
     );
   }
 
-  /// Updates the status of an entry to [SyncStatus.synced].
-  Future<void> markSynced(String id) async {
-    await _database.update(
-      'entries',
-      {'sync_status': SyncStatus.synced},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+  Future<Map<String, dynamic>?> getPhotoById(String id) async {
+    final rows = await _database.query('photos', where: '${DBColumn.id} = ?', whereArgs: [id], limit: 1);
+    return rows.isEmpty ? null : rows.first;
   }
 
-  /// Permanently removes a record from the local database.
-  Future<void> hardDelete(String id) async {
-    await _database.delete(
-      'entries',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  /// Reconciles local data with fresh results from the server.
-  ///
-  /// This replaces all currently synced local records with the provided [serverRows].
-  /// Entries with pending local changes are preserved.
-  Future<void> refreshFromServer(
-    String userId,
-    List<Map<String, dynamic>> serverRows,
-  ) async {
+  Future<void> insertPhoto(Map<String, dynamic> row) async {
+    final data = Map<String, dynamic>.from(row);
+    data[DBColumn.syncStatus] = SyncStatus.pendingCreate;
+    data[DBColumn.uploaded] = 0;
     final batch = _database.batch();
-
-    // Remove existing synced records to avoid stale data.
-    final synced = await _database.query(
-      'entries',
-      columns: ['id'],
-      where: 'user_id = ? AND sync_status = ?',
-      whereArgs: [userId, SyncStatus.synced],
-    );
-    for (final row in synced) {
-      batch.delete(
-        'entries',
-        where: 'id = ?',
-        whereArgs: [row['id']],
-      );
-    }
-
-    // Insert new records from the server.
-    for (final row in serverRows) {
-      final data = _serverRowToLocal(row, userId);
-      data['sync_status'] = SyncStatus.synced;
-      batch.insert(
-        'entries',
-        data,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    }
-
+    batch.insert('photos', data, conflictAlgorithm: ConflictAlgorithm.replace);
+    await _enqueue(batch, 'photo', data[DBColumn.id] as String, SyncOp.create);
     await batch.commit(noResult: true);
   }
 
-  // --- Helpers ---
+  Future<void> markPhotoDeleted(String id) async {
+    final existing = await getPhotoById(id);
+    if (existing == null) return;
+    final batch = _database.batch();
+    if (existing[DBColumn.syncStatus] == SyncStatus.pendingCreate) {
+      batch.delete('photos', where: '${DBColumn.id} = ?', whereArgs: [id]);
+      batch.delete('sync_queue', where: 'entity_id = ? AND entity_type = ?', whereArgs: [id, 'photo']);
+    } else {
+      batch.update('photos', {DBColumn.syncStatus: SyncStatus.pendingDelete}, where: '${DBColumn.id} = ?', whereArgs: [id]);
+      await _enqueue(batch, 'photo', id, SyncOp.delete);
+    }
+    await batch.commit(noResult: true);
+  }
 
-  /// Maps a row from the Supabase response to a format suitable for the local SQLite table.
-  static Map<String, dynamic> _serverRowToLocal(
-    Map<String, dynamic> row,
-    String userId,
-  ) {
+  // --- Sync Engine ---
+
+  Future<List<Map<String, dynamic>>> getSyncQueue({int limit = 50}) async {
+    return _database.query('sync_queue', orderBy: 'created_at ASC', limit: limit);
+  }
+
+  Future<void> dequeue(int queueId) async {
+    await _database.delete('sync_queue', where: 'id = ?', whereArgs: [queueId]);
+  }
+
+  Future<void> markEntrySynced(String id) async {
+    await _database.update('entries', {DBColumn.syncStatus: SyncStatus.synced}, where: '${DBColumn.id} = ?', whereArgs: [id]);
+  }
+
+  Future<void> markPhotoSynced(String id, String storagePath) async {
+    await _database.update('photos', {
+      DBColumn.syncStatus: SyncStatus.synced, 
+      DBColumn.uploaded: 1, 
+      DBColumn.storagePath: storagePath
+    }, where: '${DBColumn.id} = ?', whereArgs: [id]);
+  }
+
+  Future<void> hardDeleteEntry(String id) async {
+    await _database.delete('entries', where: '${DBColumn.id} = ?', whereArgs: [id]);
+  }
+
+  Future<void> hardDeletePhoto(String id) async {
+    await _database.delete('photos', where: '${DBColumn.id} = ?', whereArgs: [id]);
+  }
+
+  Future<void> refreshFromServer(String userId, List<Map<String, dynamic>> serverRows) async {
+    final batch = _database.batch();
+    batch.delete('entries', 
+      where: '${DBColumn.userId} = ? AND ${DBColumn.syncStatus} = ?', 
+      whereArgs: [userId, SyncStatus.synced]
+    );
+    for (final row in serverRows) {
+      batch.insert('entries', _serverToLocal(row, userId), conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
+    await batch.commit(noResult: true);
+  }
+
+
+  Map<String, dynamic> _serverToLocal(Map<String, dynamic> row, String userId) {
     return {
-      'id': row['id'] as String,
-      'user_id': userId,
-      'title_enc': _toJsonString(row['title_enc']),
-      'content_enc': _toJsonString(row['content_enc']),
-      'color_tag': row['color_tag'] as String? ?? 'stone',
-      'word_count': row['word_count'] as int? ?? 0,
-      'entry_date': row['entry_date'] as String,
-      'created_at': row['created_at'] as String,
-      'updated_at': row['updated_at'] as String,
+      DBColumn.id: row[DBColumn.id],
+      DBColumn.userId: userId,
+      DBColumn.titleEnc: row[DBColumn.titleEnc] is Map ? jsonEncode(row[DBColumn.titleEnc]) : row[DBColumn.titleEnc],
+      DBColumn.contentEnc: row[DBColumn.contentEnc] is Map ? jsonEncode(row[DBColumn.contentEnc]) : row[DBColumn.contentEnc],
+      DBColumn.colorTag: row[DBColumn.colorTag] ?? 'stone',
+      DBColumn.wordCount: row[DBColumn.wordCount] ?? 0,
+      DBColumn.entryDate: row[DBColumn.entryDate],
+      DBColumn.createdAt: row[DBColumn.createdAt],
+      DBColumn.updatedAt: row[DBColumn.updatedAt],
+      DBColumn.syncStatus: SyncStatus.synced,
+      DBColumn.isDeleted: 0,
     };
   }
 
-  /// Ensures that dynamic JSON values from the server are stored as strings locally.
-  static String? _toJsonString(dynamic value) {
-    if (value == null) return null;
-    if (value is String) return value;
-    if (value is Map) return jsonEncode(value);
-    return null;
-  }
-
-  /// Wipes all local entries for a specific user.
   Future<void> clearForUser(String userId) async {
-    await _database.delete(
-      'entries',
-      where: 'user_id = ?',
-      whereArgs: [userId],
-    );
-  }
-
-  /// Closes the database connection.
-  Future<void> close() async {
-    await _db?.close();
-    _db = null;
+    final batch = _database.batch();
+    batch.delete('entries', where: '${DBColumn.userId} = ?', whereArgs: [userId]);
+    batch.delete('photos', where: '${DBColumn.userId} = ?', whereArgs: [userId]);
+    batch.delete('sync_queue');
+    await batch.commit(noResult: true);
   }
 }

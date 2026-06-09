@@ -111,7 +111,7 @@ class _PoppyMarkPainter extends CustomPainter {
         Offset.zero,
         vr,
         Paint()
-          ..color = bg == Colors.transparent ? ink.withOpacity(0) : bg
+          ..color = bg == Colors.transparent ? ink.withValues(alpha: 0) : bg
           ..style = PaintingStyle.fill
           ..blendMode = bg == Colors.transparent ? BlendMode.clear : BlendMode.srcOver
           ..isAntiAlias = true);

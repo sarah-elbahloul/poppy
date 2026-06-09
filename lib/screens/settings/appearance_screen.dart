@@ -141,7 +141,7 @@ class _PreviewCanvas extends StatelessWidget {
               Container(
                 width: 30, height: 30,
                 decoration: BoxDecoration(
-                  color:        t.accent.withOpacity(0.15),
+                  color:        t.accent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(AppRadius.xs),
                 ),
                 alignment: Alignment.center,
@@ -239,7 +239,7 @@ class _FontRow extends StatelessWidget {
                   Text(f.tagline,
                       style: AppTextStyles.labelLargeSans(
                         sel
-                            ? t.accent.withOpacity(0.7)
+                            ? t.accent.withValues(alpha: 0.7)
                             : t.textTertiary, fp,
                       )),
                 ],
@@ -352,7 +352,7 @@ class _ColorSwatch extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: isCustom
-                        ? t.accent.withOpacity(0.45)
+                        ? t.accent.withValues(alpha: 0.45)
                         : Colors.transparent,
                     width: 2,
                   ),
@@ -568,7 +568,7 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                       border: Border.all(
                         color: _showWheel
                             ? t.accent
-                            : t.accent.withOpacity(0.4),
+                            : t.accent.withValues(alpha: 0.4),
                         width: _showWheel ? 2.5 : 1.5,
                       ),
                     ),
@@ -623,8 +623,8 @@ class _ColorPickerSheetState extends State<_ColorPickerSheet> {
                           borderRadius: BorderRadius.circular(5),
                           border: Border.all(
                             color: sel
-                                ? t.textPrimary.withOpacity(0.7)
-                                : Colors.black.withOpacity(0.08),
+                                ? t.textPrimary.withValues(alpha: 0.7)
+                                : Colors.black.withValues(alpha: 0.08),
                             width: sel ? 2.5 : 0.5,
                           ),
                         ),

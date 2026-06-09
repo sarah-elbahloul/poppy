@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/supabase_client.dart';
@@ -8,12 +9,6 @@ import 'package:poppy/services/sync_service.dart';
 import 'package:uuid/uuid.dart';
 
 /// Manages journal entries with an offline-first approach.
-///
-/// **Read Path:** Reads from the local SQLite database for instantaneous UI feedback,
-/// while triggering background synchronization with Supabase.
-///
-/// **Write Path:** Encrypts content, persists to the local database in a pending state,
-/// and notifies the synchronization service to push changes to the cloud.
 class EntriesService {
   final _enc = EncryptionService.instance;
   final _local = LocalDbService.instance;
@@ -23,25 +18,22 @@ class EntriesService {
   // --- Fetching ---
 
   /// Retrieves all entries for the current user from the local database.
-  ///
-  /// Entries are automatically decrypted before being returned.
   Future<List<Entry>> fetchAll() async {
     final userId = SupabaseConfig.userId;
-    final rows = await _local.getAll(userId);
+    final rows = await _local.getAllEntries(userId);
     return _decryptList(rows);
   }
 
   // --- Persistence ---
 
   /// Creates a new entry, encrypting it before saving locally and triggering sync.
-  ///
-  /// If [entry.id] is empty, a new UUID is generated.
   Future<Entry> create(Entry entry) async {
     final userId = SupabaseConfig.userId;
     final encrypted = await _buildEncryptedMap(entry);
 
     final id = entry.id.isEmpty ? _uuid.v4() : entry.id;
-    final now = DateTime.now().toIso8601String();
+    final now = DateTime.now().toUtc().toIso8601String();
+    
     final row = {
       DBColumn.id: id,
       DBColumn.userId: userId,
@@ -54,16 +46,17 @@ class EntriesService {
       DBColumn.updatedAt: now,
     };
 
-    await _local.insertPending(row);
-    _sync.syncNow();
+    await _local.insertEntry(row);
+    unawaited(_sync.syncNow());
 
-    return _decryptSingle({...row});
+    final saved = await _local.getEntryById(id);
+    return _decryptSingle(Map<String, dynamic>.from(saved ?? row));
   }
 
   /// Updates an existing entry locally and triggers a cloud sync.
   Future<Entry> update(Entry entry) async {
     final encrypted = await _buildEncryptedMap(entry);
-    final now = DateTime.now().toIso8601String();
+    final now = DateTime.now().toUtc().toIso8601String();
 
     final fields = {
       DBColumn.titleEnc: encrypted[DBColumn.titleEnc],
@@ -74,30 +67,27 @@ class EntriesService {
       DBColumn.updatedAt: now,
     };
 
-    await _local.updatePending(entry.id, fields);
-    _sync.syncNow();
+    await _local.updateEntry(entry.id, fields);
+    unawaited(_sync.syncNow());
 
-    final updated = await _local.getById(entry.id);
-    return _decryptSingle({...?updated});
+    final updated = await _local.getEntryById(entry.id);
+    return _decryptSingle(Map<String, dynamic>.from(updated ?? {}));
   }
 
   /// Marks an entry for deletion locally and triggers a cloud sync.
   Future<void> delete(String entryId) async {
-    await _local.markDeletePending(entryId);
-    _sync.syncNow();
+    await _local.markEntryDeleted(entryId);
+    unawaited(_sync.syncNow());
   }
 
   /// Marks multiple entries for deletion locally and triggers a cloud sync.
   Future<void> deleteBatch(List<String> entryIds) async {
-    await _local.markDeleteBatchPending(entryIds);
-    _sync.syncNow();
+    await _local.markEntriesDeleted(entryIds);
+    unawaited(_sync.syncNow());
   }
 
   // --- Search & Filter ---
 
-  /// Performs a client-side search across decrypted entries.
-  ///
-  /// Supports filtering by keyword [query], [colorTag], and date range ([fromDate] to [toDate]).
   Future<List<Entry>> search({
     String? query,
     String? colorTag,
@@ -130,7 +120,6 @@ class EntriesService {
 
   // --- Internal Encryption ---
 
-  /// Encrypts the title and content of an [entry] for persistence.
   Future<Map<String, dynamic>> _buildEncryptedMap(Entry entry) async {
     final encrypted = await _enc.encryptEntry(
       title: entry.title,
@@ -139,13 +128,9 @@ class EntriesService {
     return {
       DBColumn.titleEnc: encrypted.titleJson,
       DBColumn.contentEnc: encrypted.contentJson,
-      DBColumn.colorTag: entry.colorTag.dbValue,
-      DBColumn.wordCount: entry.wordCount,
-      DBColumn.entryDate: entry.entryDate.toIso8601String().substring(0, 10),
     };
   }
 
-  /// Decrypts a single database [row] and returns an [Entry] object.
   Future<Entry> _decryptSingle(Map<String, dynamic> row) async {
     final titleJson = _toJsonString(row[DBColumn.titleEnc]);
     final contentJson = _toJsonString(row[DBColumn.contentEnc]);
@@ -162,12 +147,10 @@ class EntriesService {
     return Entry.fromMap(mutable);
   }
 
-  /// Decrypts a list of database [rows] concurrently.
   Future<List<Entry>> _decryptList(List<Map<String, dynamic>> rows) async {
     return Future.wait(rows.map(_decryptSingle));
   }
 
-  /// Ensures dynamic database values are correctly formatted as JSON strings.
   String? _toJsonString(dynamic value) {
     if (value == null) return null;
     if (value is String) return value;

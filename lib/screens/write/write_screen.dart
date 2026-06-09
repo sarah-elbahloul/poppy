@@ -1,6 +1,7 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bidi_text/bidi_text_field.dart';
@@ -22,8 +23,8 @@ import 'package:provider/provider.dart';
 const int kWordLimit = 10000;
 
 /// The primary interface for creating and editing diary entries.
-/// 
-/// Handles text input, title, date selection, color tagging, and photo 
+///
+/// Handles text input, title, date selection, color tagging, and photo
 /// management. Automatically saves changes when the user navigates back.
 class WriteScreen extends StatefulWidget {
   final String? entryId;
@@ -43,6 +44,7 @@ class _WriteScreenState extends State<WriteScreen> {
   EntryColorData _selectedColor = EntryColors.defaultColor;
   DateTime _entryDate = DateTime.now();
   List<Photo> _savedPhotos = [];
+  List<Photo> _initialPhotos = [];
   List<_PendingPhoto> _pendingPhotos = [];
 
   bool _photosExpanded = false;
@@ -57,6 +59,17 @@ class _WriteScreenState extends State<WriteScreen> {
   int get _totalPhotos => _savedPhotos.length + _pendingPhotos.length;
   int get _liveWordCount => Entry.countWords(_contentController.text);
 
+  bool get _photosChanged {
+    if (_savedPhotos.length != _initialPhotos.length) {
+      return true;
+    }
+
+    final currentIds = _savedPhotos.map((p) => p.id).toSet();
+    final initialIds = _initialPhotos.map((p) => p.id).toSet();
+
+    return !setEquals(currentIds, initialIds);
+  }
+
   /// Determines if there are unsaved changes in the current session.
   bool get _hasChanges {
     if (_existingEntry == null) {
@@ -70,7 +83,7 @@ class _WriteScreenState extends State<WriteScreen> {
         _entryDate != _existingEntry!.entryDate ||
         _selectedColor != _existingEntry!.colorTag ||
         _pendingPhotos.isNotEmpty ||
-        _savedPhotos.length != _existingEntry!.photoUrls.length;
+        _photosChanged;
   }
 
   @override
@@ -108,6 +121,7 @@ class _WriteScreenState extends State<WriteScreen> {
       if (mounted) {
         setState(() {
           _savedPhotos = photos;
+          _initialPhotos = List.of(photos);
           _photosExpanded = photos.isNotEmpty;
         });
       }
@@ -115,8 +129,8 @@ class _WriteScreenState extends State<WriteScreen> {
   }
 
   /// Saves the current entry to the database.
-  /// 
-  /// Returns [true] if the save was successful or not required, 
+  ///
+  /// Returns [true] if the save was successful or not required,
   /// [false] if blocked by validation (e.g., word limit).
   Future<bool> _save() async {
     if (!_hasChanges || _isSaving) return true;
@@ -848,7 +862,7 @@ class _PhotoPendingThumb extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.sm),
               border: Border.all(
-                color: t.accent.withOpacity(0.5),
+                color: t.accent.withValues(alpha: 0.5),
                 width: AppStroke.thin,
               ),
               color: t.accentLight,
@@ -895,6 +909,8 @@ class _PhotoSavedThumb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
+    final photoPath = photo.signedUrl ?? photo.localPath ?? '';
+    log('photoPath: $photoPath');
 
     return GestureDetector(
       onTap: onTap,
@@ -916,11 +932,11 @@ class _PhotoSavedThumb extends StatelessWidget {
               borderRadius: BorderRadius.circular(
                 AppRadius.sm - AppStroke.hairline,
               ),
-              child: Image.network(
-                photo.signedUrl ?? '',
+              child: photo.signedUrl != null ? Image.network(
+                photoPath,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Icon(AppIcons.imageBroken, color: t.textTertiary),
-              ),
+              ) : Image.file(File(photoPath), fit: BoxFit.cover),
             ),
           ),
           Positioned(
@@ -951,7 +967,7 @@ class _DeletePhotoButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
-            color: t.accentMuted.withOpacity(0.9),
+            color: t.accentMuted.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(AppRadius.full),
           ),
           child: Icon(

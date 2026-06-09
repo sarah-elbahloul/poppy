@@ -180,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: (colorData.color as Color),
+                          color: colorData.color,
                           width: AppStroke.thin,
                         ),
                       ),
@@ -678,7 +678,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(AppRadius.lg),
                   border: Border.all(
                     color: _selectedColor != null
-                        ? (_selectedColor!.color as Color)
+                        ? _selectedColor!.color
                         : t.border,
                     width: AppStroke.thin,
                   ),
@@ -689,7 +689,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       AppIcons.color,
                       size: AppIconSize.sm,
                       color: _selectedColor != null
-                          ? (_selectedColor!.color as Color)
+                          ? _selectedColor!.color
                           : t.textSecondary,
                     ),
                     const SizedBox(width: AppSpacing.xs),
@@ -712,14 +712,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   horizontal: AppSpacing.xs),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? (colorData.color as Color)
-                                        .withOpacity(0.12)
+                                    ? (colorData.color)
+                                        .withValues(alpha: 0.12)
                                     : Colors.transparent,
                                 borderRadius:
                                     BorderRadius.circular(AppRadius.full),
                                 border: Border.all(
                                   color: isSelected
-                                      ? colorData.color as Color
+                                      ? colorData.color
                                       : Colors.transparent,
                                   width: AppStroke.thin,
                                 ),
@@ -736,7 +736,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     Text(
                                       colorData.name,
                                       style: AppTextStyles.labelLargeSans(
-                                          colorData.color as Color, fp),
+                                          colorData.color, fp),
                                     ),
                                   ],
                                 ],
@@ -885,7 +885,7 @@ class _SkeletonCard extends StatelessWidget {
                     height: 10,
                     width: 90,
                     decoration: BoxDecoration(
-                      color: t.border.withOpacity(0.6),
+                      color: t.border.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(AppRadius.xs),
                     ),
                   ),

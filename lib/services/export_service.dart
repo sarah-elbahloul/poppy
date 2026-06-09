@@ -9,26 +9,14 @@ import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/supabase_client.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/services/encryption_service.dart';
+import 'package:poppy/services/local_db_service.dart';
 import 'package:share_plus/share_plus.dart';
 
-/// Handles data portability for journal entries, supporting both plain and encrypted formats.
-///
-/// **Export Modes:**
-/// - **Plain**: Entries are decrypted and stored as human-readable JSON.
-/// - **Encrypted**: The entire entries array is encrypted as a single blob using the
-///   user's Data Key. Importing this requires the same account and password.
-///
-/// **File Format:**
-/// The export file contains a cleartext header with metadata and an `entries` field
-/// containing either a JSON array (plain) or an encrypted string (encrypted).
+/// Handles data portability with offline-first support.
 class ExportService {
-  final _client = SupabaseConfig.client;
   final _enc = EncryptionService.instance;
+  final _local = LocalDbService.instance;
 
-  /// Exports a list of [entries] to a JSON file.
-  ///
-  /// If [encrypted] is true, the data is secured with the user's encryption key.
-  /// Returns the file path where the export was saved, or null on Web.
   Future<String?> exportEntries(
     List<Entry> entries, {
     bool encrypted = true,
@@ -67,7 +55,6 @@ class ExportService {
     return _saveToDownloads(bytes, filename);
   }
 
-  /// Internal helper to save bytes to platform-appropriate storage.
   Future<String?> _saveToDownloads(List<int> bytes, String filename) async {
     if (kIsWeb) {
       final xFile = XFile.fromData(
@@ -93,7 +80,6 @@ class ExportService {
     }
   }
 
-  /// Opens the system share sheet for a previously saved export file.
   Future<void> shareExportFile(String filePath) async {
     await Share.shareXFiles(
       [XFile(filePath, mimeType: 'application/json')],
@@ -101,10 +87,6 @@ class ExportService {
     );
   }
 
-  /// Initiates the import process by allowing the user to pick an export file.
-  ///
-  /// Returns an [ImportPreview] containing metadata from the file header.
-  /// Throws [ImportCancelledException] if the picker is dismissed.
   Future<ImportPreview> previewImport() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.any,
@@ -129,35 +111,17 @@ class ExportService {
     try {
       payload = jsonDecode(jsonString) as Map<String, dynamic>;
     } catch (_) {
-      throw const FormatException(
-          'Could not read this file. Make sure it is a valid Poppy export.');
+      throw const FormatException('Invalid Poppy export file.');
     }
-
-    if (payload['app'] != 'Poppy') {
-      throw const FormatException(
-          'This does not appear to be a Poppy export file.');
-    }
-    if (payload['version'] != ExportConfig.jsonVersion) {
-      throw const FormatException(
-          'This export was made with a different version of Poppy.');
-    }
-
-    final isEncrypted = payload['encrypted'] as bool? ?? false;
-    final entryCount = payload['entry_count'] as int? ?? 0;
-    final exportedAt = payload['exported_at'] as String? ?? '';
 
     return ImportPreview(
       payload: payload,
-      isEncrypted: isEncrypted,
-      entryCount: entryCount,
-      exportedAt: exportedAt,
+      isEncrypted: payload['encrypted'] as bool? ?? false,
+      entryCount: payload['entry_count'] as int? ?? 0,
+      exportedAt: payload['exported_at'] as String? ?? '',
     );
   }
 
-  /// Persists the entries from a validated [preview] to the database.
-  ///
-  /// Decrypts the data if necessary using the current user's session keys.
-  /// Returns the number of entries successfully imported.
   Future<int> commitImport(ImportPreview preview) async {
     final payload = preview.payload;
     final isEncrypted = preview.isEncrypted;
@@ -165,29 +129,12 @@ class ExportService {
 
     if (isEncrypted) {
       final encryptedBlob = payload['entries'] as String?;
-      if (encryptedBlob == null) {
-        throw const FormatException('Encrypted export is missing data.');
-      }
-
+      if (encryptedBlob == null) throw const FormatException('Missing data.');
       final plainText = await _enc.decryptFromJson(encryptedBlob);
-      if (plainText.isEmpty) {
-        throw const FormatException(
-            'Could not decrypt this export. '
-            'Make sure you are signed in with the same account '
-            'and password that created this export.');
-      }
-
-      try {
-        rawEntries = jsonDecode(plainText) as List;
-      } catch (_) {
-        throw const FormatException(
-            'Decrypted data is corrupted. The file may be damaged.');
-      }
+      rawEntries = jsonDecode(plainText) as List;
     } else {
       rawEntries = payload['entries'] as List? ?? [];
     }
-
-    if (rawEntries.isEmpty) return 0;
 
     final userId = SupabaseConfig.userId;
     int count = 0;
@@ -195,60 +142,33 @@ class ExportService {
     for (final raw in rawEntries) {
       try {
         final map = raw as Map<String, dynamic>;
-
-        final entryId = map['id'] as String?;
-        if (entryId == null || entryId.isEmpty) continue;
-
-        final title = map['title'] as String? ?? '';
-        final content = map['content'] as String? ?? '';
-        final colorTag = map['color_tag'] as String? ?? 'stone';
-        final wordCount = map['word_count'] as int? ?? 0;
-        final entryDate = map['entry_date'] as String? ??
-            (map['created_at'] as String?)?.substring(0, 10) ??
-            DateTime.now().toIso8601String().substring(0, 10);
-        final createdAt = map['created_at'] as String? ?? DateTime.now().toIso8601String();
-        final updatedAt = map['updated_at'] as String? ?? DateTime.now().toIso8601String();
-
         final encrypted = await _enc.encryptEntry(
-          title: title,
-          content: content,
+          title: map['title'] as String? ?? '',
+          content: map['content'] as String? ?? '',
         );
 
-        await _client.from(DBTable.entries).upsert(
-          {
-            DBColumn.id: entryId,
-            DBColumn.userId: userId,
-            DBColumn.titleEnc: encrypted.titleJson,
-            DBColumn.contentEnc: encrypted.contentJson,
-            DBColumn.colorTag: colorTag,
-            DBColumn.wordCount: wordCount,
-            DBColumn.entryDate: entryDate,
-            DBColumn.createdAt: createdAt,
-            DBColumn.updatedAt: updatedAt,
-          },
-          onConflict: DBColumn.id,
-        );
+        await _local.insertEntry({
+          DBColumn.id: map['id'],
+          DBColumn.userId: userId,
+          DBColumn.titleEnc: encrypted.titleJson,
+          DBColumn.contentEnc: encrypted.contentJson,
+          DBColumn.colorTag: map['color_tag'] ?? 'stone',
+          DBColumn.wordCount: map['word_count'] ?? 0,
+          DBColumn.entryDate: map['entry_date'],
+          DBColumn.createdAt: map['created_at'],
+          DBColumn.updatedAt: map['updated_at'],
+        });
         count++;
-      } catch (_) {
-        continue;
-      }
+      } catch (_) {}
     }
     return count;
   }
 }
 
-/// Metadata extracted from an export file before entries are committed.
 class ImportPreview {
-  /// The full parsed JSON payload from the export file.
   final Map<String, dynamic> payload;
-
-  /// Whether the file's entry data is encrypted.
   final bool isEncrypted;
-
-  /// The total number of entries reported in the file header.
   final int entryCount;
-
-  /// The ISO8601 timestamp when the file was exported.
   final String exportedAt;
 
   const ImportPreview({
@@ -258,7 +178,6 @@ class ImportPreview {
     required this.exportedAt,
   });
 
-  /// Returns a human-readable formatted string of the export date.
   String get exportedAtFormatted {
     try {
       final dt = DateTime.parse(exportedAt).toLocal();
@@ -273,7 +192,6 @@ class ImportPreview {
   }
 }
 
-/// Exception thrown when an import operation is manually cancelled.
 class ImportCancelledException implements Exception {
   const ImportCancelledException();
 }

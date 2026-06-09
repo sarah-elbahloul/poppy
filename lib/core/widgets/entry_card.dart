@@ -51,7 +51,7 @@ class EntryCard extends StatelessWidget {
         onTap: onTap,
         onLongPress: onLongPress,
         splashColor: t.accentLight,
-        highlightColor: t.accentLight.withOpacity(0.5),
+        highlightColor: t.accentLight.withValues(alpha: 0.5),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -71,7 +71,7 @@ class EntryCard extends StatelessWidget {
                   horizontal: AppSpacing.sm,
                 ),
                 decoration: BoxDecoration(
-                  color: monthColor.withOpacity(0.08),
+                  color: monthColor.withValues(alpha: 0.08),
                 ),
                 child: FittedBox(
                   fit: BoxFit.scaleDown,

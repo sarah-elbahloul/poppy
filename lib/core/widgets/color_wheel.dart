@@ -169,7 +169,7 @@ class _ColorWheelState extends State<ColorWheel> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 12,
                       spreadRadius: 0,
                     ),
@@ -236,7 +236,7 @@ class _Indicator extends StatelessWidget {
           border: Border.all(color: Colors.white, width: 3.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: Colors.black.withValues(alpha: 0.25),
               blurRadius: 6,
               offset: const Offset(0, 3),
             ),

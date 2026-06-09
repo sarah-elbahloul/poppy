@@ -12,7 +12,7 @@ class AppShadows {
   /// Subtle lift for cards and elevated containers.
   static List<BoxShadow> card = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.04),
+      color: Colors.black.withValues(alpha: 0.04),
       blurRadius: 8,
       offset: const Offset(0, 2),
     ),
@@ -21,7 +21,7 @@ class AppShadows {
   /// More pronounced shadow for Floating Action Buttons.
   static List<BoxShadow> fab = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.12),
+      color: Colors.black.withValues(alpha: 0.12),
       blurRadius: 12,
       offset: const Offset(0, 4),
     ),
@@ -30,7 +30,7 @@ class AppShadows {
   /// Glow effect for highlighted color indicators.
   static List<BoxShadow> colorDotGlow(Color color) => [
     BoxShadow(
-      color: color.withOpacity(0.9),
+      color: color.withValues(alpha: 0.9),
       blurRadius: 6,
       spreadRadius: 1,
     ),
@@ -39,7 +39,7 @@ class AppShadows {
   /// Shadow for bottom sheets and overlay panels.
   static List<BoxShadow> sheet = [
     BoxShadow(
-      color: Colors.black.withOpacity(0.08),
+      color: Colors.black.withValues(alpha: 0.08),
       blurRadius: 20,
       offset: const Offset(0, -4),
     ),

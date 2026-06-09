@@ -44,6 +44,7 @@ class DBTable {
   static const String entries = 'entries';
   static const String photos = 'photos';
   static const String userKeys = 'user_keys';
+  static const String syncQueue = 'sync_queue';
 }
 
 /// Supabase database column names.
@@ -64,6 +65,12 @@ class DBColumn {
   static const String orderIndex = 'order_index';
   static const String theme = 'theme';
   static const String pinEnabled = 'pin_enabled';
+
+  // Sync related columns
+  static const String syncStatus = 'sync_status';
+  static const String isDeleted = 'is_deleted';
+  static const String localPath = 'local_path';
+  static const String uploaded = 'uploaded';
 
   // Specific to the user_keys table.
   static const String encDataKey = 'encrypted_data_key';
