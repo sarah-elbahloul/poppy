@@ -30,14 +30,16 @@ void main() async {
   // Initialize infrastructure and persistence layers.
   await SupabaseConfig.init();
   await NotificationService.init();
-
   // Local SQLite database initialization must complete before service access.
   await LocalDbService.instance.init();
+
+  // Load font + color preferences before the first frame is drawn.
+  final themeProvider = await ThemeProvider.initialise();
 
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => themeProvider),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => EntriesProvider()),
       ],

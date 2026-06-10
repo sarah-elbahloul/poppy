@@ -74,7 +74,7 @@ class EntriesProvider extends ChangeNotifier {
     DateTime? fromDate,
     DateTime? toDate,
   }) {
-    _query = query ?? _query;
+    _query = query ?? null;
     _colorTag = colorTag;
     _fromDate = fromDate;
     _toDate = toDate;

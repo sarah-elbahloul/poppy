@@ -102,14 +102,18 @@ class ColorSlots {
 ///
 /// Customizations are persisted locally using [FlutterSecureStorage].
 class ThemeProvider extends ChangeNotifier {
+  ThemeProvider._();
+
   final _storage = const FlutterSecureStorage();
   final Map<String, Color> _colors = {};
 
-  PoppyFont _titleFont = PoppyFont.literata;
-  PoppyFont _bodyFont = PoppyFont.kalam;
+  PoppyFont _titleFont = PoppyFont.lora;
+  PoppyFont _bodyFont = PoppyFont.inter;
 
-  ThemeProvider() {
-    _loadAll();
+  static Future<ThemeProvider> initialise() async {
+    final provider = ThemeProvider._();
+    await provider._loadAll();
+    return provider;
   }
 
   /// Returns the current color for a specific [slot], falling back to its default.
@@ -149,29 +153,53 @@ class ThemeProvider extends ChangeNotifier {
   /// Loads persisted theme settings from local storage.
   Future<void> _loadAll() async {
     try {
-      for (final slot in ColorSlots.all) {
-        final hex = await _storage.read(key: slot.key);
-        if (hex != null) _colors[slot.key] = _hexToColor(hex);
+      final futures = {
+        for (final slot in ColorSlots.all)
+          slot.key: _storage.read(key: slot.key),
+        StorageKeys.selectedTitleFont:
+        _storage.read(key: StorageKeys.selectedTitleFont),
+        StorageKeys.selectedBodyFont:
+        _storage.read(key: StorageKeys.selectedBodyFont),
+      };
+
+      final results = await Future.wait(futures.values);
+
+      final map = <String, String?>{};
+      var i = 0;
+      for (final key in futures.keys) {
+        map[key] = results[i++];
       }
-      final tf = await _storage.read(key: StorageKeys.selectedTitleFont);
-      final bf = await _storage.read(key: StorageKeys.selectedBodyFont);
+
+      // Colors
+      for (final slot in ColorSlots.all) {
+        final hex = map[slot.key];
+        if (hex != null) {
+          _colors[slot.key] = _hexToColor(hex);
+        }
+      }
+
+      // Fonts
+      final tf = map[StorageKeys.selectedTitleFont];
+      final bf = map[StorageKeys.selectedBodyFont];
 
       if (tf != null) {
         _titleFont = PoppyFont.values.firstWhere(
-          (f) => f.name == tf,
-          orElse: () => PoppyFont.literata,
+              (f) => f.name == tf,
+          orElse: () => PoppyFont.lora,
         );
       }
+
       if (bf != null) {
         _bodyFont = PoppyFont.values.firstWhere(
-          (f) => f.name == bf,
-          orElse: () => PoppyFont.kalam,
+              (f) => f.name == bf,
+          orElse: () => PoppyFont.inter,
         );
       }
     } catch (_) {
       // Errors during loading default to fallback values.
     }
-    notifyListeners();
+
+    if (hasListeners) notifyListeners();
   }
 
   /// Sets a custom color for a specific [slot] and persists it.
@@ -215,11 +243,12 @@ class ThemeProvider extends ChangeNotifier {
 
   /// Converts a [Color] to a hex string (e.g., #AARRGGBB).
   String _colorToHex(Color c) =>
-      '#${(c.value & 0xFFFFFFFF).toRadixString(16).padLeft(8, '0').toUpperCase()}';
+      '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
 
   /// Converts a hex string to a [Color].
   Color _hexToColor(String hex) {
     final h = hex.replaceAll('#', '');
-    return Color(int.parse(h.length == 6 ? 'FF$h' : h, radix: 16));
+    final val = int.parse(h.length == 6 ? 'FF$h' : h, radix: 16);
+    return Color(val);
   }
 }

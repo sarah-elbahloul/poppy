@@ -45,6 +45,7 @@ android/local.properties
 /android/app/profile/
 /android/app/release/
 android/.gradle/
+android/build/
 android/.kotlin/
 *.apk
 *.aab

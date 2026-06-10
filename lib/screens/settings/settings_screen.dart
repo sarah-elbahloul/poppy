@@ -428,7 +428,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _onFeedback(BuildContext context) async {
-    const email = 'hello@poppy.app'; // todo: change this to actual email
+    const email = 'sa.albahloul@gmail.com'; // todo: change this to actual email
     final t     = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 

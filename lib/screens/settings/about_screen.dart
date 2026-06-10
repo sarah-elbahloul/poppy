@@ -155,12 +155,12 @@ class _AboutScreenState extends State<AboutScreen> {
 
           const SizedBox(height: AppSpacing.xl),
 
-          Center(
+          /*Center(
             child: Text(
               '© 2025 Poppy. Made with care.',
               style: AppTextStyles.labelSmall(t.textTertiary,fp),
             ),
-          ),
+          ),*/
 
           const SizedBox(height: AppSpacing.lg),
         ],

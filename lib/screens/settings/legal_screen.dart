@@ -112,7 +112,7 @@ class _PrivacyContent extends StatelessWidget {
             'Deletion is permanent and removes all associated cloud data.',
         ),
         const _Section(title: 'Contact', body: // todo: change this to actual email
-        'For privacy concerns or data requests, contact us at privacy@poppydiary.app.',
+        'For privacy concerns or data requests, contact us at sa.albahloul@gmail.com.',
         ),
       ],
     );
