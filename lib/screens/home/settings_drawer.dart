@@ -106,6 +106,11 @@ class SettingsDrawer extends StatelessWidget {
 
                   const _DrawerSectionHeader(label: 'Quick Access'),
                   _DrawerItem(
+                    icon: AppIcons.tag,
+                    label: 'Entry Tags',
+                    onTap: () => _go(context, AppRoutes.tags),
+                  ),
+                  _DrawerItem(
                     icon: AppIcons.appearance,
                     label: 'Appearance',
                     trailing: 'Custom',

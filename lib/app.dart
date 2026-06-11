@@ -41,6 +41,7 @@ class PoppyApp extends StatelessWidget {
             AppRoutes.settings: (_) => const SettingsScreen(),
             AppRoutes.settingsDrawer: (_) => const SettingsDrawer(),
             AppRoutes.appearance: (_) => const AppearanceScreen(),
+            AppRoutes.tags: (_) => const EntryTagsScreen(),
             AppRoutes.account: (_) => const AccountScreen(),
             AppRoutes.security: (_) => const SecurityScreen(),
             AppRoutes.notifications: (_) => const NotificationsScreen(),

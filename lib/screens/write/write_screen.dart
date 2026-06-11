@@ -607,9 +607,12 @@ class _WriteScreenState extends State<WriteScreen> {
 
                                     return Row(
                                       children: [
-                                        Text(
-                                          '$count / $kWordLimit words',
-                                          style: AppTextStyles.labelLargeSerif(color, fp),
+                                        Flexible(
+                                          child: Text(
+                                            '$count / $kWordLimit words',
+                                            style: AppTextStyles.labelLargeSerif(color, fp),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
                                         if (over) ...[
                                           const SizedBox(width: AppSpacing.sm,),
@@ -625,11 +628,13 @@ class _WriteScreenState extends State<WriteScreen> {
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.sm),
-                              ColorTagPicker(
-                                selected: _selectedColor,
-                                onSelected: (c) {
-                                  setState(() => _selectedColor = c);
-                                },
+                              Flexible(
+                                child: ColorTagPicker(
+                                  selected: _selectedColor,
+                                  onSelected: (c) {
+                                    setState(() => _selectedColor = c);
+                                  },
+                                ),
                               ),
                             ],
                           ),

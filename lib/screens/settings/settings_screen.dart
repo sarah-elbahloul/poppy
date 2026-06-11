@@ -58,6 +58,13 @@ class SettingsScreen extends StatelessWidget {
               value: 'Fonts · Colors',
               onTap: () => _push(context, AppRoutes.appearance),
             ),
+            _RowLine(),
+            _SettingsRow(
+              icon:  AppIcons.tagOutline,
+              label: 'Entry Tags',
+              value: 'Names · Colors',
+              onTap: () => _push(context, AppRoutes.tags),
+            ),
           ]),
 
           // ── Account & Security ───────────────────────────
@@ -274,7 +281,7 @@ class SettingsScreen extends StatelessWidget {
       if (savedPath != null) {
         final filename = savedPath.split('/').last;
         AppSnackbar.success(
-          context, 
+          context,
           'Saved to Downloads/$filename',
           action: SnackBarAction(
             label: 'Share',

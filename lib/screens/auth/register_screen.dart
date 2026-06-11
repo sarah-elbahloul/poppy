@@ -136,19 +136,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
 
               // Animate the checker in/out smoothly.
-              AnimatedSize(
+              TweenAnimationBuilder<double>(
                 duration: AppDuration.normal,
-                curve:    Curves.easeOutCubic,
-                child: _passwordController.text.isNotEmpty
-                    ? Padding(
+                curve: Curves.easeOutCubic,
+                tween: Tween(
+                  begin: 0,
+                  end: _passwordController.text.isNotEmpty ? 1 : 0,
+                ),
+                child: Padding(
                   padding: const EdgeInsets.only(top: AppSpacing.sm),
                   child: PasswordRulesChecker(
                     controller: _passwordController,
                   ),
-                )
-                    : const SizedBox.shrink(),
+                ),
+                builder: (context, value, child) {
+                  return ClipRect(
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      heightFactor: value,
+                      child: child,
+                    ),
+                  );
+                },
               ),
-
               const SizedBox(height: AppSpacing.sm),
 
               // ── Confirm password ──────────────────────────

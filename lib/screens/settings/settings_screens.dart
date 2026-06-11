@@ -8,3 +8,4 @@ export 'legal_screen.dart';
 export 'notifications_screen.dart';
 export 'security_screen.dart';
 export 'settings_screen.dart';
+export 'entry_tags_screen.dart';

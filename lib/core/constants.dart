@@ -34,6 +34,9 @@ class StorageKeys {
 
   /// Temporary wrapped key blob stored during the sign-up flow.
   static const String pendingEncKey = 'poppy_pending_enc_key';
+
+  /// Cached entry tags JSON.
+  static const String entryTags = 'poppy_entry_tags';
 }
 
 /// Supabase database table names.
@@ -65,6 +68,7 @@ class DBColumn {
   static const String orderIndex = 'order_index';
   static const String theme = 'theme';
   static const String pinEnabled = 'pin_enabled';
+  static const String tags = 'tags';
 
   // Sync related columns
   static const String syncStatus = 'sync_status';

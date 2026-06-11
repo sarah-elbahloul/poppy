@@ -15,27 +15,16 @@ class AppColors {
   static const textSecondary = Color(0xFF5C4444);
   static const textTertiary = Color(0xFFAA8888);
   static const border = Color(0xFFEDD8D8);
-
-  // --- Entry Color Tag Strip Colors ---
-  static const tagPoppy = Color(0xFFC94040);
-  static const tagIris = Color(0xFF5C7FC4);
-  static const tagLily = Color(0xFF4FAD74);
-  static const tagMarigold = Color(0xFFB87030);
-  static const tagLavender = Color(0xFF9050A8);
-  static const tagStone = Color(0xFF888888);
-
+  
   // --- Semantic & Absolute ---
-// Success
   static const success = Color(0xFF2E7D32);
   static const successLight = Color(0xFFEAF7EC);
   static const successMuted = Color(0xFFA5D6A7);
 
-// Warning
   static const warning = Color(0xFFF57F17);
   static const warningLight = Color(0xFFFFF4E5);
   static const warningMuted = Color(0xFFFFCC80);
 
-// Error
   static const error = Color(0xFFB00020);
   static const errorLight = Color(0xFFFDECEC);
   static const errorMuted = Color(0xFFF5A3B1);
@@ -97,7 +86,6 @@ class AppColors {
 class MonthColors {
   MonthColors._();
 
-  /// Mapping of month numbers (1-12) to their representative colors.
   static const Map<int, Color> colors = {
     1: Color(0xFF90A4AE),
     2: Color(0xFFE57373),
@@ -113,57 +101,112 @@ class MonthColors {
     12: Color(0xFF4DB6AC),
   };
 
-  /// Returns the color associated with the given [month] (1-12).
   static Color of(int month) => colors[month] ?? Colors.grey;
 }
 
-/// Identifiers for entry color tags.
-enum EntryColor { poppy, iris, lily, marigold, lavender, stone }
-
 /// Data structure representing an entry color tag.
 class EntryColorData {
-  /// The unique identifier for the entry color.
-  final EntryColor id;
+  /// Unique identifier for the tag.
+  final String id;
 
   /// The display name of the color.
   final String name;
 
-  /// The [Color] value.
+  /// The color object.
   final Color color;
 
-  /// The string value used for database persistence.
-  final String dbValue;
+  /// Whether this is a default tag that was provided by the app.
+  final bool isBuiltIn;
 
   const EntryColorData({
     required this.id,
     required this.name,
     required this.color,
-    required this.dbValue,
+    this.isBuiltIn = false,
   });
+
+  /// Alias for id to support existing code.
+  String get dbValue => id;
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'name': name,
+    'color': color.toARGB32(),
+    'isBuiltIn': isBuiltIn,
+  };
+
+  factory EntryColorData.fromMap(Map<String, dynamic> map) {
+    return EntryColorData(
+      id: map['id'] as String,
+      name: map['name'] as String,
+      color: Color(map['color'] as int),
+      isBuiltIn: map['isBuiltIn'] as bool? ?? false,
+    );
+  }
+
+  EntryColorData copyWith({
+    String? id,
+    String? name,
+    Color? color,
+    bool? isBuiltIn,
+  }) {
+    return EntryColorData(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      color: color ?? this.color,
+      isBuiltIn: isBuiltIn ?? this.isBuiltIn,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EntryColorData && other.id == id);
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 /// Central registry for entry color tags.
 class EntryColors {
   EntryColors._();
 
-  static const poppy = EntryColorData(id: EntryColor.poppy, name: 'Poppy', color: AppColors.tagPoppy, dbValue: 'poppy');
-  static const iris = EntryColorData(id: EntryColor.iris, name: 'Iris', color: AppColors.tagIris, dbValue: 'iris');
-  static const lily = EntryColorData(id: EntryColor.lily, name: 'Lily', color: AppColors.tagLily, dbValue: 'lily');
-  static const marigold = EntryColorData(id: EntryColor.marigold, name: 'Marigold', color: AppColors.tagMarigold, dbValue: 'marigold');
-  static const lavender = EntryColorData(id: EntryColor.lavender, name: 'Lavender', color: AppColors.tagLavender, dbValue: 'lavender');
-  static const stone = EntryColorData(id: EntryColor.stone, name: 'Stone', color: AppColors.tagStone, dbValue: 'stone');
+  /// Minimum number of tags a user must have.
+  static const int minTags = 3;
 
-  /// List of all available entry color tags.
-  static const all = [poppy, iris, lily, marigold, lavender, stone];
+  /// Maximum number of tags a user can have.
+  static const int maxTags = 12;
+
+  static const List<EntryColorData> defaults = [
+    EntryColorData(id: 'poppy', name: 'Poppy', color: Color(0xFFC94040), isBuiltIn: true),
+    EntryColorData(id: 'iris', name: 'Iris', color: Color(0xFF5C6BC0), isBuiltIn: true),
+    EntryColorData(id: 'lily', name: 'Lily', color: Color(0xFF9CCC65), isBuiltIn: true),
+    EntryColorData(id: 'marigold', name: 'Marigold', color: Color(0xFFFFB300), isBuiltIn: true),
+    EntryColorData(id: 'lavender', name: 'Lavender', color: Color(0xFFBA68C8), isBuiltIn: true),
+    EntryColorData(id: 'stone', name: 'Stone', color: Color(0xFF90A4AE), isBuiltIn: true),
+  ];
 
   /// The default entry color tag.
-  static const defaultColor = stone;
+  static final defaultColor = defaults[0];
 
-  /// Retrieves [EntryColorData] from its [dbValue].
-  static EntryColorData fromDbValue(String value) =>
-      all.firstWhere((c) => c.dbValue == value, orElse: () => stone);
+  static List<EntryColorData> _registry = defaults;
 
-  /// Retrieves [EntryColorData] from its [id].
-  static EntryColorData fromId(EntryColor id) =>
-      all.firstWhere((c) => c.id == id);
+  /// List of all currently available entry color tags.
+  static List<EntryColorData> get all => _registry;
+
+  /// Updates the global registry with the user's custom tags.
+  static void updateRegistry(List<EntryColorData> tags) {
+    _registry = tags;
+  }
+
+  /// Retrieves [EntryColorData] from its [id] (or [dbValue]).
+  static EntryColorData fromDbValue(String id) {
+    return _registry.firstWhere(
+      (c) => c.id == id, 
+      orElse: () => defaults.firstWhere(
+        (d) => d.id == id, 
+        orElse: () => defaultColor
+      )
+    );
+  }
 }

@@ -12,6 +12,7 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String settingsDrawer = '/settingsDrawer';
   static const String appearance = '/settings/appearance';
+  static const String tags = '/settings/entryTags';
   static const String account = '/settings/account';
   static const String security = '/settings/security';
   static const String notifications = '/settings/notifications';

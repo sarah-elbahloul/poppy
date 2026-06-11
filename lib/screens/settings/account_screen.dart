@@ -276,20 +276,29 @@ class _AccountScreenState extends State<AccountScreen> {
                   ),
                 ),
 
-                AnimatedSize(
+                TweenAnimationBuilder<double>(
                   duration: AppDuration.normal,
-                  curve:    Curves.easeOutCubic,
-                  child: showChecker
-                      ? Padding(
-                    padding:
-                    const EdgeInsets.only(top: AppSpacing.sm),
+                  curve: Curves.easeOutCubic,
+                  tween: Tween(
+                    begin: 0,
+                    end: _newPassController.text.isNotEmpty ? 1 : 0,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.sm),
                     child: PasswordRulesChecker(
                       controller: _newPassController,
                     ),
-                  )
-                      : const SizedBox.shrink(),
+                  ),
+                  builder: (context, value, child) {
+                    return ClipRect(
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        heightFactor: value,
+                        child: child,
+                      ),
+                    );
+                  },
                 ),
-
                 const SizedBox(height: AppSpacing.sm),
 
                 // Confirm password.

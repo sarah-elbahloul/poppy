@@ -21,8 +21,11 @@ create table public.profiles (
                           references auth.users(id)
                           on delete cascade,
   theme       text        not null default 'poppy',
+  tags        jsonb       not null default '[{"id": "poppy", "name": "Poppy", "color": 4291346496, "isBuiltIn": true}, {"id": "iris", "name": "Iris", "color": 4284247232, "isBuiltIn": true}, {"id": "lily", "name": "Lily", "color": 4288498789, "isBuiltIn": true}, {"id": "marigold", "name": "Marigold", "color": 4294947584, "isBuiltIn": true}, {"id": "lavender", "name": "Lavender", "color": 4290373832, "isBuiltIn": true}, {"id": "stone", "name": "Stone", "color": 4287636654, "isBuiltIn": true}]',
   pin_enabled boolean     not null default false,
-  created_at  timestamptz not null default now()
+  created_at  timestamptz not null default now(),
+
+  constraint tags_count_check check (jsonb_array_length(tags) >= 3 and jsonb_array_length(tags) <= 12)
 );
 
 -- ─── Entries ───
@@ -40,11 +43,7 @@ create table public.entries (
   word_count   integer     not null default 0,
   entry_date   date        not null default current_date,
   created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now(),
-
-  constraint valid_color_tag check (color_tag in (
-    'poppy', 'iris', 'lily', 'marigold', 'lavender', 'stone'
-  ))
+  updated_at   timestamptz not null default now()
 );
 
 -- ─── Photos ───

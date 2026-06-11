@@ -1,19 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:poppy/core/core.dart';
 
 /// Represents a customizable color slot within the application's theme.
 class ColorSlot {
-  /// The storage key used to persist the color value.
   final String key;
-
-  /// The user-facing label for the color slot.
   final String label;
-
-  /// A brief description of what this color affects in the UI.
   final String description;
-
-  /// The default color value if no customization exists.
   final Color defaultValue;
 
   const ColorSlot({
@@ -24,7 +18,6 @@ class ColorSlot {
   });
 }
 
-/// Defines the collection of available color slots for theme customization.
 class ColorSlots {
   ColorSlots._();
 
@@ -83,7 +76,6 @@ class ColorSlots {
     defaultValue: AppColors.border,
   );
 
-  /// A list of all customizable color slots.
   static const all = [
     accent,
     accentLight,
@@ -97,10 +89,6 @@ class ColorSlots {
   ];
 }
 
-/// Manages the visual theme of the application, including custom colors 
-/// and typography selections.
-///
-/// Customizations are persisted locally using [FlutterSecureStorage].
 class ThemeProvider extends ChangeNotifier {
   ThemeProvider._();
 
@@ -110,32 +98,25 @@ class ThemeProvider extends ChangeNotifier {
   PoppyFont _titleFont = PoppyFont.lora;
   PoppyFont _bodyFont = PoppyFont.inter;
 
+  List<EntryColorData> _tagColors = EntryColors.defaults;
+
   static Future<ThemeProvider> initialise() async {
     final provider = ThemeProvider._();
     await provider._loadAll();
     return provider;
   }
 
-  /// Returns the current color for a specific [slot], falling back to its default.
   Color colorFor(ColorSlot slot) => _colors[slot.key] ?? slot.defaultValue;
-
-  /// Returns true if a specific [slot] has a custom user-defined color.
   bool isCustomized(ColorSlot slot) => _colors.containsKey(slot.key);
-
-  /// Returns true if any theme colors have been customized.
   bool get hasAnyCustomColor => ColorSlots.all.any(isCustomized);
 
-  /// The currently selected font for titles.
   PoppyFont get currentTitleFont => _titleFont;
-
-  /// The currently selected font for body text.
   PoppyFont get currentBodyFont => _bodyFont;
+  List<EntryColorData> get tagColors => _tagColors;
 
-  /// Returns the current [FontPairData] for styling text.
   FontPairData get currentFontPairData =>
       FontPairData(PoppyFonts.fromId(_titleFont), PoppyFonts.fromId(_bodyFont));
 
-  /// Generates the [PoppyThemeData] based on current customizations.
   PoppyThemeData get currentThemeData => PoppyThemeData(
     id: PoppyTheme.poppy,
     name: 'Poppy',
@@ -150,7 +131,6 @@ class ThemeProvider extends ChangeNotifier {
     border: colorFor(ColorSlots.border),
   );
 
-  /// Loads persisted theme settings from local storage.
   Future<void> _loadAll() async {
     try {
       final futures = {
@@ -160,6 +140,8 @@ class ThemeProvider extends ChangeNotifier {
         _storage.read(key: StorageKeys.selectedTitleFont),
         StorageKeys.selectedBodyFont:
         _storage.read(key: StorageKeys.selectedBodyFont),
+        StorageKeys.entryTags:
+        _storage.read(key: StorageKeys.entryTags),
       };
 
       final results = await Future.wait(futures.values);
@@ -170,7 +152,6 @@ class ThemeProvider extends ChangeNotifier {
         map[key] = results[i++];
       }
 
-      // Colors
       for (final slot in ColorSlots.all) {
         final hex = map[slot.key];
         if (hex != null) {
@@ -178,7 +159,6 @@ class ThemeProvider extends ChangeNotifier {
         }
       }
 
-      // Fonts
       final tf = map[StorageKeys.selectedTitleFont];
       final bf = map[StorageKeys.selectedBodyFont];
 
@@ -195,28 +175,30 @@ class ThemeProvider extends ChangeNotifier {
           orElse: () => PoppyFont.inter,
         );
       }
-    } catch (_) {
-      // Errors during loading default to fallback values.
-    }
+
+      final tagsJson = map[StorageKeys.entryTags];
+      if (tagsJson != null) {
+        final List decoded = jsonDecode(tagsJson);
+        _tagColors = decoded.map((m) => EntryColorData.fromMap(m)).toList();
+        EntryColors.updateRegistry(_tagColors);
+      }
+    } catch (_) {}
 
     if (hasListeners) notifyListeners();
   }
 
-  /// Sets a custom color for a specific [slot] and persists it.
   Future<void> setColor(ColorSlot slot, Color color) async {
     _colors[slot.key] = color;
     notifyListeners();
     await _storage.write(key: slot.key, value: _colorToHex(color));
   }
 
-  /// Resets a specific [slot] to its default value.
   Future<void> resetColor(ColorSlot slot) async {
     _colors.remove(slot.key);
     notifyListeners();
     await _storage.delete(key: slot.key);
   }
 
-  /// Resets all theme color customizations to their defaults.
   Future<void> resetAllColors() async {
     _colors.clear();
     notifyListeners();
@@ -225,7 +207,16 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
-  /// Sets and persists the [titleFont] selection.
+  Future<void> setTagColors(List<EntryColorData> tags, {bool persist = true}) async {
+    _tagColors = tags;
+    EntryColors.updateRegistry(tags);
+    notifyListeners();
+    if (persist) {
+      final json = jsonEncode(tags.map((t) => t.toMap()).toList());
+      await _storage.write(key: StorageKeys.entryTags, value: json);
+    }
+  }
+
   Future<void> setTitleFont(PoppyFont v) async {
     if (_titleFont == v) return;
     _titleFont = v;
@@ -233,7 +224,6 @@ class ThemeProvider extends ChangeNotifier {
     await _storage.write(key: StorageKeys.selectedTitleFont, value: v.name);
   }
 
-  /// Sets and persists the [bodyFont] selection.
   Future<void> setBodyFont(PoppyFont v) async {
     if (_bodyFont == v) return;
     _bodyFont = v;
@@ -241,11 +231,9 @@ class ThemeProvider extends ChangeNotifier {
     await _storage.write(key: StorageKeys.selectedBodyFont, value: v.name);
   }
 
-  /// Converts a [Color] to a hex string (e.g., #AARRGGBB).
   String _colorToHex(Color c) =>
       '#${c.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase()}';
 
-  /// Converts a hex string to a [Color].
   Color _hexToColor(String hex) {
     final h = hex.replaceAll('#', '');
     final val = int.parse(h.length == 6 ? 'FF$h' : h, radix: 16);

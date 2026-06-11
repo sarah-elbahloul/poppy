@@ -31,12 +31,22 @@ class ColorTagPicker extends StatelessWidget {
           'Tag',
           style: AppTextStyles.labelLargeSerif(t.textTertiary, fp),
         ),
-        ...EntryColors.all.map((colorData) => ColorDot(
-              colorData: colorData,
-              isSelected: selected.id == colorData.id,
-              size: AppComponentSize.colorDotPicker,
-              onTap: () => onSelected(colorData),
-            )),
+        const SizedBox(width: AppSpacing.xs),
+        Flexible(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: EntryColors.all
+                  .map((colorData) => ColorDot(
+                colorData: colorData,
+                isSelected: selected.id == colorData.id,
+                size: AppComponentSize.colorDotPicker,
+                onTap: () => onSelected(colorData),
+              ))
+                  .toList(),
+            ),
+          ),
+        ),
       ],
     );
   }
