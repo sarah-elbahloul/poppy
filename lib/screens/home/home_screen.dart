@@ -392,14 +392,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                         borderSide: BorderSide(
-                          color: t.border,
+                          color: t.accent,
                           width: AppStroke.thin,
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                         borderSide: BorderSide(
-                          color: t.border,
+                          color: t.accent,
                           width: AppStroke.thin,
                         ),
                       ),
