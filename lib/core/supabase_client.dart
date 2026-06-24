@@ -13,15 +13,15 @@ class SupabaseConfig {
   /// Throws an assertion error if credentials are not provided via `--dart-define`.
   static Future<void> init() async {
     assert(
-      _supabaseUrl.isNotEmpty && _supabaseKey.isNotEmpty,
-      '\n\n'
-      '══════════════════════════════════════════════════════\n'
-      '  Supabase credentials are missing.\n'
-      '  Run the app with:\n'
-      '  flutter run \\\n'
-      '    --dart-define=SUPABASE_URL=your_url \\\n'
-      '    --dart-define=SUPABASE_ANON_KEY=your_key\n'
-      '══════════════════════════════════════════════════════\n',
+    _supabaseUrl.isNotEmpty && _supabaseKey.isNotEmpty,
+    '\n\n'
+        '══════════════════════════════════════════════════════\n'
+        '  Supabase credentials are missing.\n'
+        '  Run the app with:\n'
+        '  flutter run \\\n'
+        '    --dart-define=SUPABASE_URL=your_url \\\n'
+        '    --dart-define=SUPABASE_ANON_KEY=your_key\n'
+        '══════════════════════════════════════════════════════\n',
     );
 
     await Supabase.initialize(
@@ -37,14 +37,15 @@ class SupabaseConfig {
   /// Returns the currently authenticated user, or null if signed out.
   static User? get currentUser => client.auth.currentUser;
 
-  /// Returns the ID of the currently authenticated user.
+  /// Returns the ID of the currently authenticated user, or an empty
+  /// string if no user is signed in.
   ///
-  /// Throws an assertion error if called when no user is signed in.
-  static String get userId {
-    final user = currentUser;
-    assert(user != null, 'userId accessed while not signed in.');
-    return user!.id;
-  }
+  /// Callers (e.g. [SyncService.syncNow]) rely on being able to check
+  /// `userId.isEmpty` to no-op gracefully during sign-out races. This used
+  /// to be backed by an `assert()`, which is stripped out of release builds
+  /// — in release mode that meant a null-check crash instead of a graceful
+  /// no-op whenever a save/sync/fetch call landed while unauthenticated.
+  static String get userId => currentUser?.id ?? '';
 
   /// Provides a stream of authentication state changes.
   static Stream<AuthState> get authStateStream =>
@@ -56,10 +57,10 @@ class SupabaseConfig {
   /// [path] is the full path to the file within the bucket.
   /// [expiresIn] defines the URL validity duration in seconds (defaults to 1 hour).
   static Future<String> getSignedUrl(
-    String bucket,
-    String path, {
-    int expiresIn = 3600,
-  }) async {
+      String bucket,
+      String path, {
+        int expiresIn = 3600,
+      }) async {
     return await client.storage
         .from(bucket)
         .createSignedUrl(path, expiresIn);

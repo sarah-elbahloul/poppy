@@ -5,8 +5,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:poppy/core/core.dart';
 import 'package:poppy/services/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:poppy/providers/theme_provider.dart';
-import 'package:provider/provider.dart';
 
 /// Represents the various authentication states of the application.
 enum AuthStatus { unknown, authenticated, unauthenticated, passwordRecovery }
@@ -27,6 +25,12 @@ class AuthProvider extends ChangeNotifier {
   String? _errorMessage;
   bool _isLoading = false;
   bool _encryptionReady = false;
+
+  /// Optional callbacks registered by other providers/screens so that
+  /// AuthProvider can drive cross-provider lifecycle events without
+  /// introducing circular dependencies.
+  VoidCallback? onSignedIn;
+  VoidCallback? onSignedOut;
 
   AuthStatus get status => _status;
   User? get user => _user;
@@ -82,6 +86,7 @@ class AuthProvider extends ChangeNotifier {
           final loaded = await _enc.loadCachedKey();
           _encryptionReady = loaded;
           if (_encryptionReady) _startSync();
+          onSignedIn?.call();
           _safeNotify();
           break;
         case AuthChangeEvent.userUpdated:
@@ -96,6 +101,7 @@ class AuthProvider extends ChangeNotifier {
           _isLocked = false;
           _encryptionReady = false;
           await _enc.clearKey();
+          onSignedOut?.call();
           _safeNotify();
           break;
         default:
@@ -104,40 +110,48 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
-  // --- Profile & Tags Sync ---
+  // --- Profile Sync ---
+  //
+  // AuthProvider only owns the auth-relevant slice of the profile row (PIN
+  // state). Tag colors are display/theming concerns and are synced directly
+  // by ThemeProvider — see [fetchProfile] below and
+  // ThemeProvider.applyTagsFromProfile/pushTagColors. This keeps AuthProvider
+  // free of any dependency on ThemeProvider's type, so it can be reused
+  // as-is in projects that don't have the same tag/theming model.
 
-  /// Fetches the user profile and updates associated providers (like ThemeProvider for tags).
-  Future<void> syncProfile(ThemeProvider themeProvider) async {
+  /// Fetches the current user's raw profile row from the backend, or null
+  /// if there is none / the fetch fails. Callers that care about other
+  /// fields (e.g. tags) can read them straight off the returned map.
+  Future<Map<String, dynamic>?> fetchProfile() async {
     try {
-      final profile = await _authService.fetchProfile();
-      if (profile != null) {
-        // Sync Tags
-        final tagsJson = profile[DBColumn.tags];
-        if (tagsJson != null) {
-          final List decoded = tagsJson is String ? jsonDecode(tagsJson) : tagsJson;
-          final tags = decoded.map((m) => EntryColorData.fromMap(m)).toList();
-          await themeProvider.setTagColors(tags, persist: true);
-        }
-        
-        // Sync PIN state
-        final remotePin = profile[DBColumn.pinEnabled] as bool? ?? false;
-        if (remotePin != _pinEnabled) {
-          await setPinEnabled(remotePin, syncToCloud: false);
-        }
-      }
+      return await _authService.fetchProfile();
     } catch (e) {
-      debugPrint('Profile sync failed: $e');
+      debugPrint('Profile fetch failed: $e');
+      return null;
     }
   }
 
-  /// Updates the tags in the Supabase profile.
-  Future<void> updateProfileTags(List<EntryColorData> tags) async {
-    try {
-      final tagsJson = tags.map((t) => t.toMap()).toList();
-      await _authService.updateProfile({DBColumn.tags: tagsJson});
-    } catch (e) {
-      debugPrint('Failed to update profile tags on server: $e');
-      // In a more robust implementation, we'd queue this for later sync.
+  /// Persists a partial update to the current user's profile row.
+  ///
+  /// Generic by design: AuthProvider doesn't need to know what's in [data].
+  /// This lets other providers (e.g. ThemeProvider, via
+  /// [ThemeProvider.pushTagColors]) persist their own slice of the profile
+  /// without AuthProvider taking on a dependency on their types.
+  Future<void> updateProfile(Map<String, dynamic> data) {
+    return _authService.updateProfile(data);
+  }
+
+  /// Reconciles local PIN-lock state with what's stored remotely.
+  ///
+  /// Pass an already-fetched profile map if you have one (e.g. from
+  /// [fetchProfile]) to avoid a redundant round-trip; otherwise this fetches
+  /// it itself.
+  Future<void> syncPinState([Map<String, dynamic>? profile]) async {
+    final data = profile ?? await fetchProfile();
+    if (data == null) return;
+    final remotePin = data[DBColumn.pinEnabled] as bool? ?? false;
+    if (remotePin != _pinEnabled) {
+      await setPinEnabled(remotePin, syncToCloud: false);
     }
   }
 
@@ -160,11 +174,11 @@ class AuthProvider extends ChangeNotifier {
     _pinEnabled = enabled;
     await _storage.write(key: StorageKeys.pinEnabled, value: enabled.toString());
     if (!enabled) await _storage.delete(key: StorageKeys.pinHash);
-    
+
     if (syncToCloud && isAuthenticated) {
       await _authService.updateProfile({DBColumn.pinEnabled: enabled});
     }
-    
+
     _safeNotify();
   }
 
@@ -203,7 +217,15 @@ class AuthProvider extends ChangeNotifier {
           await _keyService.saveWrappedKey(encDataKeyJson: pending);
           await _storage.delete(key: StorageKeys.pendingEncKey);
         }
-        await _enc.loadCachedKey();
+        final loaded = await _enc.loadCachedKey();
+        // No local cache and no pending key (e.g. a different device, or the
+        // pending key was already consumed previously) — fall back to
+        // unwrapping the key from the server with the password, same as the
+        // hasKeys branch. Without this, the user is let in with no
+        // encryption key, silently saving entries as empty ciphertext.
+        if (!loaded && !_enc.hasKey) {
+          await _keyService.loadAndUnwrapWithPassword(password);
+        }
       } else {
         final loaded = await _enc.loadCachedKey();
         if (!loaded) {
@@ -423,6 +445,7 @@ class AuthProvider extends ChangeNotifier {
       await SupabaseConfig.client.auth.updateUser(
         UserAttributes(password: newPassword),
       );
+      _safeNotify();
       return true;
     } on AuthException catch (e) {
       _errorMessage = AppErrors.updatePassword(e.message);

@@ -25,7 +25,7 @@ class Entry {
   final String content;
 
   /// Visual category or mood tag associated with the entry.
-  final EntryColorData colorTag;
+  final TagColorData colorTag;
 
   /// Total number of words in the [content].
   final int wordCount;
@@ -75,7 +75,7 @@ class Entry {
       userId: map[DBColumn.userId] as String,
       title: map['title'] as String? ?? '',
       content: map['content'] as String? ?? '',
-      colorTag: EntryColors.fromDbValue(
+      colorTag: EntryTags.fromDbValue(
           map[DBColumn.colorTag] as String? ?? 'stone'),
       wordCount: map[DBColumn.wordCount] as int? ?? 0,
       entryDate: DateTime.parse(
@@ -86,21 +86,6 @@ class Entry {
       isDeleted: (map[DBColumn.isDeleted] as int? ?? 0) == 1,
     );
   }
-
-  /// Converts the entry to a full map suitable for local database storage.
-  Map<String, dynamic> toMap() => {
-    DBColumn.id: id,
-    DBColumn.userId: userId,
-    DBColumn.titleEnc: title, 
-    DBColumn.contentEnc: content,
-    DBColumn.colorTag: colorTag.dbValue,
-    DBColumn.wordCount: wordCount,
-    DBColumn.entryDate: entryDate.toIso8601String().substring(0, 10),
-    DBColumn.createdAt: createdAt.toIso8601String(),
-    DBColumn.updatedAt: updatedAt.toIso8601String(),
-    DBColumn.syncStatus: syncStatus,
-    DBColumn.isDeleted: isDeleted ? 1 : 0,
-  };
 
   /// Converts the entry to a map for data export.
   Map<String, dynamic> toExportMap() => {
@@ -119,7 +104,7 @@ class Entry {
   String get contentPreview {
     final firstLine = content.split('\n').firstWhere(
           (l) => l.trim().isNotEmpty,
-          orElse: () => '',
+      orElse: () => '',
     );
     return firstLine.length > 120
         ? '${firstLine.substring(0, 120)}…'
@@ -138,7 +123,7 @@ class Entry {
     String? userId,
     String? title,
     String? content,
-    EntryColorData? colorTag,
+    TagColorData? colorTag,
     int? wordCount,
     DateTime? entryDate,
     DateTime? createdAt,

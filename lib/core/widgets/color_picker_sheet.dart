@@ -141,7 +141,7 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
         ),
       ),
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
+        bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? MediaQuery.of(context).viewInsets.bottom : AppSpacing.lg,
         top: AppSpacing.sm,
         left: AppSpacing.lg,
         right: AppSpacing.lg,
@@ -357,6 +357,7 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
 
               // ── button row ──────────────────────────────
               _buildButtonRow(t),
+              const SizedBox(height: AppSpacing.sm)
             ],
           ),
         ),
@@ -435,7 +436,6 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
         ),
       );
     }
-
     return Row(children: children);
   }
 }

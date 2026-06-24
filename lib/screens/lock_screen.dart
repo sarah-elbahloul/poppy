@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:poppy/core/core.dart';
 import 'package:poppy/services/pin_service.dart';
 import 'package:provider/provider.dart';
@@ -25,6 +26,17 @@ class _LockScreenState extends State<LockScreen> {
     // Ensure any active keyboard is dismissed when the lock screen is presented.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FocusManager.instance.primaryFocus?.unfocus();
+    });
+
+    // Pre-warm the active font pair so glyphs are ready before the first
+    // frame renders, preventing the flicker / FOUT on the lock screen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final fp = context.read<ThemeProvider>().currentFontPairData;
+      GoogleFonts.pendingFonts([
+        fp.titleFont.style(Colors.black, size: 16),
+        fp.bodyFont.style(Colors.black, size: 16),
+      ]);
     });
   }
 

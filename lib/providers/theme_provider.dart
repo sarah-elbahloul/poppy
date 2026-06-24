@@ -98,7 +98,7 @@ class ThemeProvider extends ChangeNotifier {
   PoppyFont _titleFont = PoppyFont.lora;
   PoppyFont _bodyFont = PoppyFont.inter;
 
-  List<EntryColorData> _tagColors = EntryColors.defaults;
+  List<TagColorData> _tagColors = EntryTags.defaults;
 
   static Future<ThemeProvider> initialise() async {
     final provider = ThemeProvider._();
@@ -112,7 +112,7 @@ class ThemeProvider extends ChangeNotifier {
 
   PoppyFont get currentTitleFont => _titleFont;
   PoppyFont get currentBodyFont => _bodyFont;
-  List<EntryColorData> get tagColors => _tagColors;
+  List<TagColorData> get tagColors => _tagColors;
 
   FontPairData get currentFontPairData =>
       FontPairData(PoppyFonts.fromId(_titleFont), PoppyFonts.fromId(_bodyFont));
@@ -179,8 +179,8 @@ class ThemeProvider extends ChangeNotifier {
       final tagsJson = map[StorageKeys.entryTags];
       if (tagsJson != null) {
         final List decoded = jsonDecode(tagsJson);
-        _tagColors = decoded.map((m) => EntryColorData.fromMap(m)).toList();
-        EntryColors.updateRegistry(_tagColors);
+        _tagColors = decoded.map((m) => TagColorData.fromMap(m)).toList();
+        EntryTags.updateRegistry(_tagColors);
       }
     } catch (_) {}
 
@@ -207,13 +207,57 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> setTagColors(List<EntryColorData> tags, {bool persist = true}) async {
+  Future<void> setTagColors(List<TagColorData> tags, {bool persist = true}) async {
     _tagColors = tags;
-    EntryColors.updateRegistry(tags);
+    EntryTags.updateRegistry(tags);
     notifyListeners();
     if (persist) {
       final json = jsonEncode(tags.map((t) => t.toMap()).toList());
       await _storage.write(key: StorageKeys.entryTags, value: json);
+    }
+  }
+
+  // --- Remote profile sync ---
+  //
+  // These two methods are deliberately decoupled from any specific auth/
+  // backend type. They take a raw profile map (or a save callback) rather
+  // than a service instance, so ThemeProvider has zero compile-time
+  // dependency on how the profile row is actually fetched/stored. This
+  // makes the provider portable: dropping it into another project only
+  // requires that project to supply *some* `Map<String, dynamic>` profile
+  // representation with a 'tags' key — not a particular AuthService shape.
+
+  /// Applies tag colors found in a raw profile map (e.g. a Supabase
+  /// 'profiles' row) to local state, decoding from JSON if necessary.
+  ///
+  /// Pass the map returned by your backend's profile fetch. If the map has
+  /// no 'tags' key, this is a no-op. Local state is always persisted so the
+  /// device has an offline-available copy.
+  Future<void> applyTagsFromProfile(Map<String, dynamic>? profile) async {
+    final tagsJson = profile?[DBColumn.tags];
+    if (tagsJson == null) return;
+    final List decoded = tagsJson is String ? jsonDecode(tagsJson) : tagsJson;
+    final tags = decoded.map((m) => TagColorData.fromMap(m)).toList();
+    await setTagColors(tags, persist: true);
+  }
+
+  /// Pushes the current tag colors to a remote profile store via [save].
+  ///
+  /// [save] is any function that persists a partial profile update — e.g.
+  /// `(data) => authService.updateProfile(data)`. Failures are caught and
+  /// logged rather than thrown, matching the "best-effort background sync"
+  /// behavior used elsewhere in the app; callers that need to know whether
+  /// the push succeeded should inspect the returned bool.
+  Future<bool> pushTagColors(
+      Future<void> Function(Map<String, dynamic> data) save,
+      ) async {
+    try {
+      final tagsJson = _tagColors.map((t) => t.toMap()).toList();
+      await save({DBColumn.tags: tagsJson});
+      return true;
+    } catch (e) {
+      debugPrint('Failed to push tag colors to remote profile: $e');
+      return false;
     }
   }
 

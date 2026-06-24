@@ -144,7 +144,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             style: AppTextStyles.titleLarge(t.textPrimary, fp)),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: t.accent))
           : ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [

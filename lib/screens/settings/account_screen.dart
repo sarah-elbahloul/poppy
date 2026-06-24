@@ -420,17 +420,16 @@ class _ErrorText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
     return Align(
       alignment: Alignment.centerLeft,
       child: Text(message,
-          style: AppTextStyles.bodySmallSans(t.accent, fp)),
+          style: AppTextStyles.bodySmallSans(AppColors.error, fp)),
     );
   }
 }
 
-class _Field extends StatelessWidget {
+class _Field extends StatefulWidget {
   final TextEditingController controller;
   final String label;
   final bool obscureText;
@@ -448,26 +447,53 @@ class _Field extends StatelessWidget {
   });
 
   @override
+  State<_Field> createState() => _FieldState();
+}
+
+class _FieldState extends State<_Field> {
+  late final FocusNode _internalFocus;
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _internalFocus = widget.focusNode ?? FocusNode();
+    _internalFocus.addListener(
+            () => setState(() => _focused = _internalFocus.hasFocus));
+  }
+
+  @override
+  void dispose() {
+    if (widget.focusNode == null) _internalFocus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
       decoration: BoxDecoration(
-        color: t.background,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        border: Border.all(color: t.border, width: AppStroke.hairline),
+        color: t.surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: _focused ? t.accent : t.border,
+          width: _focused ? AppStroke.medium : AppStroke.hairline,
+        ),
       ),
       child: TextField(
-        controller:   controller,
-        focusNode:    focusNode,
-        obscureText:  obscureText,
-        keyboardType: keyboardType,
+        controller:   widget.controller,
+        focusNode:    _internalFocus,
+        obscureText:  widget.obscureText,
+        keyboardType: widget.keyboardType,
         style: AppTextStyles.bodyMedium(t.textPrimary, fp),
         decoration: InputDecoration(
-          labelText:  label,
-          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary, fp),
-          suffixIcon: suffixIcon,
+          labelText:  widget.label,
+          labelStyle: AppTextStyles.bodySmallSans(
+              _focused ? t.accent : t.textTertiary, fp),
+          suffixIcon: widget.suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md, vertical: AppSpacing.sm,

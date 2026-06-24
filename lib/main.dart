@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:poppy/app.dart';
 import 'package:poppy/core/supabase_client.dart';
 import 'package:poppy/providers/providers.dart';
@@ -35,6 +36,15 @@ void main() async {
 
   // Load font + color preferences before the first frame is drawn.
   final themeProvider = await ThemeProvider.initialise();
+
+  // Pre-warm the default font pair so no FOUT occurs on the first frame.
+  // GoogleFonts.pendingFonts() downloads/caches the font files eagerly;
+  // subsequent TextStyle lookups are then synchronous.
+  final fp = themeProvider.currentFontPairData;
+  await GoogleFonts.pendingFonts([
+    fp.titleFont.style(Colors.black, size: 16),
+    fp.bodyFont.style(Colors.black, size: 16),
+  ]);
 
   runApp(
     MultiProvider(

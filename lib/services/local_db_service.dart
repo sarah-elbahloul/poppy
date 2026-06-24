@@ -272,18 +272,40 @@ class LocalDbService {
     await _database.delete('photos', where: '${DBColumn.id} = ?', whereArgs: [id]);
   }
 
-  Future<void> refreshFromServer(String userId, List<Map<String, dynamic>> serverRows) async {
+  Future<void> refreshFromServer(
+      String userId,
+      List<Map<String, dynamic>> serverRows, {
+        Set<String>? excludeIds,
+      }) async {
     final batch = _database.batch();
-    batch.delete('entries', 
-      where: '${DBColumn.userId} = ? AND ${DBColumn.syncStatus} = ?', 
-      whereArgs: [userId, SyncStatus.synced]
-    );
-    for (final row in serverRows) {
-      batch.insert('entries', _serverToLocal(row, userId), conflictAlgorithm: ConflictAlgorithm.ignore);
+
+    // Build the WHERE clause, optionally excluding just-synced IDs.
+    if (excludeIds != null && excludeIds.isNotEmpty) {
+      final placeholders = List.filled(excludeIds.length, '?').join(', ');
+      batch.delete(
+        'entries',
+        where: '${DBColumn.userId} = ? AND ${DBColumn.syncStatus} = ? '
+            'AND ${DBColumn.id} NOT IN ($placeholders)',
+        whereArgs: [userId, SyncStatus.synced, ...excludeIds],
+      );
+    } else {
+      batch.delete(
+        'entries',
+        where: '${DBColumn.userId} = ? AND ${DBColumn.syncStatus} = ?',
+        whereArgs: [userId, SyncStatus.synced],
+      );
     }
+
+    for (final row in serverRows) {
+      batch.insert(
+        'entries',
+        _serverToLocal(row, userId),
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    }
+
     await batch.commit(noResult: true);
   }
-
 
   Map<String, dynamic> _serverToLocal(Map<String, dynamic> row, String userId) {
     return {

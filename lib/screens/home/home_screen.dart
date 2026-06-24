@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   String? _selectedYear;
-  EntryColorData? _selectedColor;
+  TagColorData? _selectedColor;
 
   bool get _isBatchMode => _selectedIds.isNotEmpty;
   bool _searching = false;
@@ -45,31 +45,44 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     final hour = DateTime.now().hour;
-    setState(() {
-      if (hour < 12) {
-        _greeting = 'Good morning';
-      } else if (hour < 17) {
-        _greeting = 'Good afternoon';
-      } else {
-        _greeting = 'Good evening';
-      }
+    _greeting = hour < 12
+        ? 'Good morning'
+        : hour < 17
+        ? 'Good afternoon'
+        : 'Good evening';
+
+    // Listen to AuthProvider for encryptionReady changes rather than using
+    // context.watch inside didChangeDependencies, which can cause
+    // "looking up a deactivated widget" errors and misses re-login cycles.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      auth.addListener(_onAuthChanged);
+      // Trigger immediately if encryption is already ready (e.g. hot restart).
+      _onAuthChanged();
     });
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final encReady = context.watch<AuthProvider>().encryptionReady;
-    if (!_fetchedOnce && encReady) {
-      _fetchedOnce = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.read<EntriesProvider>().fetchEntries();
-      });
+  void _onAuthChanged() {
+    if (!mounted) return;
+    final auth = context.read<AuthProvider>();
+    if (auth.encryptionReady) {
+      if (!_fetchedOnce) {
+        _fetchedOnce = true;
+        context.read<EntriesProvider>().fetchEntries();
+      }
+    } else {
+      // Encryption is no longer ready (signed out / key cleared) — reset so
+      // the next sign-in triggers a fresh fetch.
+      _fetchedOnce = false;
     }
   }
 
   @override
   void dispose() {
+    // Safe: removeListener is a no-op if auth was disposed first.
+    final auth = context.read<AuthProvider>();
+    auth.removeListener(_onAuthChanged);
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -150,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openColorPicker() async {
     final t = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
-    final selected = await showModalBottomSheet<EntryColorData>(
+    final selected = await showModalBottomSheet<TagColorData>(
       context: context,
       backgroundColor: t.surface,
       shape: const RoundedRectangleBorder(
@@ -169,29 +182,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: AppTextStyles.labelLargeSans(t.textPrimary, fp),
               ),
               const SizedBox(height: AppSpacing.md),
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.sm,
-                children: EntryColors.all.map((colorData) {
-                  return GestureDetector(
-                    onTap: () => Navigator.pop(context, colorData),
-                    child: Container(
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: colorData.color,
-                          width: AppStroke.thin,
-                        ),
-                      ),
-                      child: ColorDot(
-                        colorData: colorData,
-                        size: 28,
-                        isSelected: false,
-                      ),
-                    ),
-                  );
-                }).toList(),
+              ColorTagSelector(
+                selected: null,
+                layout: ColorTagSelectorLayout.wrap,
+                showLabelOnSelect: false,
+                onSelected: (colorData) {
+                  if (colorData != null) Navigator.pop(context, colorData);
+                },
               ),
               const SizedBox(height: AppSpacing.lg),
             ],
@@ -251,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _selectedIds.clear());
   }
 
-  Future<void> _changeColorBatch(EntryColorData color) async {
+  Future<void> _changeColorBatch(TagColorData color) async {
     final provider = context.read<EntriesProvider>();
     final toUpdate = _selectedIds
         .map((id) => provider.getById(id))
@@ -330,15 +327,20 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: t.background,
         drawer: const SettingsDrawer(),
         appBar: _isBatchMode ? _batchAppBar(t) : _normalAppBar(t, provider),
-        body: _body(context, t, provider, entries),
+        body: RefreshIndicator(
+            onRefresh: () async {
+              await provider.fetchEntries();
+            },
+            child: _body(context, t, provider, entries)
+        ),
         floatingActionButton: _isBatchMode
             ? null
             : FloatingActionButton(
-                onPressed: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.write),
-                tooltip: 'New entry',
-                child: const Icon(AppIcons.add, size: AppIconSize.sm),
-              ),
+          onPressed: () =>
+              Navigator.of(context).pushNamed(AppRoutes.write),
+          tooltip: 'New entry',
+          child: const Icon(AppIcons.add, size: AppIconSize.sm),
+        ),
       ),
     );
   }
@@ -356,9 +358,9 @@ class _HomeScreenState extends State<HomeScreen> {
         title: _searching
             ? null
             : Text(
-                '$_greeting, $username!',
-                style: AppTextStyles.titleLarge(t.textPrimary, fp),
-              ),
+          '$_greeting, $username!',
+          style: AppTextStyles.titleLarge(t.textPrimary, fp),
+        ),
         leading: Padding(
           padding: const EdgeInsets.all(AppSpacing.sm),
           child: Builder(
@@ -375,66 +377,65 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           _searching
               ? SizedBox(
-                  key: const ValueKey('searchField'),
-                  width: AppComponentSize.searchFieldWidth(context),
-                  height: AppComponentSize.filterBarHeight,
-                  child: BidiTextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    autofocus: true,
-                    style: AppTextStyles.bodyMedium(t.textPrimary, fp),
-                    textAlignVertical: TextAlignVertical.center,
-                    textAlign: TextAlign.start,
-                    onChanged: (_) => _applyAllFilters(),
-                    decoration: InputDecoration(
-                      fillColor: t.surface,
-                      filled: true,
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        borderSide: BorderSide(
-                          color: t.accent,
-                          width: AppStroke.thin,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        borderSide: BorderSide(
-                          color: t.accent,
-                          width: AppStroke.thin,
-                        ),
-                      ),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                          borderSide: BorderSide(
-                            color: t.border,
-                            width: AppStroke.thin,
-                          )),
-                      hintText: 'Search entries...',
-                      hintStyle:
-                          AppTextStyles.labelLargeSerif(t.textTertiary, fp),
-                      suffixIcon: GestureDetector(
-                        onTap: _exitSearch,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: AppSpacing.xs),
-                          child: Icon(
-                            AppIcons.close,
-                            size: AppIconSize.xs,
-                            color: t.textSecondary,
-                          ),
-                        ),
-                      ),
+            key: const ValueKey('searchField'),
+            width: AppComponentSize.searchFieldWidth(context),
+            height: AppComponentSize.filterBarHeight,
+            child: BidiTextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              autofocus: true,
+              style: AppTextStyles.bodyMedium(t.textPrimary, fp),
+              textAlignVertical: TextAlignVertical.center,
+              textAlign: TextAlign.start,
+              onChanged: (_) => _applyAllFilters(),
+              decoration: InputDecoration(
+                fillColor: t.surface,
+                filled: true,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  borderSide: BorderSide(
+                    color: t.accent,
+                    width: AppStroke.thin,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  borderSide: BorderSide(
+                    color: t.accent,
+                    width: AppStroke.thin,
+                  ),
+                ),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    borderSide: BorderSide(
+                      color: t.border,
+                      width: AppStroke.thin,
+                    )),
+                hintText: 'Search entries...',
+                hintStyle:
+                AppTextStyles.labelLargeSerif(t.textTertiary, fp),
+                suffixIcon: GestureDetector(
+                  onTap: _exitSearch,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.xs),
+                    child: Icon(
+                      AppIcons.close,
+                      size: AppIconSize.xs,
+                      color: t.textSecondary,
                     ),
                   ),
-                )
-              : IconButton(
-                  key: const ValueKey('searchIcon'),
-                  icon: Icon(AppIcons.search,
-                      color: t.textSecondary, size: AppIconSize.sm),
-                  onPressed: _startSearch,
                 ),
-          IconButton(
-            icon: Icon(AppIcons.sort,
+              ),
+            ),
+          )
+              : IconButton(
+            key: const ValueKey('searchIcon'),
+            icon: Icon(AppIcons.search,
                 color: t.textSecondary, size: AppIconSize.sm),
+            onPressed: _startSearch,
+          ),
+          IconButton(
+            icon: Icon(AppIcons.sort, color: t.textSecondary, size: AppIconSize.sm),
             tooltip: 'Sort ${_sortDesc ? 'descending' : 'ascending'}',
             onPressed: () => setState(() => _sortDesc = !_sortDesc),
           ),
@@ -452,7 +453,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: t.background,
       leading: IconButton(
         icon:
-            Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
+        Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
         onPressed: _cancelBatch,
       ),
       title: Text('${_selectedIds.length} selected',
@@ -486,14 +487,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _body(
-    BuildContext context,
-    PoppyThemeExtension t,
-    EntriesProvider provider,
-    List<Entry> entries,
-  ) {
+      BuildContext context,
+      PoppyThemeExtension t,
+      EntriesProvider provider,
+      List<Entry> entries,
+      ) {
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
-    if (provider.isLoading || !_fetchedOnce) {
+    if (provider.isLoading && !_fetchedOnce) {
       return Column(
         children: [
           const _FiltersSkeleton(),
@@ -540,15 +541,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (provider.entries.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: () => provider.fetchEntries(),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            SizedBox(height: MediaQuery.heightOf(context) / 4),
-            _EmptyState(),
-          ],
-        ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: MediaQuery.heightOf(context) / 4),
+          _EmptyState(),
+        ],
       );
     }
 
@@ -588,7 +586,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: MenuAnchor(
                         alignmentOffset:
-                            const Offset(-AppSpacing.sm, AppSpacing.xs),
+                        const Offset(-AppSpacing.sm, AppSpacing.xs),
                         style: MenuStyle(
                           minimumSize: WidgetStatePropertyAll(Size(
                               AppComponentSize.searchFieldWidth(context) / 2.7,
@@ -604,7 +602,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       topRight: Radius.circular(0),
                                       bottomLeft: Radius.circular(AppRadius.sm),
                                       bottomRight:
-                                          Radius.circular(AppRadius.sm)))),
+                                      Radius.circular(AppRadius.sm)))),
                         ),
                         menuChildren: years.map((year) {
                           final isSelected = year == _selectedYear;
@@ -712,55 +710,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(width: AppSpacing.xs),
                     Expanded(
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: EntryColors.all.map((colorData) {
-                          final isSelected = _selectedColor?.id == colorData.id;
-                          return GestureDetector(
-                            onTap: () {
-                              final newColor = isSelected ? null : colorData;
-                              setState(() => _selectedColor = newColor);
-                              _applyAllFilters();
-                            },
-                            child: AnimatedContainer(
-                              duration: AppDuration.fast,
-                              margin: const EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.xs / 3, vertical: 6),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.xs),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? (colorData.color).withValues(alpha: 0.12)
-                                    : Colors.transparent,
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.full),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? colorData.color
-                                      : Colors.transparent,
-                                  width: AppStroke.thin,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  ColorDot(
-                                    colorData: colorData,
-                                    size: AppComponentSize.colorDotChip,
-                                    isSelected: false,
-                                  ),
-                                  if (isSelected) ...[
-                                    const SizedBox(width: AppSpacing.xs),
-                                    Text(
-                                      colorData.name,
-                                      style: AppTextStyles.labelLargeSans(
-                                          colorData.color, fp),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                      child: ColorTagSelector(
+                        selected: _selectedColor,
+                        allowDeselect: true,
+                        onSelected: (color) {
+                          setState(() => _selectedColor = color);
+                          _applyAllFilters();
+                        },
                       ),
                     ),
                     if (_selectedColor != null)
@@ -791,50 +747,45 @@ class _HomeScreenState extends State<HomeScreen> {
           color: t.border,
         ),
         Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              await provider.fetchEntries();
-            },
-            child: ListView.separated(
-              padding: const EdgeInsets.only(bottom: 100),
-              itemCount: displayedEntries.length,
-              separatorBuilder: (_, __) => Divider(
-                height: AppStroke.hairline,
-                thickness: AppStroke.hairline,
-                color: t.border,
-              ),
-              itemBuilder: (context, i) {
-                final entry = displayedEntries[i];
-                final isSelected = _selectedIds.contains(entry.id);
-
-                return Column(
-                  children: [
-                    Stack(
-                      children: [
-                        if (isSelected)
-                          Positioned.fill(
-                            child: Container(color: t.accentLight),
-                          ),
-                        EntryCard(
-                          entry: entry,
-                          onTap: () => _onEntryTap(entry),
-                          onLongPress: () => _onEntryLongPress(entry),
-                          isBatchMode: _isBatchMode,
-                          isSelected: isSelected,
-                        ),
-                      ],
-                    ),
-                    if (i == displayedEntries.length - 1) ...[
-                      Divider(
-                        height: AppStroke.hairline,
-                        thickness: AppStroke.hairline,
-                        color: t.border,
-                      )
-                    ]
-                  ],
-                );
-              },
+          child: ListView.separated(
+            padding: const EdgeInsets.only(bottom: 100),
+            itemCount: displayedEntries.length,
+            separatorBuilder: (_, __) => Divider(
+              height: AppStroke.hairline,
+              thickness: AppStroke.hairline,
+              color: t.border,
             ),
+            itemBuilder: (context, i) {
+              final entry = displayedEntries[i];
+              final isSelected = _selectedIds.contains(entry.id);
+
+              return Column(
+                children: [
+                  Stack(
+                    children: [
+                      if (isSelected)
+                        Positioned.fill(
+                          child: Container(color: t.accentLight),
+                        ),
+                      EntryCard(
+                        entry: entry,
+                        onTap: () => _onEntryTap(entry),
+                        onLongPress: () => _onEntryLongPress(entry),
+                        isBatchMode: _isBatchMode,
+                        isSelected: isSelected,
+                      ),
+                    ],
+                  ),
+                  if (i == displayedEntries.length - 1) ...[
+                    Divider(
+                      height: AppStroke.hairline,
+                      thickness: AppStroke.hairline,
+                      color: t.border,
+                    )
+                  ]
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -1000,9 +951,9 @@ class _FiltersSkeleton extends StatelessWidget {
                   Expanded(
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: EntryColors.all.length,
+                      itemCount: EntryTags.all.length,
                       separatorBuilder: (_, __) =>
-                          const SizedBox(width: AppSpacing.sm * 1.5),
+                      const SizedBox(width: AppSpacing.sm * 1.5),
                       itemBuilder: (_, __) {
                         return Container(
                           width: AppComponentSize.colorDotChip,

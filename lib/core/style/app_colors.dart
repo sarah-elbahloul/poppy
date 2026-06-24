@@ -105,7 +105,7 @@ class MonthColors {
 }
 
 /// Data structure representing an entry color tag.
-class EntryColorData {
+class TagColorData {
   /// Unique identifier for the tag.
   final String id;
 
@@ -118,7 +118,7 @@ class EntryColorData {
   /// Whether this is a default tag that was provided by the app.
   final bool isBuiltIn;
 
-  const EntryColorData({
+  const TagColorData({
     required this.id,
     required this.name,
     required this.color,
@@ -135,8 +135,8 @@ class EntryColorData {
     'isBuiltIn': isBuiltIn,
   };
 
-  factory EntryColorData.fromMap(Map<String, dynamic> map) {
-    return EntryColorData(
+  factory TagColorData.fromMap(Map<String, dynamic> map) {
+    return TagColorData(
       id: map['id'] as String,
       name: map['name'] as String,
       color: Color(map['color'] as int),
@@ -144,13 +144,13 @@ class EntryColorData {
     );
   }
 
-  EntryColorData copyWith({
+  TagColorData copyWith({
     String? id,
     String? name,
     Color? color,
     bool? isBuiltIn,
   }) {
-    return EntryColorData(
+    return TagColorData(
       id: id ?? this.id,
       name: name ?? this.name,
       color: color ?? this.color,
@@ -161,15 +161,15 @@ class EntryColorData {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is EntryColorData && other.id == id);
+      (other is TagColorData && other.id == id);
 
   @override
   int get hashCode => id.hashCode;
 }
 
 /// Central registry for entry color tags.
-class EntryColors {
-  EntryColors._();
+class EntryTags {
+  EntryTags._();
 
   /// Minimum number of tags a user must have.
   static const int minTags = 3;
@@ -177,30 +177,30 @@ class EntryColors {
   /// Maximum number of tags a user can have.
   static const int maxTags = 12;
 
-  static const List<EntryColorData> defaults = [
-    EntryColorData(id: 'poppy', name: 'Poppy', color: Color(0xFFC94040), isBuiltIn: true),
-    EntryColorData(id: 'iris', name: 'Iris', color: Color(0xFF5C6BC0), isBuiltIn: true),
-    EntryColorData(id: 'lily', name: 'Lily', color: Color(0xFF9CCC65), isBuiltIn: true),
-    EntryColorData(id: 'marigold', name: 'Marigold', color: Color(0xFFFFB300), isBuiltIn: true),
-    EntryColorData(id: 'lavender', name: 'Lavender', color: Color(0xFFBA68C8), isBuiltIn: true),
-    EntryColorData(id: 'stone', name: 'Stone', color: Color(0xFF90A4AE), isBuiltIn: true),
+  static const List<TagColorData> defaults = [
+    TagColorData(id: 'poppy', name: 'Poppy', color: Color(0xFFC94040), isBuiltIn: true),
+    TagColorData(id: 'iris', name: 'Iris', color: Color(0xFF5C6BC0), isBuiltIn: true),
+    TagColorData(id: 'lily', name: 'Lily', color: Color(0xFF9CCC65), isBuiltIn: true),
+    TagColorData(id: 'marigold', name: 'Marigold', color: Color(0xFFFFB300), isBuiltIn: true),
+    TagColorData(id: 'lavender', name: 'Lavender', color: Color(0xFFBA68C8), isBuiltIn: true),
+    TagColorData(id: 'stone', name: 'Stone', color: Color(0xFF90A4AE), isBuiltIn: true),
   ];
 
-  /// The default entry color tag.
-  static final defaultColor = defaults[0];
-
-  static List<EntryColorData> _registry = defaults;
+  static List<TagColorData> _registry = defaults;
 
   /// List of all currently available entry color tags.
-  static List<EntryColorData> get all => _registry;
+  static List<TagColorData> get all => _registry;
+
+  /// The default entry color tag.
+  static final defaultColor = all[0];
 
   /// Updates the global registry with the user's custom tags.
-  static void updateRegistry(List<EntryColorData> tags) {
+  static void updateRegistry(List<TagColorData> tags) {
     _registry = tags;
   }
 
-  /// Retrieves [EntryColorData] from its [id] (or [dbValue]).
-  static EntryColorData fromDbValue(String id) {
+  /// Retrieves [TagColorData] from its [id] (or [dbValue]).
+  static TagColorData fromDbValue(String id) {
     return _registry.firstWhere(
       (c) => c.id == id, 
       orElse: () => defaults.firstWhere(

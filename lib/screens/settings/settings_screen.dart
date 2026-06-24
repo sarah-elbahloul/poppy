@@ -12,7 +12,7 @@ import 'package:provider/provider.dart';
 // ─────────────────────────────────────────────────────────────
 
 /// The central settings hub of the application.
-/// 
+///
 /// Organizes all configuration options into logical sections:
 /// - Personalization (Appearance)
 /// - Account & Security
@@ -180,94 +180,18 @@ class SettingsScreen extends StatelessWidget {
   // ─── Actions ───
 
   /// Initiates the diary export process, offering choice between plain and encrypted files.
+  /// Initiates the diary export process, offering choice between plain and encrypted files.
   Future<void> _onExport(BuildContext context) async {
     final entries = context.read<EntriesProvider>().entries;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     if (entries.isEmpty) {
       AppSnackbar.warning(context, 'No entries to export.');
       return;
     }
 
-    final t = context.poppyTheme;
-
     final choice = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: t.surface,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg)),
-        title: Text('Export diary',
-            style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _ExportOption(
-              icon:  AppIcons.lock,
-              title: 'Encrypted',
-              desc:  'Entries are scrambled. Only importable back into this Poppy account.',
-              color: t.accent,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color:        AppColors.error.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-                border:       Border.all(
-                  color: AppColors.error.withValues(alpha: 0.25),
-                  width: AppStroke.hairline,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _ExportOption(
-                    icon:  AppIcons.export_,
-                    title: 'Plain text',
-                    desc:  'Readable by anyone who opens the file.',
-                    color: AppColors.error,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Row(
-                    children: [
-                      const Icon(AppIcons.info,
-                          size: 13, color: AppColors.error),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'Your diary entries will be unprotected. '
-                              'Only use if you need to open the file outside Poppy.',
-                          style: AppTextStyles.labelSmall(AppColors.error, fp)
-                              .copyWith(height: 1.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel',
-                style: TextStyle(color: t.textTertiary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Plain text',
-                style: TextStyle(color: AppColors.error)),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: t.accent),
-            child: const Text('Encrypted'),
-          ),
-        ],
-      ),
+      builder: (_) => const _ExportChoiceDialog(),
     );
 
     if (choice == null || !context.mounted) return;
@@ -981,6 +905,171 @@ class _DeleteAccountConfirmDialogState
           child: const Text('Delete my account'),
         ),
       ],
+    );
+  }
+}
+/// The export-format choice dialog: tapping an option selects it
+/// (highlighted in place), and the action row is just Cancel/Confirm.
+///
+/// Returns `true` (encrypted) or `false` (plain text) via [Navigator.pop],
+/// or `null` if cancelled — same contract as the dialog it replaces.
+class _ExportChoiceDialog extends StatefulWidget {
+  const _ExportChoiceDialog();
+
+  @override
+  State<_ExportChoiceDialog> createState() => _ExportChoiceDialogState();
+}
+
+class _ExportChoiceDialogState extends State<_ExportChoiceDialog> {
+  // Default to the safer option.
+  bool _encrypted = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
+    return AlertDialog(
+      actionsAlignment: MainAxisAlignment.spaceBetween,
+      backgroundColor: t.surface,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg)),
+      title: Text('Export diary',
+          style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ExportOptionTile(
+            icon: AppIcons.lock,
+            title: 'Encrypted',
+            desc: 'Entries are scrambled. Only importable back into this '
+                'Poppy account.',
+            color: t.accent,
+            isSelected: _encrypted,
+            onTap: () => setState(() => _encrypted = true),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _ExportOptionTile(
+            icon: AppIcons.export_,
+            title: 'Plain text',
+            desc: 'Readable by anyone who opens the file.',
+            color: AppColors.error,
+            isSelected: !_encrypted,
+            onTap: () => setState(() => _encrypted = false),
+            warning: 'Your diary entries will be unprotected. Only use if '
+                'you need to open the file outside Poppy.',
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancel', style: TextStyle(color: t.textTertiary)),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, _encrypted),
+          style: FilledButton.styleFrom(
+            backgroundColor: _encrypted ? t.accent : AppColors.error,
+          ),
+          child: const Text('Confirm'),
+        ),
+      ],
+    );
+  }
+}
+
+/// A tappable export-option row. Highlights with a tinted background and
+/// colored border when [isSelected] — the same selection language used by
+/// [ColorTagSelector] elsewhere in the app. When selected and [warning] is
+/// set, an inline warning note appears beneath the description.
+class _ExportOptionTile extends StatelessWidget {
+  final IconData icon;
+  final String   title;
+  final String   desc;
+  final Color    color;
+  final bool     isSelected;
+  final VoidCallback onTap;
+  final String?  warning;
+
+  const _ExportOptionTile({
+    required this.icon,
+    required this.title,
+    required this.desc,
+    required this.color,
+    required this.isSelected,
+    required this.onTap,
+    this.warning,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t  = context.poppyTheme;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withValues(alpha: 0.08) : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          border: Border.all(
+            color: isSelected ? color : t.border,
+            width: isSelected ? AppStroke.medium : AppStroke.hairline,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(icon, size: AppIconSize.xs, color: color),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title,
+                          style: AppTextStyles.titleSmallSans(
+                              t.textPrimary, fp)),
+                      Text(desc,
+                          style:
+                          AppTextStyles.labelLargeSans(t.textTertiary, fp)),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  width: AppIconSize.sm,
+                  height: AppIconSize.sm,
+                  child: isSelected
+                      ? Icon(AppIcons.checkCircle, size: AppIconSize.sm, color: color)
+                      : null,
+                ),
+              ],
+            ),
+            if (isSelected && warning != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(AppIcons.info, size: 13, color: color),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      warning!,
+                      style: AppTextStyles.labelSmall(color, fp)
+                          .copyWith(height: 1.5),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

@@ -26,14 +26,24 @@ class EntriesService {
 
   // --- Persistence ---
 
-  /// Creates a new entry, encrypting it before saving locally and triggering sync.
+  /// Creates a new entry, encrypting it before saving locally.
+  ///
+  /// **Does NOT trigger sync here.** Sync is initiated by the provider's
+  /// [fetchEntries], connectivity changes, or the next explicit sync call.
+  /// Triggering sync from within create/update caused a race condition:
+  /// the background sync would mark the entry as "synced" and then
+  /// [_refreshFromServer] would delete it before [getEntryById] could
+  /// read it back, returning null and producing an empty entry.
+  ///
+  /// Returns the caller's entry with the generated [id], [createdAt], and
+  /// [updatedAt] filled in — no round-trip read from SQLite.
   Future<Entry> create(Entry entry) async {
     final userId = SupabaseConfig.userId;
     final encrypted = await _buildEncryptedMap(entry);
 
     final id = entry.id.isEmpty ? _uuid.v4() : entry.id;
-    final now = DateTime.now().toUtc().toIso8601String();
-    
+    final now = DateTime.now().toUtc();
+
     final row = {
       DBColumn.id: id,
       DBColumn.userId: userId,
@@ -42,18 +52,33 @@ class EntriesService {
       DBColumn.colorTag: entry.colorTag.dbValue,
       DBColumn.wordCount: entry.wordCount,
       DBColumn.entryDate: entry.entryDate.toIso8601String().substring(0, 10),
-      DBColumn.createdAt: now,
-      DBColumn.updatedAt: now,
+      DBColumn.createdAt: now.toIso8601String(),
+      DBColumn.updatedAt: now.toIso8601String(),
     };
 
     await _local.insertEntry(row);
-    unawaited(_sync.syncNow());
+    // Sync is NOT triggered here — see doc comment above.
 
-    final saved = await _local.getEntryById(id);
-    return _decryptSingle(Map<String, dynamic>.from(saved ?? row));
+    // [LocalDbService.insertEntry] always stamps newly-inserted rows with
+    // SyncStatus.pendingCreate. Reflect that on the returned entry too —
+    // otherwise the in-memory/UI copy still shows the caller's default
+    // (SyncStatus.synced), so the pending-sync dot on the entry card stays
+    // hidden until the next full fetchEntries() reload.
+    return entry.copyWith(
+      id: id,
+      createdAt: now,
+      updatedAt: now,
+      syncStatus: SyncStatus.pendingCreate,
+    );
   }
 
-  /// Updates an existing entry locally and triggers a cloud sync.
+  /// Updates an existing entry locally.
+  ///
+  /// **Does NOT trigger sync here** (see [create] for rationale).
+  ///
+  /// Returns the caller's entry with [updatedAt] refreshed — no round-trip
+  /// read from SQLite, which eliminates the race condition that was
+  /// wiping title and content.
   Future<Entry> update(Entry entry) async {
     final encrypted = await _buildEncryptedMap(entry);
     final now = DateTime.now().toUtc().toIso8601String();
@@ -68,13 +93,28 @@ class EntriesService {
     };
 
     await _local.updateEntry(entry.id, fields);
-    unawaited(_sync.syncNow());
+    // Sync is NOT triggered here — see [create] doc comment.
 
-    final updated = await _local.getEntryById(entry.id);
-    return _decryptSingle(Map<String, dynamic>.from(updated ?? {}));
+    // Mirror [LocalDbService.updateEntry]'s status transition so the
+    // returned entry's syncStatus matches what was actually persisted:
+    // an entry that was never synced (pendingCreate) stays pendingCreate;
+    // anything else becomes pendingUpdate. Without this, the in-memory
+    // copy keeps the caller's old syncStatus (often "synced"), so the
+    // pending-sync dot doesn't appear immediately after an edit.
+    final newStatus = entry.syncStatus == SyncStatus.pendingCreate
+        ? SyncStatus.pendingCreate
+        : SyncStatus.pendingUpdate;
+
+    return entry.copyWith(
+      updatedAt: DateTime.parse(now),
+      syncStatus: newStatus,
+    );
   }
 
   /// Marks an entry for deletion locally and triggers a cloud sync.
+  ///
+  /// Safe to trigger sync here because there is no read-back after the
+  /// write — the provider already did an optimistic in-memory removal.
   Future<void> delete(String entryId) async {
     await _local.markEntryDeleted(entryId);
     unawaited(_sync.syncNow());
@@ -110,8 +150,8 @@ class EntriesService {
       final q = query.trim().toLowerCase();
       entries = entries
           .where((e) =>
-              e.title.toLowerCase().contains(q) ||
-              e.content.toLowerCase().contains(q))
+      e.title.toLowerCase().contains(q) ||
+          e.content.toLowerCase().contains(q))
           .toList();
     }
 

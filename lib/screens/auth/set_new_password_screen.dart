@@ -182,7 +182,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
 //  Private sub-widgets
 // ─────────────────────────────────────────────────────────────
 
-class _Field extends StatelessWidget {
+class _Field extends StatefulWidget {
   final TextEditingController controller;
   final String label;
   final bool obscureText;
@@ -198,25 +198,52 @@ class _Field extends StatelessWidget {
   });
 
   @override
+  State<_Field> createState() => _FieldState();
+}
+
+class _FieldState extends State<_Field> {
+  late final FocusNode _internalFocus;
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _internalFocus = widget.focusNode ?? FocusNode();
+    _internalFocus.addListener(
+            () => setState(() => _focused = _internalFocus.hasFocus));
+  }
+
+  @override
+  void dispose() {
+    if (widget.focusNode == null) _internalFocus.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
       decoration: BoxDecoration(
         color: t.surface,
         borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: t.border, width: AppStroke.hairline),
+        border: Border.all(
+          color: _focused ? t.accent : t.border,
+          width: _focused ? AppStroke.medium : AppStroke.hairline,
+        ),
       ),
       child: TextField(
-        controller:  controller,
-        focusNode:   focusNode,
-        obscureText: obscureText,
+        controller:  widget.controller,
+        focusNode:   _internalFocus,
+        obscureText: widget.obscureText,
         style: AppTextStyles.bodyMedium(t.textPrimary, fp),
         decoration: InputDecoration(
-          labelText:  label,
-          labelStyle: AppTextStyles.bodySmallSans(t.textTertiary, fp),
-          suffixIcon: suffixIcon,
+          labelText:  widget.label,
+          labelStyle: AppTextStyles.bodySmallSans(
+              _focused ? t.accent : t.textTertiary, fp),
+          suffixIcon: widget.suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md, vertical: AppSpacing.md,
@@ -251,24 +278,26 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t  = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: t.accentLight,
+        color: AppColors.errorLight,
         borderRadius: BorderRadius.circular(AppRadius.sm),
         border: Border.all(
-            color: t.accent.withValues(alpha: 0.3), width: AppStroke.hairline),
+            color: AppColors.errorMuted, width: AppStroke.hairline),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
+          const Icon(AppIcons.warning, size: AppIconSize.xs, color: AppColors.error),
           const SizedBox(width: AppSpacing.sm),
-          Expanded(child: Text(message,
-              style: AppTextStyles.bodySmallSans(t.accent, fp))),
+          Expanded(
+            child: Text(message,
+                style: AppTextStyles.bodySmallSans(AppColors.error, fp)
+                    .copyWith(height: 1.4)),
+          ),
         ],
       ),
     );

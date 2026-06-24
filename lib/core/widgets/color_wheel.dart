@@ -61,10 +61,11 @@ class _ColorWheelState extends State<ColorWheel> {
   /// Extracts HSL components from a [Color] to update internal state.
   void _syncFromColor(Color c) {
     final hsl = HSLColor.fromColor(c);
-    _hue = hsl.hue;
-    _saturation = hsl.saturation;
-    // Clamp lightness slightly away from extremes (0 or 1) to keep the indicator usable.
-    _lightness = hsl.lightness.clamp(0.01, 0.99);
+    setState(() {
+      _hue = hsl.hue;
+      _saturation = hsl.saturation.clamp(0.0, 1.0);
+      _lightness = hsl.lightness.clamp(0.0, 1.0);
+    });
   }
 
   /// Returns the currently selected [Color] based on HSL state.
@@ -134,10 +135,19 @@ class _ColorWheelState extends State<ColorWheel> {
       center + hueRadius * math.sin(hueRad),
     );
 
-    final satLightDotPos = Offset(
-      center + (_saturation * 2 - 1) * innerR,
-      center + ((1 - _lightness) * 2 - 1) * innerR,
-    );
+    // Calculate raw position in the square HSL space
+    var slDx = (_saturation * 2 - 1) * innerR;
+    var slDy = ((1 - _lightness) * 2 - 1) * innerR;
+
+    // Clamp to the circular boundary
+    final slDist = math.sqrt(slDx * slDx + slDy * slDy);
+    if (slDist > innerR) {
+      final scale = innerR / slDist;
+      slDx *= scale;
+      slDy *= scale;
+    }
+
+    final satLightDotPos = Offset(center + slDx, center + slDy);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,

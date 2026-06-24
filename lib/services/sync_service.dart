@@ -40,8 +40,8 @@ class SyncService {
 
     _isSyncing = true;
     try {
-      await _processQueue(userId);
-      await _refreshFromServer(userId);
+      final justSyncedEntryIds = await _processQueue(userId);
+      await _refreshFromServer(userId, excludeIds: justSyncedEntryIds);
       onSyncComplete?.call();
     } catch (e) {
       debugPrint('Sync failed: $e');
@@ -50,9 +50,11 @@ class SyncService {
     }
   }
 
-  Future<void> _processQueue(String userId) async {
+  Future<Set<String>> _processQueue(String userId) async {
     final queue = await _local.getSyncQueue();
-    if (queue.isEmpty) return;
+    if (queue.isEmpty) return const {};
+
+    final justSyncedEntryIds = <String>{};
 
     for (final item in queue) {
       final queueId = item['id'] as int;
@@ -63,6 +65,9 @@ class SyncService {
       try {
         if (type == 'entry') {
           await _syncEntry(entityId, userId, op);
+          if (op != SyncOp.delete) {
+            justSyncedEntryIds.add(entityId);
+          }
         } else if (type == 'photo') {
           await _syncPhoto(entityId, userId, op);
         }
@@ -72,6 +77,8 @@ class SyncService {
         continue;
       }
     }
+
+    return justSyncedEntryIds;
   }
 
   Future<void> _syncEntry(String id, String userId, String op) async {
@@ -84,11 +91,14 @@ class SyncService {
     final row = await _local.getEntryById(id);
     if (row == null) return;
 
+    // FIX: Send the raw encrypted strings directly.
+    // Converting to Map via jsonDecode (_parseJson) causes PostgREST type
+    // mismatches if the Supabase column is 'text', or risks double-encoding.
     final payload = {
       DBColumn.id: row[DBColumn.id],
       DBColumn.userId: userId,
-      DBColumn.titleEnc: _parseJson(row[DBColumn.titleEnc]),
-      DBColumn.contentEnc: _parseJson(row[DBColumn.contentEnc]),
+      DBColumn.titleEnc: row[DBColumn.titleEnc],
+      DBColumn.contentEnc: row[DBColumn.contentEnc],
       DBColumn.colorTag: row[DBColumn.colorTag],
       DBColumn.wordCount: row[DBColumn.wordCount],
       DBColumn.entryDate: row[DBColumn.entryDate],
@@ -121,7 +131,6 @@ class SyncService {
     final localPath = row[DBColumn.localPath] as String?;
     final isUploaded = (row[DBColumn.uploaded] as int? ?? 0) == 1;
 
-    // If the file is local and not yet uploaded, push it to storage first
     if (!isUploaded && localPath != null) {
       final file = File(localPath);
       if (await file.exists()) {
@@ -131,8 +140,6 @@ class SyncService {
           entryId: entryId,
           filename: p.basename(file.path),
         );
-        
-        // Pass the non-nullable String to the upload method
         await _client.storage.from(StorageBucket.photos).upload(uploadPath, file);
         storagePath = uploadPath;
       }
@@ -152,20 +159,17 @@ class SyncService {
     }
   }
 
-  Future<void> _refreshFromServer(String userId) async {
+  Future<void> _refreshFromServer(String userId, {Set<String>? excludeIds}) async {
     final response = await _client
         .from(DBTable.entries)
         .select()
         .eq(DBColumn.userId, userId)
         .order(DBColumn.entryDate, ascending: false);
 
-    await _local.refreshFromServer(userId, List<Map<String, dynamic>>.from(response as List));
-  }
-
-  dynamic _parseJson(dynamic val) {
-    if (val is String) {
-      try { return jsonDecode(val); } catch (_) { return val; }
-    }
-    return val;
+    await _local.refreshFromServer(
+      userId,
+      List<Map<String, dynamic>>.from(response as List),
+      excludeIds: excludeIds,
+    );
   }
 }
