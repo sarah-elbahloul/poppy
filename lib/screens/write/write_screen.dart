@@ -56,9 +56,7 @@ class _WriteScreenState extends State<WriteScreen> {
   DateTime? _lastLimitSnackbarTime;
 
   bool get _isEditing => _existingEntry != null;
-
   int get _totalPhotos => _savedPhotos.length + _pendingPhotos.length;
-
   int get _liveWordCount => Entry.countWords(_contentController.text);
 
   bool get _photosChanged {
@@ -149,7 +147,6 @@ class _WriteScreenState extends State<WriteScreen> {
 
     try {
       final provider = context.read<EntriesProvider>();
-
       final title = _titleController.text.trim();
 
       Entry? updatedEntry;
@@ -275,7 +272,7 @@ class _WriteScreenState extends State<WriteScreen> {
 
       final int remaining = 10 - _totalPhotos;
       final int countToTake =
-          pickedFiles.length > remaining ? remaining : pickedFiles.length;
+      pickedFiles.length > remaining ? remaining : pickedFiles.length;
       final List<XFile> toProcess = pickedFiles.take(countToTake).toList();
 
       final List<_PendingPhoto> newPhotos = [];
@@ -332,7 +329,7 @@ class _WriteScreenState extends State<WriteScreen> {
             ListTile(
               leading: Icon(AppIcons.camera, color: t.accent),
               title:
-                  Text('Take a photo', style: TextStyle(color: t.textPrimary)),
+              Text('Take a photo', style: TextStyle(color: t.textPrimary)),
               onTap: () => Navigator.pop(context, 'camera'),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -355,30 +352,18 @@ class _WriteScreenState extends State<WriteScreen> {
 
   Future<void> _onDelete() async {
     if (_existingEntry == null) return;
-    final t = context.poppyTheme;
-    final confirmed = await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete entry?'),
-        content: const Text('This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: t.textSecondary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Delete', style: TextStyle(color: t.accent)),
-          ),
-        ],
-      ),
+    final confirmed = await PoppyDialog.showDestructive(
+      context,
+      title: 'Delete entry?',
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete',
     );
     if (confirmed != true) return;
     await context.read<EntriesProvider>().deleteEntry(_existingEntry!.id);
     if (mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil(
         AppRoutes.home,
-        (route) => false,
+            (route) => false,
       );
     }
   }
@@ -402,7 +387,7 @@ class _WriteScreenState extends State<WriteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t  = context.poppyTheme;
     final fp = context.watch<ThemeProvider>().currentFontPairData;
 
     return PopScope(
@@ -441,12 +426,12 @@ class _WriteScreenState extends State<WriteScreen> {
             },
             icon: _isSaving
                 ? SizedBox(
-                    height: AppIconSize.sm,
-                    width: AppIconSize.sm,
-                    child: CircularProgressIndicator(
-                        color: t.surface, strokeWidth: AppStroke.thin))
+                height: AppIconSize.sm,
+                width: AppIconSize.sm,
+                child: CircularProgressIndicator(
+                    color: t.surface, strokeWidth: AppStroke.thin))
                 : Icon(AppIcons.back,
-                    color: t.background, size: AppIconSize.sm),
+                color: t.background, size: AppIconSize.sm),
           ),
           title: Row(
             mainAxisSize: MainAxisSize.max,
@@ -459,12 +444,11 @@ class _WriteScreenState extends State<WriteScreen> {
                   height: AppComponentSize.inputHeight,
                   width: AppComponentSize.inputHeight,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                   decoration: BoxDecoration(
                     color: t.surface,
                     borderRadius: BorderRadius.circular(AppRadius.sm),
-                    border: Border.all(
-                        color: t.accentMuted, width: AppStroke.thick),
+                    border: Border.all(color: t.accentMuted, width: AppStroke.thick),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -481,7 +465,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       const SizedBox(height: 2),
                       Text(
                         DateFormat('MMM').format(_entryDate).toUpperCase(),
-                        style: AppTextStyles.labelSmall(t.textTertiary, fp),
+                        style: AppTextStyles.labelSmall(t.textTertiary,fp),
                       ),
                     ],
                   ),
@@ -517,7 +501,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       ),
                       isDense: false,
                       contentPadding:
-                          const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                     ),
                   ),
                 ),
@@ -558,8 +542,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       Text(
                         'Delete entry',
                         style: AppTextStyles.bodyLarge(
-                          Theme.of(context).colorScheme.error,
-                          fp,
+                          Theme.of(context).colorScheme.error, fp,
                         ),
                       ),
                     ],
@@ -587,7 +570,8 @@ class _WriteScreenState extends State<WriteScreen> {
                       children: [
                         // Meta row
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+                          padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
                           child: Row(
                             children: [
                               Icon(
@@ -606,24 +590,20 @@ class _WriteScreenState extends State<WriteScreen> {
                                     final color = over
                                         ? AppColors.error
                                         : near
-                                            ? AppColors.warning
-                                            : t.textTertiary;
+                                        ? AppColors.warning
+                                        : t.textTertiary;
 
                                     return Row(
                                       children: [
                                         Flexible(
                                           child: Text(
                                             '$count / $kWordLimit words',
-                                            style:
-                                                AppTextStyles.labelLargeSerif(
-                                                    color, fp),
+                                            style: AppTextStyles.labelLargeSerif(color, fp),
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         if (over) ...[
-                                          const SizedBox(
-                                            width: AppSpacing.sm,
-                                          ),
+                                          const SizedBox(width: AppSpacing.sm,),
                                           const Icon(
                                             AppIcons.info,
                                             color: AppColors.error,
@@ -644,10 +624,10 @@ class _WriteScreenState extends State<WriteScreen> {
                                       setState(() => _selectedColor = c);
                                     }
                                   },
-                                  leading: Icon(
-                                    AppIcons.tag,
-                                    size: AppIconSize.xs,
-                                    color: t.textTertiary,
+                                  leading: Text(
+                                    'Tag',
+                                    style: AppTextStyles.labelLargeSerif(
+                                        t.textTertiary, fp),
                                   ),
                                 ),
                               ),
@@ -658,14 +638,13 @@ class _WriteScreenState extends State<WriteScreen> {
                         // Writing area
                         Expanded(
                           child: BidiTextField(
-                            scrollPadding: EdgeInsets.zero,
                             controller: _contentController,
                             autofocus: true,
                             style: AppTextStyles.bodyLarge(t.textPrimary, fp),
                             decoration: InputDecoration(
                               hintText: 'Write anything…',
                               hintStyle:
-                                  AppTextStyles.bodyLarge(t.textTertiary, fp),
+                              AppTextStyles.bodyLarge(t.textTertiary, fp),
                               border: InputBorder.none,
                             ),
                             keyboardType: TextInputType.multiline,
@@ -689,7 +668,7 @@ class _WriteScreenState extends State<WriteScreen> {
                           isExpanded: _photosExpanded,
                           totalCount: _totalPhotos,
                           onToggle: () => setState(
-                              () => _photosExpanded = !_photosExpanded),
+                                  () => _photosExpanded = !_photosExpanded),
                           onAdd: _onAddPhoto,
                           onDeleteSaved: _onDeleteSavedPhoto,
                           onDeletePending: _onDeletePendingPhoto,
@@ -714,15 +693,15 @@ class WordLimitFormatter extends TextInputFormatter {
   final VoidCallback? onBlocked;
 
   WordLimitFormatter(
-    this.maxWords, {
-    this.onBlocked,
-  });
+      this.maxWords, {
+        this.onBlocked,
+      });
 
   @override
   TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
+      TextEditingValue oldValue,
+      TextEditingValue newValue,
+      ) {
     final newCount = Entry.countWords(newValue.text);
     final oldCount = Entry.countWords(oldValue.text);
 
@@ -820,10 +799,11 @@ class _PhotoSection extends StatelessWidget {
             ),
           ),
         ),
+
         AnimatedCrossFade(
           duration: AppDuration.normal,
           crossFadeState:
-              isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           firstChild: const SizedBox(height: 0),
           secondChild: SizedBox(
             height: AppComponentSize.photoStripHeight,
@@ -894,9 +874,7 @@ class _PhotoPendingThumb extends StatelessWidget {
               color: t.accentLight,
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(
-                AppRadius.sm - AppStroke.hairline,
-              ),
+              borderRadius: BorderRadius.circular(AppRadius.sm - AppStroke.hairline,),
               child: image,
             ),
           ),
@@ -959,14 +937,11 @@ class _PhotoSavedThumb extends StatelessWidget {
               borderRadius: BorderRadius.circular(
                 AppRadius.sm - AppStroke.hairline,
               ),
-              child: photo.signedUrl != null
-                  ? Image.network(
-                      photoPath,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          Icon(AppIcons.imageBroken, color: t.textTertiary),
-                    )
-                  : Image.file(File(photoPath), fit: BoxFit.cover),
+              child: photo.signedUrl != null ? Image.network(
+                photoPath,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Icon(AppIcons.imageBroken, color: t.textTertiary),
+              ) : Image.file(File(photoPath), fit: BoxFit.cover),
             ),
           ),
           Positioned(
@@ -1089,51 +1064,51 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
         ),
         iconTheme: const IconThemeData(color: AppColors.white),
       ),
-      body: PageView.builder(
-        controller: _controller,
-        onPageChanged: (index) => setState(() => _currentIndex = index),
-        itemCount: widget.photos.length,
-        itemBuilder: (context, index) {
-          final item = widget.photos[index];
+        body: PageView.builder(
+          controller: _controller,
+          onPageChanged: (index) => setState(() => _currentIndex = index),
+          itemCount: widget.photos.length,
+          itemBuilder: (context, index) {
+            final item = widget.photos[index];
 
-          Widget image = const Icon(
-            AppIcons.imageBroken,
-            color: Colors.white54,
-            size: AppIconSize.xl,
-          );
+            Widget image = const Icon(
+              AppIcons.imageBroken,
+              color: Colors.white54,
+              size: AppIconSize.xl,
+            );
 
-          if (item is Photo) {
-            final url = item.signedUrl;
-            final local = item.localPath;
+            if (item is Photo) {
+              final url = item.signedUrl;
+              final local = item.localPath;
 
-            if (url != null && url.isNotEmpty) {
-              image = Image.network(
-                url,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) {
-                  // Fall back to local file when the network image fails
-                  if (local != null && local.isNotEmpty) {
-                    return Image.file(File(local), fit: BoxFit.contain);
-                  }
-                  return const Icon(
-                    AppIcons.imageBroken,
-                    color: Colors.white54,
-                    size: AppIconSize.xl,
-                  );
-                },
-              );
-            } else if (local != null && local.isNotEmpty) {
-              image = Image.file(File(local), fit: BoxFit.contain);
+              if (url != null && url.isNotEmpty) {
+                image = Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) {
+                    // Fall back to local file when the network image fails
+                    if (local != null && local.isNotEmpty) {
+                      return Image.file(File(local), fit: BoxFit.contain);
+                    }
+                    return const Icon(
+                      AppIcons.imageBroken,
+                      color: Colors.white54,
+                      size: AppIconSize.xl,
+                    );
+                  },
+                );
+              } else if (local != null && local.isNotEmpty) {
+                image = Image.file(File(local), fit: BoxFit.contain);
+              }
             }
-          }
 
-          return InteractiveViewer(
-            minScale: 1.0,
-            maxScale: 4.0,
-            child: Center(child: image),
-          );
-        },
-      ),
+            return InteractiveViewer(
+              minScale: 1.0,
+              maxScale: 4.0,
+              child: Center(child: image),
+            );
+          },
+        ),
     );
   }
 }

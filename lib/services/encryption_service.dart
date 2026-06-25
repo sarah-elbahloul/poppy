@@ -5,6 +5,11 @@ import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:poppy/core/constants.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Encryption Service
+//  Location: lib/services/encryption_service.dart
+// ─────────────────────────────────────────────────────────────
+
 /// Manages high-level cryptographic operations for the application.
 ///
 /// **Key Architecture:**
@@ -25,9 +30,11 @@ class EncryptionService {
 
   SecretKey? _dataKey;
 
-  // --- Data Key Management ---
+  // ─────────────────────────────────────────────────────────────
+  //  Data Key Management
+  // ─────────────────────────────────────────────────────────────
 
-  /// Generates a new random 32-byte Data Key and persists it locally in [FlutterSecureStorage].
+  /// Generates a new random 32-byte Data Key and persists it locally.
   Future<Uint8List> generateDataKey() async {
     final bytes = Uint8List(32);
     for (var i = 0; i < 32; i++) bytes[i] = _rng.nextInt(256);
@@ -40,8 +47,6 @@ class EncryptionService {
   }
 
   /// Loads the Data Key from secure storage into memory.
-  ///
-  /// Returns true if the key was successfully loaded.
   Future<bool> loadCachedKey() async {
     try {
       final stored = await _storage.read(key: StorageKeys.dataKey);
@@ -78,7 +83,9 @@ class EncryptionService {
     return Uint8List.fromList(await key.extractBytes());
   }
 
-  // --- Key Wrapping ---
+  // ─────────────────────────────────────────────────────────────
+  //  Key Wrapping (K-WAP)
+  // ─────────────────────────────────────────────────────────────
 
   /// Wraps (encrypts) the Data Key using a key derived from the user's [password].
   Future<Map<String, String>> wrapWithPassword(
@@ -116,7 +123,9 @@ class EncryptionService {
     return _unwrap(wrapped, wrappingKey);
   }
 
-  // --- Content Encryption ---
+  // ─────────────────────────────────────────────────────────────
+  //  Content Encryption/Decryption
+  // ─────────────────────────────────────────────────────────────
 
   /// Encrypts [plaintext] and returns a map containing the ciphertext ('c'), nonce ('n'), and MAC ('m').
   Future<Map<String, String>?> encrypt(String plaintext) async {
@@ -174,7 +183,9 @@ class EncryptionService {
     }
   }
 
-  // --- Batch Operations ---
+  // ─────────────────────────────────────────────────────────────
+  //  Batch & Entry Helpers
+  // ─────────────────────────────────────────────────────────────
 
   /// Encrypts both [title] and [content] for a single entry.
   Future<({String titleJson, String contentJson})> encryptEntry({
@@ -200,7 +211,9 @@ class EncryptionService {
     return (title: results[0], content: results[1]);
   }
 
-  // --- Internal Cryptography ---
+  // ─────────────────────────────────────────────────────────────
+  //  Internal Cryptography (PBKDF2)
+  // ─────────────────────────────────────────────────────────────
 
   /// Internal implementation for wrapping a key.
   Future<Map<String, String>> _wrap(
@@ -241,7 +254,7 @@ class EncryptionService {
     }
   }
 
-  /// Derives a cryptographic key from a password using PBKDF2.
+  /// Derives a cryptographic key from a password using PBKDF2 (100k iterations).
   Future<SecretKey> _deriveKeyFromPassword(String password) async {
     final pbkdf2 = Pbkdf2(
       macAlgorithm: Hmac.sha256(),

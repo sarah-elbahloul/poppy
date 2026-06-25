@@ -3,6 +3,11 @@ import 'package:poppy/core/core.dart';
 import 'package:provider/provider.dart';
 import 'package:poppy/providers/providers.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Password Rules Checker
+//  Location: lib/core/widgets/password_rules_checker.dart
+// ─────────────────────────────────────────────────────────────
+
 /// A widget that provides live feedback on password complexity requirements.
 ///
 /// Displays a checklist of rules (length, casing, numbers, symbols) and
@@ -40,7 +45,9 @@ class _PasswordRulesCheckerState extends State<PasswordRulesChecker>
     super.dispose();
   }
 
-  // --- Validation Rules ---
+  // ─────────────────────────────────────────────────────────────
+  //  Validation Rules
+  // ─────────────────────────────────────────────────────────────
 
   static const _rules = [
     _Rule('At least 8 characters', r'.{8,}'),
@@ -84,6 +91,10 @@ class _PasswordRulesCheckerState extends State<PasswordRulesChecker>
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+//  Internal Helpers
+// ─────────────────────────────────────────────────────────────
 
 /// Internal model representing a single password validation rule.
 class _Rule {

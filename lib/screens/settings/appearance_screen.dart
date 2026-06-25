@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
 import 'package:poppy/core/widgets/color_picker_sheet.dart';
+import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -411,40 +412,14 @@ class _ResetAllButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fp = context.read<ThemeProvider>().currentFontPairData;
-    final t = context.poppyTheme;
 
     return GestureDetector(
       onTap: () async {
-        final ok = await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) {
-            return AlertDialog(
-              backgroundColor: t.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-              ),
-              title: Text('Reset all colours?',
-                  style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
-              content: Text(
-                'This restores the Poppy defaults. Any custom colours you\'ve set will be lost.',
-                style: AppTextStyles.bodySmallSans(t.textSecondary, fp)
-                    .copyWith(height: 1.5),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: Text('Cancel',
-                      style: TextStyle(color: t.textTertiary)),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.error),
-                  child: const Text('Reset'),
-                ),
-              ],
-            );
-          },
+        final ok = await PoppyDialog.showDestructive(
+          context,
+          title: 'Reset all colours?',
+          confirmLabel: 'Reset',
+          message: "This restores the Poppy defaults. Any custom colours you've set will be lost.",
         );
         if (ok == true && context.mounted) tp.resetAllColors();
       },

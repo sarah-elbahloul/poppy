@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/services/services.dart';
 
-import '../core/style/app_colors.dart';
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Entries Provider
+//  Location: lib/providers/entries_provider.dart
+// ─────────────────────────────────────────────────────────────
 
 /// The various states an entries-related operation can be in.
 enum EntriesStatus { initial, loading, loaded, error }
 
 /// Manages the state and business logic for journal entries.
 ///
-/// **Offline-First Flow:**
-/// 1. [fetchEntries] loads data from the local SQLite database immediately for instant UI feedback.
-/// 2. It triggers a background synchronization via [SyncService].
-/// 3. Once sync is complete, the provider reloads from the local database to pick up any remote changes.
+/// This provider implements an **Offline-First Flow**:
+/// 1. Loads data from the local SQLite database immediately for instant UI feedback.
+/// 2. Triggers background synchronization via [SyncService].
+/// 3. Updates local state once remote changes are reconciled.
 class EntriesProvider extends ChangeNotifier {
   final _entriesService = EntriesService();
   final _photosService = PhotosService();
@@ -28,6 +31,10 @@ class EntriesProvider extends ChangeNotifier {
   String? _colorTag;
   DateTime? _fromDate;
   DateTime? _toDate;
+
+  // ─────────────────────────────────────────────────────────────
+  //  Getters
+  // ─────────────────────────────────────────────────────────────
 
   /// The complete list of cached entries.
   List<Entry> get entries => _entries;
@@ -67,7 +74,9 @@ class EntriesProvider extends ChangeNotifier {
   /// Whether a background synchronization with Supabase is currently running.
   bool get isSyncing => _isSyncing;
 
-  // --- Filter API ---
+  // ─────────────────────────────────────────────────────────────
+  //  Filter API
+  // ─────────────────────────────────────────────────────────────
 
   /// Updates the current filters and notifies listeners.
   void setFilters({
@@ -76,7 +85,7 @@ class EntriesProvider extends ChangeNotifier {
     DateTime? fromDate,
     DateTime? toDate,
   }) {
-    _query = query ?? null;
+    _query = query;
     _colorTag = colorTag;
     _fromDate = fromDate;
     _toDate = toDate;
@@ -92,7 +101,9 @@ class EntriesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- CRUD Operations ---
+  // ─────────────────────────────────────────────────────────────
+  //  CRUD Operations
+  // ─────────────────────────────────────────────────────────────
 
   /// Loads entries from the local database immediately and initiates a background sync.
   Future<void> fetchEntries() async {
@@ -109,11 +120,9 @@ class EntriesProvider extends ChangeNotifier {
       _isSyncing = true;
       notifyListeners();
 
-      // Register a one-shot completion handler.  We replace any previous
-      // handler so a rapid double-call to fetchEntries does not result in
-      // two stale closures fighting over the list.
+      // Register a one-shot completion handler.
       _sync.onSyncComplete = () async {
-        _sync.onSyncComplete = null; // consume immediately — no double-fire
+        _sync.onSyncComplete = null; 
         try {
           _entries = await _entriesService.fetchAll();
         } catch (_) {
@@ -133,27 +142,17 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
-  /// Creates a new [entry] and updates the local state.
-  ///
-  /// Uses the service-generated ID from the return value but **preserves
-  /// title and content from the caller's input** to guard against any
-  /// column-mapping bug in the service/DB layer that could return empty
-  /// text fields.
+  /// Creates a new entry and updates the local state.
   Future<Entry?> createEntry(Entry entry) async {
     try {
       final created = await _entriesService.create(entry);
 
-      // Defensive: if the service lost title or content during the
-      // round-trip (e.g. SQLite column name mismatch), patch the
-      // returned entry with the data we know is correct.
+      // Defensive patch: Ensure title/content are preserved even if DB return is partial.
       final needsPatch = (created.title.isEmpty && entry.title.isNotEmpty) ||
           (created.content.isEmpty && entry.content.isNotEmpty);
 
       final safeCreated = needsPatch
-          ? created.copyWith(
-        title: entry.title,
-        content: entry.content,
-      )
+          ? created.copyWith(title: entry.title, content: entry.content)
           : created;
 
       _entries.add(safeCreated);
@@ -166,22 +165,12 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
-  /// Updates an existing [entry] and refreshes the local state.
-  ///
-  /// Returns the saved [Entry] (with the authoritative [Entry.syncStatus]
-  /// reflecting what was actually persisted), or `null` on failure — mirrors
-  /// [createEntry]'s contract so callers always have a correct, reconciled
-  /// copy to hold onto rather than re-using their own stale local copy.
-  ///
-  /// Title/content always come from the caller, since [EntriesService.update]
-  /// never re-derives them from local storage.
+  /// Updates an existing entry and refreshes the local state.
   Future<Entry?> updateEntry(Entry entry) async {
     try {
       final saved = await _entriesService.update(entry);
 
-      // The caller's title/content are known-correct (built directly from
-      // the text controllers); the service's syncStatus is the
-      // authoritative reflection of what was just persisted to SQLite.
+      // Reconcile caller's latest text with service's sync status.
       final reconciled = entry.copyWith(syncStatus: saved.syncStatus);
 
       final index = _entries.indexWhere((e) => e.id == entry.id);
@@ -201,15 +190,6 @@ class EntriesProvider extends ChangeNotifier {
   /// Updates multiple entries in bulk and refreshes the local state.
   Future<bool> updateEntries(List<Entry> updatedEntries) async {
     try {
-      // For now, we update them sequentially but wait for all to finish
-      // before notifying listeners once.
-      // Ideally, EntriesService would have a batch update as well.
-      //
-      // Use the service's returned entries (not the caller's input) for the
-      // in-memory list: EntriesService.update() stamps the correct
-      // pending_create/pending_update syncStatus, which the caller's copy
-      // doesn't carry. Using the caller's copy directly left the sync-status
-      // dot on entry cards out of date until the next full fetchEntries().
       final results = await Future.wait(
         updatedEntries.map((e) => _entriesService.update(e)),
       );
@@ -229,7 +209,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
-  /// Deletes an entry by its [entryId] and removes associated photos.
+  /// Deletes an entry by its ID and removes associated photos.
   Future<bool> deleteEntry(String entryId) async {
     try {
       // Optimistic UI update: remove from memory immediately.
@@ -239,9 +219,7 @@ class EntriesProvider extends ChangeNotifier {
       // Best-effort photo cleanup.
       try {
         await _photosService.deleteAllForEntry(entryId);
-      } catch (_) {
-        // Non-fatal; server-side cleanup will handle it if offline.
-      }
+      } catch (_) {}
 
       // Mark for deletion in local DB and queue for sync.
       await _entriesService.delete(entryId);
@@ -254,22 +232,17 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
-  /// Deletes multiple entries by their [entryIds] and removes associated photos.
+  /// Deletes multiple entries by their IDs and removes associated photos.
   Future<bool> deleteEntries(List<String> entryIds) async {
     try {
-      // Optimistic UI update: remove from memory immediately.
       _entries.removeWhere((e) => entryIds.contains(e.id));
       notifyListeners();
 
-      // Best-effort photo cleanup for all entries.
-      // We do this in parallel to speed it up.
       await Future.wait(
           entryIds.map((id) => _photosService.deleteAllForEntry(id).catchError((_) {}))
       );
 
-      // Mark for deletion in local DB and queue for sync.
       await _entriesService.deleteBatch(entryIds);
-
       return true;
     } catch (e) {
       _errorMessage = e.toString();
@@ -278,42 +251,21 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
-  // --- Tag Propagation ---
+  // ─────────────────────────────────────────────────────────────
+  //  Tag Propagation
+  // ─────────────────────────────────────────────────────────────
 
-  /// Called when a tag is renamed or recolored.
-  ///
-  /// Updates every in-memory entry that uses [oldTag] to reference [newTag],
-  /// persists the change to SQLite (marking each affected entry as
-  /// [SyncStatus.pendingUpdate]), and triggers a background sync so Supabase
-  /// also receives the colour_tag update.
-  ///
-  /// Both online and offline users will see the change immediately in the UI,
-  /// and the sync indicator dot on each card shows that the update is queued.
-  Future<void> propagateTagEdit(
-      TagColorData oldTag,
-      TagColorData newTag,
-      ) async {
-    // Entries whose colorTag id matches the edited tag.
-    final affected = _entries
-        .where((e) => e.colorTag.id == oldTag.id)
-        .toList();
-
+  /// Updates every in-memory entry that uses [oldTag] to reference [newTag].
+  Future<void> propagateTagEdit(TagColorData oldTag, TagColorData newTag) async {
+    final affected = _entries.where((e) => e.colorTag.id == oldTag.id).toList();
     if (affected.isEmpty) return;
 
-    // Optimistic in-memory update — immediate UI feedback.
-    // Explicitly pass title & content to guard against a copyWith that
-    // resets unspecified fields to defaults. Also set syncStatus so the
-    // pending-sync dot on the entry card actually appears right away, as
-    // promised by the doc comment above — a copyWith that omits syncStatus
-    // would otherwise leave already-synced entries looking synced even
-    // though they now have an unsynced local change.
+    // Optimistic UI update
     for (var i = 0; i < _entries.length; i++) {
       if (_entries[i].colorTag.id == oldTag.id) {
         final current = _entries[i];
         _entries[i] = current.copyWith(
           colorTag: newTag,
-          title: current.title,
-          content: current.content,
           syncStatus: current.syncStatus == SyncStatus.pendingCreate
               ? SyncStatus.pendingCreate
               : SyncStatus.pendingUpdate,
@@ -322,49 +274,27 @@ class EntriesProvider extends ChangeNotifier {
     }
     notifyListeners();
 
-    // Persist each change to SQLite (queues a pending_update for sync) and
-    // reconcile the in-memory entry with the service's returned copy, which
-    // is the authoritative source for syncStatus/updatedAt after the write.
+    // Persist to SQLite
     for (final entry in affected) {
-      final updated = entry.copyWith(
-        colorTag: newTag,
-        title: entry.title,
-        content: entry.content,
-      );
+      final updated = entry.copyWith(colorTag: newTag);
       final saved = await _entriesService.update(updated);
       final index = _entries.indexWhere((e) => e.id == saved.id);
       if (index != -1) _entries[index] = saved;
     }
     notifyListeners();
-
-    // Trigger background sync so Supabase is updated when online.
     _sync.syncNow();
   }
 
-  /// Called when a tag is deleted.
-  ///
-  /// Any entry referencing [deletedTag] is reassigned to [fallbackTag]
-  /// (typically [EntryTags.defaultColor]). The change is written to SQLite
-  /// immediately so it survives app restarts, and is queued for Supabase sync.
-  Future<void> propagateTagDeletion(
-      TagColorData deletedTag,
-      TagColorData fallbackTag,
-      ) async {
-    final affected = _entries
-        .where((e) => e.colorTag.id == deletedTag.id)
-        .toList();
-
+  /// Reassigns any entry referencing [deletedTag] to [fallbackTag].
+  Future<void> propagateTagDeletion(TagColorData deletedTag, TagColorData fallbackTag) async {
+    final affected = _entries.where((e) => e.colorTag.id == deletedTag.id).toList();
     if (affected.isEmpty) return;
 
-    // Optimistic in-memory update. Set syncStatus for the same reason as in
-    // propagateTagEdit — so the pending-sync dot reflects reality right away.
     for (var i = 0; i < _entries.length; i++) {
       if (_entries[i].colorTag.id == deletedTag.id) {
         final current = _entries[i];
         _entries[i] = current.copyWith(
           colorTag: fallbackTag,
-          title: current.title,
-          content: current.content,
           syncStatus: current.syncStatus == SyncStatus.pendingCreate
               ? SyncStatus.pendingCreate
               : SyncStatus.pendingUpdate,
@@ -373,24 +303,21 @@ class EntriesProvider extends ChangeNotifier {
     }
     notifyListeners();
 
-    // Persist to SQLite and reconcile with the service's returned copy.
     for (final entry in affected) {
-      final updated = entry.copyWith(
-        colorTag: fallbackTag,
-        title: entry.title,
-        content: entry.content,
-      );
+      final updated = entry.copyWith(colorTag: fallbackTag);
       final saved = await _entriesService.update(updated);
       final index = _entries.indexWhere((e) => e.id == saved.id);
       if (index != -1) _entries[index] = saved;
     }
     notifyListeners();
-
     _sync.syncNow();
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Utility Methods
+  // ─────────────────────────────────────────────────────────────
 
-  /// Retrieves an entry by its [id] from the local cache.
+  /// Retrieves an entry by its ID from the local cache.
   Entry? getById(String id) {
     try {
       return _entries.firstWhere((e) => e.id == id);
@@ -399,10 +326,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
-  /// Resets the provider state to its initial values.
-  ///
-  /// Also cancels any pending sync callback so in-flight syncs from the
-  /// previous session cannot overwrite the cleared state.
+  /// Resets the provider state and cancels pending sync callbacks.
   void clear() {
     _sync.onSyncComplete = null;
     _entries = [];
@@ -412,7 +336,7 @@ class EntriesProvider extends ChangeNotifier {
     clearFilters();
   }
 
-  /// Clears the current error message and notifies listeners.
+  /// Clears the current error message.
   void clearError() {
     _errorMessage = null;
     notifyListeners();

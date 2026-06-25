@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/providers/providers.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
@@ -19,7 +20,6 @@ class EntryTagsScreen extends StatefulWidget {
 class _EntryTagsScreenState extends State<EntryTagsScreen> {
   final _uuid = const Uuid();
 
-  // Whether the current tag list differs from the factory defaults.
   bool _isModifiedFromDefaults(List<TagColorData> tags) {
     const defaults = EntryTags.defaults;
     if (tags.length != defaults.length) return true;
@@ -61,8 +61,6 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
       body: ListView(
         padding: const EdgeInsets.only(bottom: AppSpacing.xl),
         children: [
-
-          // ── Tags section ──────────────────────────────────
           _SectionLabel('Tags (${tags.length}/${EntryTags.maxTags})'),
           _Card(
             children: [
@@ -76,32 +74,25 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
               ],
             ],
           ),
-
-          // ── Add new tag ───────────────────────────────────
           if (canAdd) ...[
             const _SectionLabel('Add'),
             _Card(
               children: [_AddRow(onTap: _addNewTag)],
             ),
           ],
-
-          // ── Reset to defaults ─────────────────────────────
-          // Only shown when the tag list has been modified.
           if (isModified) ...[
             const _SectionLabel('Reset'),
             _Card(
               children: [_ResetRow(onTap: () => _resetToDefaults())],
             ),
           ],
-
-          // ── Helper note ───────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(
                 AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
             child: Text(
               'Colour strips on journal entries update immediately. '
                   'Changes sync to the cloud when you\'re online.',
-              style: AppTextStyles.labelLargeSans(td.textTertiary, fp)
+              style: AppTextStyles.labelLargeSans(td.textSecondary, fp)
                   .copyWith(height: 1.5),
             ),
           ),
@@ -109,8 +100,6 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
       ),
     );
   }
-
-  // ─── Actions ───────────────────────────────────────────────
 
   void _addNewTag() {
     final newTag = TagColorData(
@@ -147,7 +136,6 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
           final currentTags =
           List<TagColorData>.from(themeProvider.tagColors);
 
-          // If a built-in tag is modified (name or color), convert to custom
           final isModifiedBuiltIn = tag.isBuiltIn && (tag.name != name || tag.color.toARGB32() != color.toARGB32());
 
           final updatedTag = TagColorData(
@@ -237,8 +225,6 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
     final themeProvider = context.read<ThemeProvider>();
     final authProvider = context.read<AuthProvider>();
     final entriesProvider = context.read<EntriesProvider>();
-    final td = themeProvider.currentThemeData;
-    final fp = themeProvider.currentFontPairData;
 
     final affectedCount =
         entriesProvider.entries.where((e) => e.colorTag.id == tag.id).length;
@@ -247,68 +233,17 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
         .firstWhere((t) => t.id != tag.id,
         orElse: () => EntryTags.defaultColor);
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: td.surface,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg)),
-        title: Text('Delete "${tag.name}"?',
-            style: AppTextStyles.headlineSmall(td.textPrimary, fp)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (affectedCount > 0) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.warningLight,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  border: Border.all(
-                      color: AppColors.warningMuted,
-                      width: AppStroke.hairline),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(AppIcons.warning,
-                        size: AppIconSize.xs, color: AppColors.warning),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        '$affectedCount '
-                            '${affectedCount == 1 ? 'entry uses' : 'entries use'} '
-                            'this tag. '
-                            '${affectedCount == 1 ? 'It' : 'They'} will fall back '
-                            'to "${fallback.name}".',
-                        style: AppTextStyles.labelLargeSans(
-                            AppColors.warning, fp)
-                            .copyWith(height: 1.5),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            Text('This cannot be undone.',
-                style: AppTextStyles.bodySmallSans(td.textSecondary, fp)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: TextStyle(color: td.textTertiary)),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirm = await PoppyDialog.showDestructive(
+      context,
+      title: 'Delete "${tag.name}"?',
+      message: 'This cannot be undone.',
+      body: affectedCount > 0
+          ? DialogInfoBanner(
+              icon: AppIcons.warning,
+              tone: DialogBannerTone.warning,
+              text: '$affectedCount ${affectedCount == 1 ? 'entry uses' : 'entries use'} this tag. They will fall back to "${fallback.name}".',
+            )
+          : null,
     );
 
     if (confirm != true || !mounted) return;
@@ -331,19 +266,14 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
     final themeProvider = context.read<ThemeProvider>();
     final authProvider = context.read<AuthProvider>();
     final entriesProvider = context.read<EntriesProvider>();
-    final td = themeProvider.currentThemeData;
-    final fp = themeProvider.currentFontPairData;
 
-    // Count how many entries will be affected by this reset.
     final currentTags = themeProvider.tagColors;
     const defaults = EntryTags.defaults;
 
-    // Tags that exist in current list but not in defaults (custom tags being removed).
     final removedTags = currentTags
         .where((t) => defaults.every((d) => d.id != t.id))
         .toList();
 
-    // Tags being changed (name or colour different from default).
     final changedTags = currentTags.where((t) {
       final def = defaults.firstWhere((d) => d.id == t.id,
           orElse: () => t);
@@ -357,88 +287,31 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
         changedTags.any((c) => c.id == e.colorTag.id))
         .length;
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: td.surface,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg)),
-        title: Text('Reset to defaults?',
-            style: AppTextStyles.headlineSmall(td.textPrimary, fp)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (totalAffected > 0) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.warningLight,
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  border: Border.all(
-                      color: AppColors.warningMuted,
-                      width: AppStroke.hairline),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(AppIcons.warning,
-                        size: AppIconSize.xs, color: AppColors.warning),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        '$totalAffected '
-                            '${totalAffected == 1 ? 'entry' : 'entries'} '
-                            '${totalAffected == 1 ? 'uses' : 'use'} a modified or '
-                            'custom tag and will be updated.',
-                        style: AppTextStyles.labelLargeSans(
-                            AppColors.warning, fp)
-                            .copyWith(height: 1.5),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            Text(
-              'All custom tags will be removed and built-in tags will be '
-                  'restored to their original names and colours.',
-              style: AppTextStyles.bodySmallSans(td.textSecondary, fp)
-                  .copyWith(height: 1.5),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: TextStyle(color: td.textTertiary)),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Reset'),
-          ),
-        ],
-      ),
+    final confirm = await PoppyDialog.showDestructive(
+      context,
+      title: 'Reset to defaults?',
+      message: 'All custom tags will be removed and built-in tags will be restored.',
+      body: totalAffected > 0
+          ? DialogInfoBanner(
+              icon: AppIcons.warning,
+              tone: DialogBannerTone.warning,
+              text: '$totalAffected ${totalAffected == 1 ? 'entry' : 'entries'} will be updated.',
+            )
+          : null,
     );
 
     if (confirm != true || !mounted) return;
 
-    // Propagate removed custom tags → default fallback.
     for (final removed in removedTags) {
       await entriesProvider.propagateTagDeletion(
           removed, EntryTags.defaultColor);
     }
 
-    // Propagate changed built-in tags back to their default values.
     for (final changed in changedTags) {
       final def = defaults.firstWhere((d) => d.id == changed.id);
       await entriesProvider.propagateTagEdit(changed, def);
     }
 
-    // Restore registry and persist.
     themeProvider.setTagColors(List.from(defaults));
     themeProvider.pushTagColors(authProvider.updateProfile);
 
@@ -447,8 +320,6 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
     }
   }
 }
-
-// ─── Section sub-widgets ──────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
   final String text;
@@ -571,71 +442,6 @@ class _TagRow extends StatelessWidget {
   }
 }
 
-class _TagNameField extends StatefulWidget {
-  final String initialValue;
-  final PoppyThemeExtension theme;
-  final FontPairData fontPair;
-
-  const _TagNameField({
-    required this.initialValue,
-    required this.theme,
-    required this.fontPair,
-  });
-
-  @override
-  State<_TagNameField> createState() => _TagNameFieldState();
-
-  // Expose controller for parent to read
-  static _TagNameFieldState? of(BuildContext context) {
-    return context.findAncestorStateOfType<_TagNameFieldState>();
-  }
-}
-
-class _TagNameFieldState extends State<_TagNameField> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialValue);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  String get text => _controller.text.trim();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = widget.theme;
-    final fp = widget.fontPair;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.lg),
-      child: TextField(
-        controller: _controller,
-        textCapitalization: TextCapitalization.sentences,
-        style: AppTextStyles.bodyMedium(t.textPrimary, fp),
-        decoration: InputDecoration(
-          labelText: 'Tag Name',
-          filled: true,
-          fillColor: t.background,
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm)),
-          enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              borderSide: BorderSide(color: t.border)),
-          focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              borderSide: BorderSide(color: t.accent, width: AppStroke.medium)),
-        ),
-      ),
-    );
-  }
-}
 class _AddRow extends StatelessWidget {
   final VoidCallback onTap;
   const _AddRow({required this.onTap});

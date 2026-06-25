@@ -5,6 +5,11 @@ import 'package:poppy/screens/screens.dart';
 import 'package:poppy/core/core.dart';
 import 'package:provider/provider.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Application Root
+//  Location: lib/app.dart
+// ─────────────────────────────────────────────────────────────
+
 /// The root widget of the Poppy application.
 ///
 /// Handles the top-level [MaterialApp] configuration, global theme application,
@@ -20,25 +25,22 @@ class _PoppyAppState extends State<PoppyApp> {
   bool _callbacksWired = false;
 
   /// Wire up AuthProvider lifecycle callbacks once the widget tree is ready.
-  /// We do this here so we have access to all sibling providers without
-  /// introducing circular constructor dependencies.
+  /// 
+  /// We do this here to avoid circular constructor dependencies.
+  /// It connects [AuthProvider] events to [ThemeProvider] and [EntriesProvider].
   void _wireCallbacks(AuthProvider auth, ThemeProvider themeProvider,
       EntriesProvider entries) {
     if (_callbacksWired) return;
     _callbacksWired = true;
 
-    // On sign-in: fetch the remote profile once, then hand each slice to
-    // the provider that owns it. AuthProvider and ThemeProvider each stay
-    // ignorant of the other's existence/type — app.dart is the only place
-    // that wires sibling providers together.
+    // On sign-in: Load user-specific personalization.
     auth.onSignedIn = () async {
       final profile = await auth.fetchProfile();
       await themeProvider.applyTagsFromProfile(profile);
       await auth.syncPinState(profile);
     };
 
-    // On sign-out: clear the entries cache so stale data is never shown to the
-    // next user session (or after re-login).
+    // On sign-out: Purge local memory for security.
     auth.onSignedOut = () {
       entries.clear();
     };
@@ -52,9 +54,7 @@ class _PoppyAppState extends State<PoppyApp> {
 
         final theme = themeProvider.currentThemeData.toThemeData();
 
-        // Pre-load the active fonts so they are ready before the first frame
-        // is painted.  GoogleFonts caches the result, so this is cheap on
-        // subsequent builds.
+        // Ensure active fonts are warmed up for the current frame.
         GoogleFonts.pendingFonts([
           themeProvider.currentFontPairData.titleFont
               .style(Colors.black, size: 16),
@@ -62,7 +62,7 @@ class _PoppyAppState extends State<PoppyApp> {
               .style(Colors.black, size: 16),
         ]);
 
-        // While checking the session, show a blank splash to avoid flickering.
+        // Show a neutral background while determining the session state.
         if (auth.status == AuthStatus.unknown) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
@@ -112,6 +112,10 @@ class _PoppyAppState extends State<PoppyApp> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Internal Router
+// ─────────────────────────────────────────────────────────────
+
 /// A router widget that determines the initial screen based on the
 /// current authentication and security state.
 class _RootRouter extends StatelessWidget {
@@ -132,7 +136,7 @@ class _RootRouter extends StatelessWidget {
         return const SetNewPasswordScreen();
 
       case AuthStatus.authenticated:
-      // If PIN protection is enabled and the app is locked, redirect to LockScreen.
+        // Redirect to PIN lock screen if active and app is currently "locked".
         if (auth.pinEnabled && auth.isLocked) {
           return const LockScreen();
         }

@@ -9,7 +9,17 @@ import 'package:poppy/models/photo.dart';
 import 'package:poppy/services/local_db_service.dart';
 import 'package:path/path.dart' as p;
 
-/// Manages background synchronization for entries and photos.
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Sync Service
+//  Location: lib/services/sync_service.dart
+// ─────────────────────────────────────────────────────────────
+
+/// Manages background synchronization for entries and photos between local SQLite and Supabase.
+/// 
+/// This service implements the "Offline-First" synchronization logic:
+/// 1. Monitors connectivity changes.
+/// 2. Processes a local `sync_queue` table for pending creates/updates/deletes.
+/// 3. Refreshes local state from the server to pull down changes from other devices.
 class SyncService {
   SyncService._();
   static final SyncService instance = SyncService._();
@@ -18,9 +28,17 @@ class SyncService {
   final _client = SupabaseConfig.client;
 
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
+  
+  /// Callback triggered when a full sync cycle completes successfully.
   VoidCallback? onSyncComplete;
+  
   bool _isSyncing = false;
 
+  // ─────────────────────────────────────────────────────────────
+  //  Lifecycle Management
+  // ─────────────────────────────────────────────────────────────
+
+  /// Starts listening to network connectivity changes to trigger auto-sync.
   void startListening() {
     _connectivitySub?.cancel();
     _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
@@ -28,11 +46,17 @@ class SyncService {
     });
   }
 
+  /// Stops network monitoring.
   void stopListening() {
     _connectivitySub?.cancel();
     _connectivitySub = null;
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Core Sync Logic
+  // ─────────────────────────────────────────────────────────────
+
+  /// Orchestrates a full synchronization cycle: Uploading local changes followed by downloading remote ones.
   Future<void> syncNow() async {
     if (_isSyncing) return;
     final userId = SupabaseConfig.userId;
@@ -40,8 +64,12 @@ class SyncService {
 
     _isSyncing = true;
     try {
+      // 1. Process local changes first (Upload)
       final justSyncedEntryIds = await _processQueue(userId);
+      
+      // 2. Pull remote changes (Download), excluding what we just sent
       await _refreshFromServer(userId, excludeIds: justSyncedEntryIds);
+      
       onSyncComplete?.call();
     } catch (e) {
       debugPrint('Sync failed: $e');
@@ -50,6 +78,7 @@ class SyncService {
     }
   }
 
+  /// Iterates through the local sync queue and attempts to process each operation.
   Future<Set<String>> _processQueue(String userId) async {
     final queue = await _local.getSyncQueue();
     if (queue.isEmpty) return const {};
@@ -81,6 +110,11 @@ class SyncService {
     return justSyncedEntryIds;
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Entity Synchronization
+  // ─────────────────────────────────────────────────────────────
+
+  /// Syncs a single entry to the cloud.
   Future<void> _syncEntry(String id, String userId, String op) async {
     if (op == SyncOp.delete) {
       await _client.from(DBTable.entries).delete().eq(DBColumn.id, id).eq(DBColumn.userId, userId);
@@ -91,9 +125,7 @@ class SyncService {
     final row = await _local.getEntryById(id);
     if (row == null) return;
 
-    // FIX: Send the raw encrypted strings directly.
-    // Converting to Map via jsonDecode (_parseJson) causes PostgREST type
-    // mismatches if the Supabase column is 'text', or risks double-encoding.
+    // We send raw encrypted JSON strings directly to avoid re-encoding issues.
     final payload = {
       DBColumn.id: row[DBColumn.id],
       DBColumn.userId: userId,
@@ -110,6 +142,7 @@ class SyncService {
     await _local.markEntrySynced(id);
   }
 
+  /// Syncs a photo attachment, including binary upload to storage if needed.
   Future<void> _syncPhoto(String id, String userId, String op) async {
     if (op == SyncOp.delete) {
       final photoRow = await _local.getPhotoById(id);
@@ -131,6 +164,7 @@ class SyncService {
     final localPath = row[DBColumn.localPath] as String?;
     final isUploaded = (row[DBColumn.uploaded] as int? ?? 0) == 1;
 
+    // Handle binary file upload if not yet in the cloud
     if (!isUploaded && localPath != null) {
       final file = File(localPath);
       if (await file.exists()) {
@@ -145,6 +179,7 @@ class SyncService {
       }
     }
 
+    // Upsert metadata to DB
     if (storagePath != null) {
       final payload = {
         DBColumn.id: row[DBColumn.id],
@@ -159,6 +194,11 @@ class SyncService {
     }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Server Refresh
+  // ─────────────────────────────────────────────────────────────
+
+  /// Pulls the latest entries for the user from Supabase and reconciles them with local SQLite.
   Future<void> _refreshFromServer(String userId, {Set<String>? excludeIds}) async {
     final response = await _client
         .from(DBTable.entries)

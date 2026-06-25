@@ -1,4 +1,9 @@
-/// Global constants for the Poppy application.
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Global Constants
+//  Location: lib/core/constants.dart
+// ─────────────────────────────────────────────────────────────
+
+/// Global naming and branding constants for the Poppy application.
 class AppConstants {
   AppConstants._();
 
@@ -6,19 +11,26 @@ class AppConstants {
   static const String AppTagline = 'where every day finds its petal';
 }
 
-/// Keys used for local secure storage and shared preferences.
+// ─────────────────────────────────────────────────────────────
+//  Storage Keys
+// ─────────────────────────────────────────────────────────────
+
+/// Keys used for local secure storage (FlutterSecureStorage) and Shared Preferences.
 class StorageKeys {
   StorageKeys._();
 
+  // Security & Authentication
   static const String pinHash = 'poppy_pin_hash';
   static const String pinEnabled = 'poppy_pin_enabled';
+  
+  // Theme & Personalization
   static const String selectedTheme = 'poppy_theme';
   static const String selectedTitleFont = 'poppy_title_font';
   static const String selectedBodyFont = 'poppy_body_font';
   static const String selectedFontSize = 'poppy_font_size';
   static const String selectedLineHeight = 'poppy_line_height';
 
-  // Per-slot color overrides.
+  // Per-slot color overrides (for custom theme tweaks)
   static const String colorAccent = 'poppy_color_accent';
   static const String colorAccentLight = 'poppy_color_accent_light';
   static const String colorAccentMuted = 'poppy_color_accent_muted';
@@ -29,15 +41,20 @@ class StorageKeys {
   static const String colorTextTertiary = 'poppy_color_text_tertiary';
   static const String colorBorder = 'poppy_color_border';
 
+  // Encryption & Keys
   /// Cached plaintext data key bytes (base64 encoded).
   static const String dataKey = 'poppy_data_key';
-
   /// Temporary wrapped key blob stored during the sign-up flow.
   static const String pendingEncKey = 'poppy_pending_enc_key';
 
+  // Metadata
   /// Cached entry tags JSON.
   static const String entryTags = 'poppy_entry_tags';
 }
+
+// ─────────────────────────────────────────────────────────────
+//  Database Schema
+// ─────────────────────────────────────────────────────────────
 
 /// Supabase database table names.
 class DBTable {
@@ -51,6 +68,8 @@ class DBTable {
 }
 
 /// Supabase database column names.
+/// 
+/// Used consistently across local SQLite and remote PostgreSQL schemas.
 class DBColumn {
   DBColumn._();
 
@@ -81,6 +100,10 @@ class DBColumn {
   static const String recoveryEncDataKey = 'recovery_enc_data_key';
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Cloud Storage
+// ─────────────────────────────────────────────────────────────
+
 /// Supabase storage bucket names.
 class StorageBucket {
   StorageBucket._();
@@ -88,13 +111,17 @@ class StorageBucket {
   static const String photos = 'entry-photos';
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Features & Exports
+// ─────────────────────────────────────────────────────────────
+
 /// Configuration for data export and import functionality.
 class ExportConfig {
   ExportConfig._();
 
   static const String jsonVersion = '1.0';
 
-  /// Generates a timestamped filename for diary exports.
+  /// Generates a timestamped filename for diary exports (e.g., poppy_2025-01-28_14-30.json).
   static String fileName() {
     final now = DateTime.now();
     final ts = '${now.year.toString().padLeft(4, '0')}-'

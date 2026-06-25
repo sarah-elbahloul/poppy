@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/providers/providers.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/screens/home/settings_drawer.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -12,9 +13,13 @@ import 'package:poppy/screens/home/settings_drawer.dart';
 //  Location: lib/screens/home/home_screen.dart
 // ─────────────────────────────────────────────────────────────
 
-/// The main entry point of the application once the user is authenticated.
-/// Displays a list of journal entries with search, filter, and batch
-/// operation capabilities.
+/// The main dashboard of the application.
+/// 
+/// This screen displays a reverse-chronological list of journal entries.
+/// It provides:
+/// - Full-text search and filtering by year or color tag.
+/// - Batch selection mode for bulk deletion or color updates.
+/// - Access to the settings drawer.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -41,6 +46,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   DateTime? _lastBackPress;
 
+  // ─────────────────────────────────────────────────────────────
+  //  Lifecycle
+  // ─────────────────────────────────────────────────────────────
+
   @override
   void initState() {
     super.initState();
@@ -51,14 +60,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ? 'Good afternoon'
         : 'Good evening';
 
-    // Listen to AuthProvider for encryptionReady changes rather than using
-    // context.watch inside didChangeDependencies, which can cause
-    // "looking up a deactivated widget" errors and misses re-login cycles.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final auth = context.read<AuthProvider>();
       auth.addListener(_onAuthChanged);
-      // Trigger immediately if encryption is already ready (e.g. hot restart).
       _onAuthChanged();
     });
   }
@@ -72,15 +77,12 @@ class _HomeScreenState extends State<HomeScreen> {
         context.read<EntriesProvider>().fetchEntries();
       }
     } else {
-      // Encryption is no longer ready (signed out / key cleared) — reset so
-      // the next sign-in triggers a fresh fetch.
       _fetchedOnce = false;
     }
   }
 
   @override
   void dispose() {
-    // Safe: removeListener is a no-op if auth was disposed first.
     final auth = context.read<AuthProvider>();
     auth.removeListener(_onAuthChanged);
     _searchController.dispose();
@@ -88,10 +90,10 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // ─── Filter Logic ───
+  // ─────────────────────────────────────────────────────────────
+  //  Filtering & Search
+  // ─────────────────────────────────────────────────────────────
 
-  /// Aggregates all active filters (search, year, color) and applies
-  /// them to the [EntriesProvider].
   void _applyAllFilters() {
     final provider = context.read<EntriesProvider>();
 
@@ -130,7 +132,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchFocusNode.unfocus();
   }
 
-  // ─── Entry Actions ───
+  // ─────────────────────────────────────────────────────────────
+  //  Navigation & Selection
+  // ─────────────────────────────────────────────────────────────
 
   void _onEntryTap(Entry entry) {
     if (_isBatchMode) {
@@ -159,7 +163,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _cancelBatch() => setState(() => _selectedIds.clear());
 
-  /// Opens a color picker to apply a color tag to all selected entries.
+  // ─────────────────────────────────────────────────────────────
+  //  Batch Actions
+  // ─────────────────────────────────────────────────────────────
+
   Future<void> _openColorPicker() async {
     final t = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
@@ -202,43 +209,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Deletes all currently selected entries after confirmation.
   Future<void> _deleteBatch() async {
-    final t = context.poppyTheme;
     final count = _selectedIds.length;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-        title: Text(
-          'Delete $count ${count == 1 ? 'entry' : 'entries'}?',
-          style: AppTextStyles.labelLargeSans(t.textPrimary, fp),
-        ),
-        content: Text(
-          'This cannot be undone.',
-          style: AppTextStyles.bodyLarge(t.textPrimary, fp),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancel',
-              style: AppTextStyles.labelLargeSans(t.textPrimary, fp),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'Delete',
-              style: AppTextStyles.labelLargeSans(AppColors.error, fp),
-            ),
-          ),
-        ],
-      ),
+    final confirmed = await PoppyDialog.showDestructive(
+      context,
+      title: 'Delete $count ${count == 1 ? 'entry' : 'entries'}?',
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete',
     );
 
     if (confirmed != true) return;
@@ -262,19 +240,9 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _selectedIds.clear());
   }
 
-  // ─── Helpers ───
-
-  List<String> _extractYears(List<Entry> entries) {
-    final years = entries
-        .map((e) => DateFormat('yyyy').format(e.entryDate))
-        .toSet()
-        .toList();
-
-    years.sort((a, b) => b.compareTo(a));
-    return years;
-  }
-
-  // ─── Build ───
+  // ─────────────────────────────────────────────────────────────
+  //  Build
+  // ─────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -287,36 +255,26 @@ class _HomeScreenState extends State<HomeScreen> {
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
 
-        // 1. Close drawer if open
         if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
           _scaffoldKey.currentState?.closeDrawer();
           return;
         }
 
-        // 2. Exit batch mode
         if (_isBatchMode) {
           _cancelBatch();
           return;
         }
 
-        // 3. Exit search mode (optional)
         if (_searching) {
           _exitSearch();
           return;
         }
 
-        // 4. Double-back to exit
         final now = DateTime.now();
-
         if (_lastBackPress == null ||
             now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
           _lastBackPress = now;
-
-          AppSnackbar.info(
-            context,
-            'Press back again to exit',
-          );
-
+          AppSnackbar.info(context, 'Press back again to exit');
           return;
         }
 
@@ -344,6 +302,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  // ─────────────────────────────────────────────────────────────
+  //  AppBar Variants
+  // ─────────────────────────────────────────────────────────────
 
   AppBar _normalAppBar(PoppyThemeExtension t, EntriesProvider provider) {
     final fp = context.read<ThemeProvider>().currentFontPairData;
@@ -435,7 +397,8 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _startSearch,
           ),
           IconButton(
-            icon: Icon(AppIcons.sort, color: t.textSecondary, size: AppIconSize.sm),
+            icon: Icon(AppIcons.sort,
+                color: t.textSecondary, size: AppIconSize.sm),
             tooltip: 'Sort ${_sortDesc ? 'descending' : 'ascending'}',
             onPressed: () => setState(() => _sortDesc = !_sortDesc),
           ),
@@ -485,6 +448,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Body Sections
+  // ─────────────────────────────────────────────────────────────
 
   Widget _body(
       BuildContext context,
@@ -558,6 +525,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            // Year Filter Dropdown
             Flexible(
               child: Container(
                 height: AppComponentSize.filterBarHeight,
@@ -683,6 +651,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+            // Color Tag Filter
             Flexible(
               child: Container(
                 height: AppComponentSize.filterBarHeight,
@@ -791,7 +760,25 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Internal Helpers
+  // ─────────────────────────────────────────────────────────────
+
+  List<String> _extractYears(List<Entry> entries) {
+    final years = entries
+        .map((e) => DateFormat('yyyy').format(e.entryDate))
+        .toSet()
+        .toList();
+
+    years.sort((a, b) => b.compareTo(a));
+    return years;
+  }
 }
+
+// ─────────────────────────────────────────────────────────────
+//  Private Widgets & Skeletons
+// ─────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
   @override

@@ -1,27 +1,38 @@
 import 'package:poppy/core/constants.dart';
 import 'package:poppy/services/local_db_service.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Photo Model
+//  Location: lib/models/photo.dart
+// ─────────────────────────────────────────────────────────────
+
 /// Represents a photo attached to a journal entry.
 ///
 /// Supports offline-first by tracking [localPath] for immediate display
 /// and [uploaded] status for synchronization.
 class Photo {
+  /// Unique identifier for the photo.
   final String id;
+
+  /// The ID of the entry this photo belongs to.
   final String entryId;
+
+  /// The ID of the user who owns this photo.
   final String userId;
   
   /// The path in Supabase Storage. Null if not yet uploaded.
   final String? storagePath;
 
-  /// The path on the local device filesystem.
+  /// The path on the local device filesystem for offline access.
   final String? localPath;
 
-  /// Whether the photo has been successfully uploaded to Supabase.
+  /// Whether the photo has been successfully uploaded to cloud storage.
   final bool uploaded;
 
+  /// Timestamp when the photo was added.
   final DateTime createdAt;
 
-  /// Synchronization state.
+  /// Synchronization state (e.g., 'synced', 'pending_create').
   final String syncStatus;
 
   /// A temporary signed URL for remote display (not persisted).
@@ -39,6 +50,10 @@ class Photo {
     this.signedUrl,
   });
 
+  // ─────────────────────────────────────────────────────────────
+  //  Factory & Conversions
+  // ─────────────────────────────────────────────────────────────
+
   /// Creates a [Photo] instance from a database map.
   factory Photo.fromMap(Map<String, dynamic> map) {
     return Photo(
@@ -53,7 +68,7 @@ class Photo {
     );
   }
 
-  /// Converts to a map for local database insertion.
+  /// Converts the photo metadata to a map for local database insertion.
   Map<String, dynamic> toMap() {
     return {
       DBColumn.id: id,
@@ -67,9 +82,11 @@ class Photo {
     };
   }
 
-  // --- Utilities ---
+  // ─────────────────────────────────────────────────────────────
+  //  Utilities
+  // ─────────────────────────────────────────────────────────────
 
-  /// Constructs a standardized storage path for an entry photo.
+  /// Constructs a standardized cloud storage path: `{userId}/{entryId}/{filename}`.
   static String buildStoragePath({
     required String userId,
     required String entryId,
@@ -84,6 +101,7 @@ class Photo {
     return 'photo_$ts.jpg';
   }
 
+  /// Creates a copy of this photo with the given fields replaced.
   Photo copyWith({
     String? id,
     String? entryId,

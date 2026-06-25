@@ -6,10 +6,21 @@ import 'package:poppy/core/core.dart';
 import 'package:poppy/services/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Auth Provider
+//  Location: lib/providers/auth_provider.dart
+// ─────────────────────────────────────────────────────────────
+
 /// Represents the various authentication states of the application.
 enum AuthStatus { unknown, authenticated, unauthenticated, passwordRecovery }
 
 /// Manages the authentication lifecycle, encryption keys, and security state.
+/// 
+/// This provider acts as the central authority for:
+/// - Sign-in/Sign-up/Sign-out flows.
+/// - PIN lock state and validation.
+/// - End-to-end encryption key management (via [EncryptionService]).
+/// - User profile metadata synchronization.
 class AuthProvider extends ChangeNotifier {
   final _storage = const FlutterSecureStorage();
   final _enc = EncryptionService.instance;
@@ -32,6 +43,10 @@ class AuthProvider extends ChangeNotifier {
   VoidCallback? onSignedIn;
   VoidCallback? onSignedOut;
 
+  // ─────────────────────────────────────────────────────────────
+  //  Getters
+  // ─────────────────────────────────────────────────────────────
+
   AuthStatus get status => _status;
   User? get user => _user;
   bool get isLocked => _isLocked;
@@ -41,6 +56,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   bool get encryptionReady => _encryptionReady;
 
+  /// Returns a display-friendly name for the user, falling back to email prefix.
   String get displayName {
     final meta = _user?.userMetadata;
     if (meta != null) {
@@ -56,6 +72,10 @@ class AuthProvider extends ChangeNotifier {
   AuthProvider() {
     _init();
   }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Initialization & Lifecycle
+  // ─────────────────────────────────────────────────────────────
 
   Future<void> _init() async {
     final session = SupabaseConfig.client.auth.currentSession;
@@ -110,18 +130,11 @@ class AuthProvider extends ChangeNotifier {
     });
   }
 
-  // --- Profile Sync ---
-  //
-  // AuthProvider only owns the auth-relevant slice of the profile row (PIN
-  // state). Tag colors are display/theming concerns and are synced directly
-  // by ThemeProvider — see [fetchProfile] below and
-  // ThemeProvider.applyTagsFromProfile/pushTagColors. This keeps AuthProvider
-  // free of any dependency on ThemeProvider's type, so it can be reused
-  // as-is in projects that don't have the same tag/theming model.
+  // ─────────────────────────────────────────────────────────────
+  //  Profile & Data Sync
+  // ─────────────────────────────────────────────────────────────
 
-  /// Fetches the current user's raw profile row from the backend, or null
-  /// if there is none / the fetch fails. Callers that care about other
-  /// fields (e.g. tags) can read them straight off the returned map.
+  /// Fetches the current user's raw profile row from the backend.
   Future<Map<String, dynamic>?> fetchProfile() async {
     try {
       return await _authService.fetchProfile();
@@ -132,20 +145,11 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Persists a partial update to the current user's profile row.
-  ///
-  /// Generic by design: AuthProvider doesn't need to know what's in [data].
-  /// This lets other providers (e.g. ThemeProvider, via
-  /// [ThemeProvider.pushTagColors]) persist their own slice of the profile
-  /// without AuthProvider taking on a dependency on their types.
   Future<void> updateProfile(Map<String, dynamic> data) {
     return _authService.updateProfile(data);
   }
 
   /// Reconciles local PIN-lock state with what's stored remotely.
-  ///
-  /// Pass an already-fetched profile map if you have one (e.g. from
-  /// [fetchProfile]) to avoid a redundant round-trip; otherwise this fetches
-  /// it itself.
   Future<void> syncPinState([Map<String, dynamic>? profile]) async {
     final data = profile ?? await fetchProfile();
     if (data == null) return;
@@ -155,7 +159,9 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // --- PIN Lock ---
+  // ─────────────────────────────────────────────────────────────
+  //  PIN Lock Management
+  // ─────────────────────────────────────────────────────────────
 
   Future<void> _checkPinLock({bool resetLock = false}) async {
     final enabled = await _storage.read(key: StorageKeys.pinEnabled);
@@ -165,11 +171,13 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Removes the UI lock barrier.
   void unlock() {
     _isLocked = false;
     _safeNotify();
   }
 
+  /// Enables or disables the PIN lock requirement.
   Future<void> setPinEnabled(bool enabled, {bool syncToCloud = true}) async {
     _pinEnabled = enabled;
     await _storage.write(key: StorageKeys.pinEnabled, value: enabled.toString());
@@ -182,19 +190,9 @@ class AuthProvider extends ChangeNotifier {
     _safeNotify();
   }
 
-  // --- Sync Control ---
-
-  void _startSync() => _sync.startListening();
-  void _stopSync() => _sync.stopListening();
-
-  Future<void> _clearLocalCache() async {
-    final userId = SupabaseConfig.currentUser?.id;
-    if (userId != null) {
-      await LocalDbService.instance.clearForUser(userId);
-    }
-  }
-
-  // --- Authentication Actions ---
+  // ─────────────────────────────────────────────────────────────
+  //  Authentication Actions
+  // ─────────────────────────────────────────────────────────────
 
   Future<bool> signIn({
     required String email,
@@ -218,11 +216,6 @@ class AuthProvider extends ChangeNotifier {
           await _storage.delete(key: StorageKeys.pendingEncKey);
         }
         final loaded = await _enc.loadCachedKey();
-        // No local cache and no pending key (e.g. a different device, or the
-        // pending key was already consumed previously) — fall back to
-        // unwrapping the key from the server with the password, same as the
-        // hasKeys branch. Without this, the user is let in with no
-        // encryption key, silently saving entries as empty ciphertext.
         if (!loaded && !_enc.hasKey) {
           await _keyService.loadAndUnwrapWithPassword(password);
         }
@@ -321,6 +314,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Finalizes the password reset flow by updating the password and re-encrypting the data key.
   Future<bool> completePasswordReset(String newPassword) async {
     _setLoading(true);
     _clearError();
@@ -487,6 +481,20 @@ class AuthProvider extends ChangeNotifier {
       return false;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Internal Helpers
+  // ─────────────────────────────────────────────────────────────
+
+  void _startSync() => _sync.startListening();
+  void _stopSync() => _sync.stopListening();
+
+  Future<void> _clearLocalCache() async {
+    final userId = SupabaseConfig.currentUser?.id;
+    if (userId != null) {
+      await LocalDbService.instance.clearForUser(userId);
     }
   }
 

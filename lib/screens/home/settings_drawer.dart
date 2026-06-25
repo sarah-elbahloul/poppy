@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/providers/providers.dart';
 import 'package:provider/provider.dart';
 
@@ -9,7 +10,6 @@ import 'package:provider/provider.dart';
 // ─────────────────────────────────────────────────────────────
 
 /// The side navigation drawer for the Home screen.
-/// Provides quick access to common settings, account info, and sign out.
 class SettingsDrawer extends StatelessWidget {
   const SettingsDrawer({super.key});
 
@@ -40,7 +40,6 @@ class SettingsDrawer extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Header ────────────────────────────────────
             Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Row(
@@ -82,13 +81,10 @@ class SettingsDrawer extends StatelessWidget {
                 ],
               ),
             ),
-
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Divider(),
             ),
-
-            // ── Scrollable content ────────────────────────
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(
@@ -103,7 +99,6 @@ class SettingsDrawer extends StatelessWidget {
                     },
                   ),
                   const SizedBox(height: AppSpacing.lg),
-
                   const _DrawerSectionHeader(label: 'Quick Access'),
                   _DrawerItem(
                     icon: AppIcons.tag,
@@ -122,7 +117,6 @@ class SettingsDrawer extends StatelessWidget {
                     trailing: auth.pinEnabled ? 'PIN On' : 'Off',
                     onTap: () => _go(context, AppRoutes.security),
                   ),
-
                   const SizedBox(height: AppSpacing.md),
                   const _DrawerSectionHeader(label: 'Preferences'),
                   _DrawerItem(
@@ -138,8 +132,6 @@ class SettingsDrawer extends StatelessWidget {
                 ],
               ),
             ),
-
-            // ── Footer ────────────────────────────────────
             Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
               child: Column(
@@ -165,29 +157,11 @@ class SettingsDrawer extends StatelessWidget {
   }
 
   Future<void> _onSignOut(BuildContext context) async {
-    final t = context.poppyTheme;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text('Sign out?', style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
-        content: Text(
-          'Your diary is safely stored in the cloud and will be here when you return.',
-          style: AppTextStyles.bodySmallSans(t.textSecondary, fp),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: TextStyle(color: t.textTertiary)),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: t.accent),
-            child: const Text('Sign out'),
-          ),
-        ],
-      ),
+    final confirmed = await PoppyDialog.showConfirm(
+      context,
+      title: 'Sign out?',
+      message: 'Your diary is safely stored in the cloud. You can sign back in any time.',
+      confirmLabel: 'Sign out',
     );
 
     if (confirmed == true && context.mounted) {

@@ -6,6 +6,11 @@ import 'package:poppy/providers/theme_provider.dart';
 import 'package:poppy/services/local_db_service.dart';
 import 'package:provider/provider.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Entry Card Widget
+//  Location: lib/core/widgets/entry_card.dart
+// ─────────────────────────────────────────────────────────────
+
 /// A card widget that displays a summary of a journal [Entry].
 ///
 /// Features:
@@ -162,6 +167,10 @@ class EntryCard extends StatelessWidget {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+//  Internal Helpers
+// ─────────────────────────────────────────────────────────────
 
 /// Displays the word count and an optional status dot for synchronization state.
 class _WordCountWithStatus extends StatelessWidget {

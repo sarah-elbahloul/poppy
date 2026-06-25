@@ -8,10 +8,14 @@ import 'package:poppy/providers/theme_provider.dart';
 //  Location: lib/screens/settings/legal_screen.dart
 // ─────────────────────────────────────────────────────────────
 
+/// Types of legal documents supported by the [LegalScreen].
 enum LegalDoc { privacy, terms, opensource }
 
 /// Displays legal documents such as Privacy Policy, Terms of Use, 
 /// or Open Source Licenses.
+/// 
+/// This screen uses a switch-based content selection to render the 
+/// appropriate document based on the provided [doc] type.
 class LegalScreen extends StatelessWidget {
   final LegalDoc doc;
   const LegalScreen({super.key, required this.doc});
@@ -58,8 +62,12 @@ class LegalScreen extends StatelessWidget {
   }
 }
 
-// ─── Privacy Policy ───
+// ─────────────────────────────────────────────────────────────
+//  Document Contents
+// ─────────────────────────────────────────────────────────────
 
+/// The Privacy Policy document content.
+/// Emphasizes Zero-Knowledge architecture and data sovereignty.
 class _PrivacyContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -111,7 +119,7 @@ class _PrivacyContent extends StatelessWidget {
             'or your entire account at any time through the app settings. '
             'Deletion is permanent and removes all associated cloud data.',
         ),
-        const _Section(title: 'Contact', body: // todo: change this to actual email
+        const _Section(title: 'Contact', body: 
         'For privacy concerns or data requests, contact us at sa.albahloul@gmail.com.',
         ),
       ],
@@ -119,8 +127,7 @@ class _PrivacyContent extends StatelessWidget {
   }
 }
 
-// ─── Terms of Use ───
-
+/// The Terms of Use document content.
 class _TermsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -172,15 +179,14 @@ class _TermsContent extends StatelessWidget {
   }
 }
 
-// ─── Open Source Licenses ───
-
+/// The Open Source Licenses document content.
+/// Lists key dependencies and provides a link to the full system license page.
 class _OpenSourceContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
-    // Updated to reflect pubspec.yaml
     final packages = [
       ('supabase_flutter',    'MIT',      'Supabase Inc.'),
       ('cryptography',        'Apache 2.0','Daco Harkes'),
@@ -260,6 +266,11 @@ class _OpenSourceContent extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Private Helper Widgets
+// ─────────────────────────────────────────────────────────────
+
+/// A helper widget that renders a single legal section (Title + Body).
 class _Section extends StatelessWidget {
   final String title;
   final String body;

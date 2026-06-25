@@ -1,14 +1,23 @@
 import 'package:poppy/core/supabase_client.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Auth Service
+//  Location: lib/services/auth_service.dart
+// ─────────────────────────────────────────────────────────────
+
 /// Orchestrates authentication workflows using Supabase Auth.
 ///
-/// Responsibilities include:
+/// This service acts as the direct interface with Supabase for:
 /// - User sign-in, sign-up, and sign-out.
-/// - Password reset and profile management.
-/// - Monitoring authentication state changes.
+/// - Password recovery and email updates.
+/// - Profile metadata management in the 'profiles' table.
 class AuthService {
   final _client = SupabaseConfig.client;
+
+  // ─────────────────────────────────────────────────────────────
+  //  Authentication Workflows
+  // ─────────────────────────────────────────────────────────────
 
   /// Authenticates a user with email and password.
   Future<AuthResponse> signIn({
@@ -42,6 +51,10 @@ class AuthService {
     await _client.auth.resetPasswordForEmail(email.trim());
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  User Account Management
+  // ─────────────────────────────────────────────────────────────
+
   /// Updates the email address for the currently authenticated user.
   Future<UserResponse> updateEmail(String newEmail) async {
     return await _client.auth.updateUser(
@@ -56,15 +69,17 @@ class AuthService {
     );
   }
 
-  /// Returns the currently authenticated user, or null if signed out.
+  /// Returns the currently authenticated user metadata, or null if signed out.
   User? get currentUser => _client.auth.currentUser;
 
-  /// Provides a stream of authentication state changes.
+  /// Provides a stream of authentication state changes (signedIn, signedOut, etc).
   Stream<AuthState> get onAuthStateChange => _client.auth.onAuthStateChange;
 
-  // --- Profile Management ---
+  // ─────────────────────────────────────────────────────────────
+  //  Profile Data Persistence
+  // ─────────────────────────────────────────────────────────────
 
-  /// Fetches extended profile data for the current user from the 'profiles' table.
+  /// Fetches extended profile data (PIN status, tags, etc.) from the 'profiles' table.
   Future<Map<String, dynamic>?> fetchProfile() async {
     final response = await _client
         .from('profiles')
@@ -74,7 +89,7 @@ class AuthService {
     return response as Map<String, dynamic>?;
   }
 
-  /// Updates profile-specific preferences (e.g., theme settings, PIN state).
+  /// Updates profile-specific preferences stored in the backend.
   Future<void> updateProfile(Map<String, dynamic> data) async {
     await _client
         .from('profiles')

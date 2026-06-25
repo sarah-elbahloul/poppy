@@ -3,6 +3,12 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:poppy/core/constants.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Local Database Service
+//  Location: lib/services/local_db_service.dart
+// ─────────────────────────────────────────────────────────────
+
+/// Represents the synchronization state of a record in the local database.
 class SyncStatus {
   SyncStatus._();
   static const String synced = 'synced';
@@ -12,18 +18,27 @@ class SyncStatus {
   static const String failed = 'failed';
 }
 
+/// Operations that can be queued for cloud synchronization.
 class SyncOp {
+  SyncOp._();
   static const String create = 'create';
   static const String update = 'update';
   static const String delete = 'delete';
 }
 
+/// Manages the local SQLite database for offline-first data persistence.
+/// 
+/// This service handles:
+/// - Database schema creation and migrations.
+/// - CRUD operations for entries and photos.
+/// - Maintaining a `sync_queue` for background cloud synchronization.
 class LocalDbService {
   LocalDbService._();
   static final LocalDbService instance = LocalDbService._();
 
   Database? _db;
 
+  /// Initializes the SQLite database.
   Future<void> init() async {
     if (_db != null) return;
     final dbPath = await getDatabasesPath();
@@ -37,7 +52,12 @@ class LocalDbService {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Schema Management
+  // ─────────────────────────────────────────────────────────────
+
   Future<void> _onCreate(Database db, int version) async {
+    // Journal Entries Table
     await db.execute('''
       CREATE TABLE entries (
         ${DBColumn.id}           TEXT    PRIMARY KEY,
@@ -54,6 +74,7 @@ class LocalDbService {
       )
     ''');
 
+    // Photo Attachments Table
     await db.execute('''
       CREATE TABLE photos (
         ${DBColumn.id}           TEXT    PRIMARY KEY,
@@ -68,6 +89,7 @@ class LocalDbService {
       )
     ''');
 
+    // Outbound Synchronization Queue
     await db.execute('''
       CREATE TABLE sync_queue (
         id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,6 +100,7 @@ class LocalDbService {
       )
     ''');
 
+    // Indexes for performance
     await db.execute('CREATE INDEX idx_entries_user ON entries (${DBColumn.userId})');
     await db.execute('CREATE INDEX idx_entries_sync ON entries (${DBColumn.syncStatus})');
     await db.execute('CREATE INDEX idx_photos_entry ON photos (${DBColumn.entryId})');
@@ -86,7 +109,6 @@ class LocalDbService {
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // Safely add columns and tables for v2 migration
       try { await db.execute('ALTER TABLE entries ADD COLUMN ${DBColumn.isDeleted} INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
       try { await db.execute('ALTER TABLE entries ADD COLUMN ${DBColumn.syncStatus} TEXT NOT NULL DEFAULT "${SyncStatus.synced}"'); } catch (_) {}
       
@@ -121,6 +143,11 @@ class LocalDbService {
     return _db!;
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Sync Queue Management
+  // ─────────────────────────────────────────────────────────────
+
+  /// Enqueues a sync operation within an existing database [batch].
   Future<void> _enqueue(Batch batch, String type, String id, String op) async {
     batch.insert('sync_queue', {
       'entity_type': type,
@@ -130,8 +157,21 @@ class LocalDbService {
     });
   }
 
-  // --- Entry CRUD ---
+  /// Retrieves the oldest pending operations from the sync queue.
+  Future<List<Map<String, dynamic>>> getSyncQueue({int limit = 50}) async {
+    return _database.query('sync_queue', orderBy: 'created_at ASC', limit: limit);
+  }
 
+  /// Removes a processed item from the sync queue.
+  Future<void> dequeue(int queueId) async {
+    await _database.delete('sync_queue', where: 'id = ?', whereArgs: [queueId]);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Entry Operations
+  // ─────────────────────────────────────────────────────────────
+
+  /// Fetches all active entries for a user, sorted by date.
   Future<List<Map<String, dynamic>>> getAllEntries(String userId) async {
     return _database.query('entries', 
       where: '${DBColumn.userId} = ? AND ${DBColumn.isDeleted} = 0', 
@@ -140,11 +180,13 @@ class LocalDbService {
     );
   }
 
+  /// Fetches a single entry by its unique ID.
   Future<Map<String, dynamic>?> getEntryById(String id) async {
     final rows = await _database.query('entries', where: '${DBColumn.id} = ?', whereArgs: [id], limit: 1);
     return rows.isEmpty ? null : rows.first;
   }
 
+  /// Inserts a new entry and automatically enqueues it for creation in the cloud.
   Future<void> insertEntry(Map<String, dynamic> row) async {
     final data = Map<String, dynamic>.from(row);
     data[DBColumn.syncStatus] = SyncStatus.pendingCreate;
@@ -155,6 +197,7 @@ class LocalDbService {
     await batch.commit(noResult: true);
   }
 
+  /// Updates an entry's fields and enqueues the change for synchronization.
   Future<void> updateEntry(String id, Map<String, dynamic> fields) async {
     final existing = await getEntryById(id);
     if (existing == null) return;
@@ -168,6 +211,7 @@ class LocalDbService {
     await batch.commit(noResult: true);
   }
 
+  /// Marks an entry as deleted. If it hasn't been synced yet, it is removed entirely.
   Future<void> markEntryDeleted(String id) async {
     final existing = await getEntryById(id);
     if (existing == null) return;
@@ -182,6 +226,7 @@ class LocalDbService {
     await batch.commit(noResult: true);
   }
 
+  /// Batch version of [markEntryDeleted].
   Future<void> markEntriesDeleted(List<String> ids) async {
     final batch = _database.batch();
     for (final id in ids) {
@@ -203,8 +248,21 @@ class LocalDbService {
     await batch.commit(noResult: true);
   }
 
-  // --- Photo CRUD ---
+  /// Updates an entry's status to [SyncStatus.synced].
+  Future<void> markEntrySynced(String id) async {
+    await _database.update('entries', {DBColumn.syncStatus: SyncStatus.synced}, where: '${DBColumn.id} = ?', whereArgs: [id]);
+  }
 
+  /// Permanently removes an entry from the local database.
+  Future<void> hardDeleteEntry(String id) async {
+    await _database.delete('entries', where: '${DBColumn.id} = ?', whereArgs: [id]);
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Photo Operations
+  // ─────────────────────────────────────────────────────────────
+
+  /// Retrieves photo metadata associated with a specific entry.
   Future<List<Map<String, dynamic>>> getPhotosForEntry(String entryId) async {
     return _database.query('photos', 
       where: '${DBColumn.entryId} = ? AND ${DBColumn.syncStatus} != ?', 
@@ -213,11 +271,13 @@ class LocalDbService {
     );
   }
 
+  /// Fetches a single photo by its unique ID.
   Future<Map<String, dynamic>?> getPhotoById(String id) async {
     final rows = await _database.query('photos', where: '${DBColumn.id} = ?', whereArgs: [id], limit: 1);
     return rows.isEmpty ? null : rows.first;
   }
 
+  /// Inserts a photo record and enqueues it for synchronization.
   Future<void> insertPhoto(Map<String, dynamic> row) async {
     final data = Map<String, dynamic>.from(row);
     data[DBColumn.syncStatus] = SyncStatus.pendingCreate;
@@ -228,11 +288,12 @@ class LocalDbService {
     await batch.commit(noResult: true);
   }
 
+  /// Marks a photo for deletion locally and enqueues the request.
   Future<void> markPhotoDeleted(String id) async {
     final existing = await getPhotoById(id);
     if (existing == null) return;
     final batch = _database.batch();
-    if (existing[DBColumn.syncStatus] == SyncStatus.pendingCreate) {
+    if (existing[DBStatus.syncStatus] == SyncStatus.pendingCreate) {
       batch.delete('photos', where: '${DBColumn.id} = ?', whereArgs: [id]);
       batch.delete('sync_queue', where: 'entity_id = ? AND entity_type = ?', whereArgs: [id, 'photo']);
     } else {
@@ -242,20 +303,7 @@ class LocalDbService {
     await batch.commit(noResult: true);
   }
 
-  // --- Sync Engine ---
-
-  Future<List<Map<String, dynamic>>> getSyncQueue({int limit = 50}) async {
-    return _database.query('sync_queue', orderBy: 'created_at ASC', limit: limit);
-  }
-
-  Future<void> dequeue(int queueId) async {
-    await _database.delete('sync_queue', where: 'id = ?', whereArgs: [queueId]);
-  }
-
-  Future<void> markEntrySynced(String id) async {
-    await _database.update('entries', {DBColumn.syncStatus: SyncStatus.synced}, where: '${DBColumn.id} = ?', whereArgs: [id]);
-  }
-
+  /// Updates a photo's cloud storage path and sync status.
   Future<void> markPhotoSynced(String id, String storagePath) async {
     await _database.update('photos', {
       DBColumn.syncStatus: SyncStatus.synced, 
@@ -264,14 +312,18 @@ class LocalDbService {
     }, where: '${DBColumn.id} = ?', whereArgs: [id]);
   }
 
-  Future<void> hardDeleteEntry(String id) async {
-    await _database.delete('entries', where: '${DBColumn.id} = ?', whereArgs: [id]);
-  }
-
+  /// Permanently removes a photo from the local database.
   Future<void> hardDeletePhoto(String id) async {
     await _database.delete('photos', where: '${DBColumn.id} = ?', whereArgs: [id]);
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Server Reconciliation
+  // ─────────────────────────────────────────────────────────────
+
+  /// Clears fully-synced local records and replaces them with fresh data from the server.
+  /// 
+  /// [excludeIds] can be used to protect records that were just uploaded from being overwritten.
   Future<void> refreshFromServer(
       String userId,
       List<Map<String, dynamic>> serverRows, {
@@ -279,7 +331,6 @@ class LocalDbService {
       }) async {
     final batch = _database.batch();
 
-    // Build the WHERE clause, optionally excluding just-synced IDs.
     if (excludeIds != null && excludeIds.isNotEmpty) {
       final placeholders = List.filled(excludeIds.length, '?').join(', ');
       batch.delete(
@@ -323,6 +374,7 @@ class LocalDbService {
     };
   }
 
+  /// Purges all user-specific data from the local database.
   Future<void> clearForUser(String userId) async {
     final batch = _database.batch();
     batch.delete('entries', where: '${DBColumn.userId} = ?', whereArgs: [userId]);

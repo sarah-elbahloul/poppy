@@ -1,14 +1,25 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Supabase Configuration
+//  Location: lib/core/supabase_client.dart
+// ─────────────────────────────────────────────────────────────
+
 /// Centralized management for Supabase initialization and client access.
+/// 
+/// This class handles:
+/// - Initializing the connection with environment-defined credentials.
+/// - Providing global access to the [SupabaseClient].
+/// - Exposing helper getters for the current user and auth state.
+/// - Managing signed URL generation for private cloud storage.
 class SupabaseConfig {
   SupabaseConfig._();
 
   static const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const _supabaseKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
-  /// Initializes the Supabase client with credentials from environment variables.
+  /// Initializes the Supabase client.
   ///
   /// Throws an assertion error if credentials are not provided via `--dart-define`.
   static Future<void> init() async {
@@ -31,31 +42,31 @@ class SupabaseConfig {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Client & User Getters
+  // ─────────────────────────────────────────────────────────────
+
   /// Returns the global [SupabaseClient] instance.
   static SupabaseClient get client => Supabase.instance.client;
 
   /// Returns the currently authenticated user, or null if signed out.
   static User? get currentUser => client.auth.currentUser;
 
-  /// Returns the ID of the currently authenticated user, or an empty
-  /// string if no user is signed in.
+  /// Returns the ID of the currently authenticated user, or an empty string.
   ///
-  /// Callers (e.g. [SyncService.syncNow]) rely on being able to check
-  /// `userId.isEmpty` to no-op gracefully during sign-out races. This used
-  /// to be backed by an `assert()`, which is stripped out of release builds
-  /// — in release mode that meant a null-check crash instead of a graceful
-  /// no-op whenever a save/sync/fetch call landed while unauthenticated.
+  /// Safe to call during sign-out races as it returns an empty string 
+  /// instead of throwing or returning null.
   static String get userId => currentUser?.id ?? '';
 
   /// Provides a stream of authentication state changes.
   static Stream<AuthState> get authStateStream =>
       client.auth.onAuthStateChange;
 
-  /// Generates a short-lived signed URL for accessing private storage objects.
-  ///
-  /// [bucket] is the name of the storage bucket.
-  /// [path] is the full path to the file within the bucket.
-  /// [expiresIn] defines the URL validity duration in seconds (defaults to 1 hour).
+  // ─────────────────────────────────────────────────────────────
+  //  Storage Helpers
+  // ─────────────────────────────────────────────────────────────
+
+  /// Generates a short-lived (1 hour) signed URL for private storage objects.
   static Future<String> getSignedUrl(
       String bucket,
       String path, {

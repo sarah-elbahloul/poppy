@@ -2,6 +2,11 @@ import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:poppy/services/local_db_service.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Entry Model
+//  Location: lib/models/entry.dart
+// ─────────────────────────────────────────────────────────────
+
 /// Represents a journal entry in the application.
 ///
 /// **Encryption Contract:**
@@ -63,8 +68,9 @@ class Entry {
     this.isDeleted = false,
   });
 
-  /// Returns true if the entry has local changes that haven't been synced to the server.
-  bool get isPending => syncStatus != SyncStatus.synced;
+  // ─────────────────────────────────────────────────────────────
+  //  Factory & Conversions
+  // ─────────────────────────────────────────────────────────────
 
   /// Creates an [Entry] from a database map.
   ///
@@ -87,7 +93,7 @@ class Entry {
     );
   }
 
-  /// Converts the entry to a map for data export.
+  /// Converts the entry to a map suitable for data export.
   Map<String, dynamic> toExportMap() => {
     'id': id,
     'title': title,
@@ -100,7 +106,14 @@ class Entry {
     'photo_urls': photoUrls,
   };
 
-  /// Returns a short preview of the entry content.
+  // ─────────────────────────────────────────────────────────────
+  //  Getters & Utilities
+  // ─────────────────────────────────────────────────────────────
+
+  /// Returns true if the entry has local changes that haven't been synced to the server.
+  bool get isPending => syncStatus != SyncStatus.synced;
+
+  /// Returns a short preview of the entry content (first non-empty line).
   String get contentPreview {
     final firstLine = content.split('\n').firstWhere(
           (l) => l.trim().isNotEmpty,
@@ -111,7 +124,7 @@ class Entry {
         : firstLine;
   }
 
-  /// Calculates the word count for a given string.
+  /// Calculates the word count for a given string based on whitespace separators.
   static int countWords(String text) {
     if (text.trim().isEmpty) return 0;
     return text.trim().split(RegExp(r'\s+')).length;
