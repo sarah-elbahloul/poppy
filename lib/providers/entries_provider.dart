@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/models/entry.dart';
 import 'package:poppy/services/services.dart';
+import 'package:poppy/core/style/style.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Entries Provider

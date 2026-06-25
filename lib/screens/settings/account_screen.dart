@@ -61,7 +61,7 @@ class _AccountScreenState extends State<AccountScreen> {
   Future<void> _onUpdateDisplayName() async {
     final name = _displayNameController.text.trim();
     if (name.isEmpty) {
-      AppSnackbar.warning(context, 'Please enter a display name.');
+      PoppySnackbar.warning(context, 'Please enter a display name.');
       return;
     }
     final auth = context.read<AuthProvider>();
@@ -71,14 +71,14 @@ class _AccountScreenState extends State<AccountScreen> {
     if (ok) {
       setState(() => _openPanel = null);
       _displayNameController.clear();
-      AppSnackbar.success(context, 'Display name updated.');
+      PoppySnackbar.success(context, 'Display name updated.');
     }
   }
 
   Future<void> _onUpdateEmail() async {
     final err = AppErrors.validateEmail(_emailController.text);
     if (err != null) {
-      AppSnackbar.error(context, err);
+      PoppySnackbar.error(context, err);
       return;
     }
     final auth = context.read<AuthProvider>();
@@ -88,25 +88,25 @@ class _AccountScreenState extends State<AccountScreen> {
     if (ok) {
       setState(() => _openPanel = null);
       _emailController.clear();
-      AppSnackbar.success(context, 'Check your new email for a confirmation link.', title: 'Verification sent');
+      PoppySnackbar.success(context, 'Check your new email for a confirmation link.', title: 'Verification sent');
     }
   }
 
   Future<void> _onUpdatePassword() async {
     if (_currentPassController.text.isEmpty) {
-      AppSnackbar.warning(context, 'Please enter your current password.');
+      PoppySnackbar.warning(context, 'Please enter your current password.');
       return;
     }
     final passErr = AppErrors.validatePassword(_newPassController.text);
     if (passErr != null) {
-      AppSnackbar.error(context, passErr);
+      PoppySnackbar.error(context, passErr);
       return;
     }
     final confirmErr = AppErrors.validateConfirm(
       _newPassController.text, _confirmPassController.text,
     );
     if (confirmErr != null) {
-      AppSnackbar.error(context, confirmErr);
+      PoppySnackbar.error(context, confirmErr);
       return;
     }
 
@@ -122,7 +122,7 @@ class _AccountScreenState extends State<AccountScreen> {
       _currentPassController.clear();
       _newPassController.clear();
       _confirmPassController.clear();
-      AppSnackbar.success(context, 'Password updated successfully.');
+      PoppySnackbar.success(context, 'Password updated successfully.');
     }
   }
 

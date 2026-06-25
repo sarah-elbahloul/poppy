@@ -3,10 +3,10 @@ import 'package:poppy/core/style/style.dart';
 import 'package:poppy/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 
-/// Poppy — Shared Dialogs
-///
-/// Reorganized for better UX/UI and ease of use.
-/// Supports standard patterns for confirmation, destructive, and info dialogs.
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Shared Dialogs
+//  Location: lib/core/widgets/dialogs.dart
+// ─────────────────────────────────────────────────────────────
 
 /// Visual/semantic intent of a [PoppyDialog]'s primary action.
 enum PoppyDialogIntent {
@@ -16,13 +16,16 @@ enum PoppyDialogIntent {
 }
 
 /// A single, consistent dialog shape used for every confirmation in Poppy.
+///
+/// Reorganized for better UX/UI and ease of use.
+/// Supports standard patterns for confirmation, destructive actions, and informational alerts.
 class PoppyDialog extends StatelessWidget {
   final String title;
   final IconData? titleIcon;
   final String? message;
   final Widget? body;
-  final String cancelLabel;
-  final String confirmLabel;
+  final String? cancelLabel;
+  final String? confirmLabel;
   final bool confirmEnabled;
   final PoppyDialogIntent intent;
   final List<Widget> extraActions;
@@ -91,7 +94,9 @@ class PoppyDialog extends StatelessWidget {
         confirmEnabled = true,
         extraActions = const [];
 
-  // --- Static Helpers for quicker usage ---
+  // ─────────────────────────────────────────────────────────────
+  //  Static Helpers
+  // ─────────────────────────────────────────────────────────────
 
   /// Shows a standard confirmation dialog.
   static Future<bool?> showConfirm(
@@ -143,7 +148,7 @@ class PoppyDialog extends StatelessWidget {
     required String title,
     String? message,
     Widget? body,
-    String confirmLabel = 'Done',
+    String? confirmLabel = 'Done',
     IconData? icon,
     bool dismissible = true,
   }) =>
@@ -173,6 +178,10 @@ class PoppyDialog extends StatelessWidget {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Build
+  // ─────────────────────────────────────────────────────────────
+
   Color _confirmColor(PoppyThemeExtension t) {
     switch (intent) {
       case PoppyDialogIntent.destructive:
@@ -197,13 +206,9 @@ class PoppyDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
-      titlePadding: EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        isCentered ? AppSpacing.xl : AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.sm,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      titlePadding: const EdgeInsets.all(AppSpacing.lg),
+      contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
       actionsPadding: const EdgeInsets.fromLTRB(
           AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
       title: Column(
@@ -214,7 +219,7 @@ class PoppyDialog extends StatelessWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
                 color: confirmColor.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(AppRadius.full),
               ),
               child: Icon(titleIcon, color: confirmColor, size: AppIconSize.md),
             ),
@@ -247,17 +252,19 @@ class PoppyDialog extends StatelessWidget {
         ),
       ),
       actions: [
-        if (!isInfo)
+        if (!isInfo && cancelLabel != null) ...[
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(cancelLabel, style: TextStyle(color: t.textTertiary)),
-          ),
+            child: Text(cancelLabel!, style: TextStyle(color: t.textTertiary)),
+          )
+        ],
         if (!isInfo) ...extraActions,
-        if (showPrimaryAction)
+        if (showPrimaryAction && confirmLabel != null) ...[
           FilledButton(
             onPressed: !confirmEnabled
                 ? null
-                : () => (onConfirm ?? (ctx) => Navigator.pop(ctx, true))(context),
+                : () =>
+                (onConfirm ?? (ctx) => Navigator.pop(ctx, true))(context),
             style: FilledButton.styleFrom(
               backgroundColor: confirmColor,
               foregroundColor: AppColors.white,
@@ -267,12 +274,17 @@ class PoppyDialog extends StatelessWidget {
               ),
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             ),
-            child: Text(confirmLabel),
+            child: Text(confirmLabel!),
           ),
+        ]
       ],
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+//  Helper Widgets
+// ─────────────────────────────────────────────────────────────
 
 /// The small icon + tinted-box note used beneath a dialog's main body text.
 class DialogInfoBanner extends StatelessWidget {
@@ -317,7 +329,7 @@ class DialogInfoBanner extends StatelessWidget {
         border: Border.all(color: border, width: AppStroke.hairline),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(icon, size: AppIconSize.xs, color: fg),
           const SizedBox(width: AppSpacing.sm),
@@ -336,9 +348,9 @@ class DialogInfoBanner extends StatelessWidget {
 enum DialogBannerTone { info, warning }
 
 /// Standard body text styling for plain-text dialog content.
-/// (Keep for compatibility, but prefer [PoppyDialog.message] for simple cases).
 class DialogBodyText extends StatelessWidget {
   final String text;
+
   const DialogBodyText(this.text, {super.key});
 
   @override

@@ -1,14 +1,24 @@
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Application Routes
+//  Location: lib/core/app_routes.dart
+// ─────────────────────────────────────────────────────────────
+
 /// Defines all route name constants used for navigation throughout the application.
 class AppRoutes {
   AppRoutes._();
 
+  // --- Auth Flow ---
   static const String login = '/login';
   static const String register = '/register';
   static const String lock = '/lock';
   static const String setNewPassword = '/setNewPassword';
+
+  // --- Main App ---
   static const String home = '/home';
   static const String write = '/write';
   static const String search = '/search';
+
+  // --- Settings & Legal ---
   static const String settings = '/settings';
   static const String settingsDrawer = '/settingsDrawer';
   static const String appearance = '/settings/appearance';

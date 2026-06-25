@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:poppy/core/style/style.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Typography System
+//  Location: lib/core/style/app_text_styles.dart
+// ─────────────────────────────────────────────────────────────
+
 /// Centralized management for all typography used in the application.
 ///
 /// The typography system uses two primary font roles:
@@ -12,7 +17,9 @@ import 'package:poppy/core/style/style.dart';
 class AppTextStyles {
   AppTextStyles._();
 
-  // --- Branding ---
+  // ─────────────────────────────────────────────────────────────
+  //  Branding
+  // ─────────────────────────────────────────────────────────────
 
   /// Primary display style using Literata for brand identity.
   static TextStyle displayLarge(Color color) => GoogleFonts.literata(
@@ -30,7 +37,9 @@ class AppTextStyles {
     fontWeight: FontWeight.w700,
   );
 
-  // --- Headlines ---
+  // ─────────────────────────────────────────────────────────────
+  //  Headlines
+  // ─────────────────────────────────────────────────────────────
 
   /// Large headline style, typically used for screen titles.
   static TextStyle headlineLarge(
@@ -57,7 +66,9 @@ class AppTextStyles {
   static TextStyle headlineSmall(Color color, FontPairData fp) =>
       fp.titleFont.style(color, size: 18, height: 1.3);
 
-  // --- Titles ---
+  // ─────────────────────────────────────────────────────────────
+  //  Titles
+  // ─────────────────────────────────────────────────────────────
 
   /// Large title style, often used in modals or prominent list items.
   static TextStyle titleLarge(
@@ -83,7 +94,9 @@ class AppTextStyles {
   static TextStyle titleSmallSans(Color color, FontPairData fp) =>
       fp.titleFont.style(color, size: 14);
 
-  // --- Body ---
+  // ─────────────────────────────────────────────────────────────
+  //  Body
+  // ─────────────────────────────────────────────────────────────
 
   /// Large body text style, optimized for long-form reading.
   static TextStyle bodyLarge(
@@ -106,7 +119,9 @@ class AppTextStyles {
   static TextStyle bodySmallSans(Color color, FontPairData fp) =>
       fp.bodyFont.style(color, size: 13);
 
-  // --- Labels ---
+  // ─────────────────────────────────────────────────────────────
+  //  Labels
+  // ─────────────────────────────────────────────────────────────
 
   /// Large label style using a serif face.
   static TextStyle labelLargeSerif(Color color, FontPairData fp) =>
@@ -124,7 +139,9 @@ class AppTextStyles {
   static TextStyle labelSmall(Color color, FontPairData fp) =>
       fp.bodyFont.style(color, size: 10, height: 1.4);
 
-  // --- Specialized ---
+  // ─────────────────────────────────────────────────────────────
+  //  Specialized
+  // ─────────────────────────────────────────────────────────────
 
   /// Specific style for day numbers in calendar-like views.
   static TextStyle calendarDay(Color color, FontPairData fp) =>

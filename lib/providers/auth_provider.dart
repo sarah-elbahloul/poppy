@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:poppy/core/core.dart';
 import 'package:poppy/services/services.dart';
@@ -15,12 +16,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 enum AuthStatus { unknown, authenticated, unauthenticated, passwordRecovery }
 
 /// Manages the authentication lifecycle, encryption keys, and security state.
-/// 
-/// This provider acts as the central authority for:
-/// - Sign-in/Sign-up/Sign-out flows.
-/// - PIN lock state and validation.
-/// - End-to-end encryption key management (via [EncryptionService]).
-/// - User profile metadata synchronization.
 class AuthProvider extends ChangeNotifier {
   final _storage = const FlutterSecureStorage();
   final _enc = EncryptionService.instance;
@@ -37,9 +32,6 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _encryptionReady = false;
 
-  /// Optional callbacks registered by other providers/screens so that
-  /// AuthProvider can drive cross-provider lifecycle events without
-  /// introducing circular dependencies.
   VoidCallback? onSignedIn;
   VoidCallback? onSignedOut;
 
@@ -56,7 +48,6 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   bool get encryptionReady => _encryptionReady;
 
-  /// Returns a display-friendly name for the user, falling back to email prefix.
   String get displayName {
     final meta = _user?.userMetadata;
     if (meta != null) {
@@ -134,7 +125,6 @@ class AuthProvider extends ChangeNotifier {
   //  Profile & Data Sync
   // ─────────────────────────────────────────────────────────────
 
-  /// Fetches the current user's raw profile row from the backend.
   Future<Map<String, dynamic>?> fetchProfile() async {
     try {
       return await _authService.fetchProfile();
@@ -144,12 +134,10 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Persists a partial update to the current user's profile row.
   Future<void> updateProfile(Map<String, dynamic> data) {
     return _authService.updateProfile(data);
   }
 
-  /// Reconciles local PIN-lock state with what's stored remotely.
   Future<void> syncPinState([Map<String, dynamic>? profile]) async {
     final data = profile ?? await fetchProfile();
     if (data == null) return;
@@ -171,13 +159,11 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Removes the UI lock barrier.
   void unlock() {
     _isLocked = false;
     _safeNotify();
   }
 
-  /// Enables or disables the PIN lock requirement.
   Future<void> setPinEnabled(bool enabled, {bool syncToCloud = true}) async {
     _pinEnabled = enabled;
     await _storage.write(key: StorageKeys.pinEnabled, value: enabled.toString());
@@ -314,7 +300,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Finalizes the password reset flow by updating the password and re-encrypting the data key.
   Future<bool> completePasswordReset(String newPassword) async {
     _setLoading(true);
     _clearError();
@@ -503,10 +488,19 @@ class AuthProvider extends ChangeNotifier {
     return 'io.supabase.poppy://login-callback/';
   }
 
+  /// Notifies listeners while avoiding "setState during build" errors.
+  /// If we are already in a persistent build phase, we schedule it for the next frame.
+  /// Otherwise, we notify immediately to ensure the UI stays in sync.
   void _safeNotify() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (hasListeners) notifyListeners();
-    });
+    if (!hasListeners) return;
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.persistentCallbacks) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (hasListeners) notifyListeners();
+      });
+    } else {
+      notifyListeners();
+    }
   }
 
   void _setLoading(bool v) {

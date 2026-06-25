@@ -177,7 +177,7 @@ class SettingsScreen extends StatelessWidget {
   Future<void> _onExport(BuildContext context) async {
     final entries = context.read<EntriesProvider>().entries;
     if (entries.isEmpty) {
-      AppSnackbar.warning(context, 'No entries to export.');
+      PoppySnackbar.warning(context, 'No entries to export.');
       return;
     }
 
@@ -196,7 +196,7 @@ class SettingsScreen extends StatelessWidget {
 
       if (savedPath != null) {
         final filename = savedPath.split('/').last;
-        AppSnackbar.success(
+        PoppySnackbar.success(
           context,
           'Saved to Downloads/$filename',
           action: SnackBarAction(
@@ -205,11 +205,11 @@ class SettingsScreen extends StatelessWidget {
           ),
         );
       } else {
-        AppSnackbar.info(context, 'Export ready to share.');
+        PoppySnackbar.info(context, 'Export ready to share.');
       }
     } catch (_) {
       if (context.mounted) {
-        AppSnackbar.error(context, 'Export failed. Please try again.');
+        PoppySnackbar.error(context, 'Export failed. Please try again.');
       }
     }
   }
@@ -227,7 +227,7 @@ class SettingsScreen extends StatelessWidget {
       return;
     } catch (e) {
       if (context.mounted) {
-        AppSnackbar.error(
+        PoppySnackbar.error(
           context,
           e is FormatException ? e.message : 'Could not read the file.',
         );
@@ -290,14 +290,14 @@ class SettingsScreen extends StatelessWidget {
       if (count > 0) {
         await context.read<EntriesProvider>().fetchEntries();
         if (context.mounted) {
-          AppSnackbar.success(context, '$count $entryWord imported.');
+          PoppySnackbar.success(context, '$count $entryWord imported.');
         }
       } else {
-        AppSnackbar.info(context, 'No new entries found.');
+        PoppySnackbar.info(context, 'No new entries found.');
       }
     } catch (e) {
       if (context.mounted) {
-        AppSnackbar.error(context, e is FormatException ? e.message : 'Import failed.');
+        PoppySnackbar.error(context, e is FormatException ? e.message : 'Import failed.');
       }
     }
   }
@@ -311,13 +311,13 @@ class SettingsScreen extends StatelessWidget {
     await PoppyDialog.showInfo(
       context,
       title: 'Send feedback',
-      confirmLabel: 'Close',
+      confirmLabel: null,
       message: 'We read every message. Bugs, ideas, or just to say hi — all welcome.',
       body: GestureDetector(
         onTap: () {
           Clipboard.setData(const ClipboardData(text: email));
           Navigator.pop(context);
-          AppSnackbar.info(context, 'Email address copied.');
+          PoppySnackbar.info(context, 'Email address copied.');
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
@@ -367,7 +367,8 @@ class SettingsScreen extends StatelessWidget {
         title: 'Delete account',
         titleIcon: AppIcons.warning,
         confirmLabel: 'Continue',
-        barrierDismissible: false,
+        cancelLabel: null,
+        barrierDismissible: true,
         message: 'This permanently deletes your Poppy account and every diary entry you have written. It cannot be undone.',
         body: entries.isNotEmpty
             ? DialogInfoBanner(
@@ -382,7 +383,16 @@ class SettingsScreen extends StatelessWidget {
                 Navigator.pop(context, false);
                 await _onExport(context);
               },
-              style: OutlinedButton.styleFrom(side: BorderSide(color: t.accent, width: AppStroke.thin)),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(
+                  color: t.accent,
+                  width: AppStroke.thin,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+              ),
               child: Text('Export first', style: TextStyle(color: t.accent)),
             ),
         ],
@@ -406,9 +416,9 @@ class SettingsScreen extends StatelessWidget {
     if (ok) {
       context.read<EntriesProvider>().clear();
       Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.login, (_) => false);
-      AppSnackbar.success(context, 'Your account has been deleted.');
+      PoppySnackbar.success(context, 'Your account has been deleted.');
     } else {
-      AppSnackbar.error(context, auth.errorMessage ?? 'Could not delete account.');
+      PoppySnackbar.error(context, auth.errorMessage ?? 'Could not delete account.');
     }
   }
 }

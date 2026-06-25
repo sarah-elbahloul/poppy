@@ -78,7 +78,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
       if (!granted) {
         setState(() { _saving = false; });
-        AppSnackbar.error(
+        PoppySnackbar.error(
           context,
           'Please allow notifications for Poppy in your device settings.',
           title: 'Permission Required',
@@ -95,7 +95,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     await _persist();
 
     if (!mounted) return;
-    AppSnackbar.success(
+    PoppySnackbar.success(
       context,
       value
           ? 'Reminder set for ${_reminderAt.format(context)}.'
@@ -120,7 +120,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     if (!mounted) return;
-    AppSnackbar.success(
+    PoppySnackbar.success(
       context,
       'Reminder updated to ${picked.format(context)}.',
     );

@@ -293,7 +293,7 @@ class LocalDbService {
     final existing = await getPhotoById(id);
     if (existing == null) return;
     final batch = _database.batch();
-    if (existing[DBStatus.syncStatus] == SyncStatus.pendingCreate) {
+    if (existing[DBColumn.syncStatus] == SyncStatus.pendingCreate) {
       batch.delete('photos', where: '${DBColumn.id} = ?', whereArgs: [id]);
       batch.delete('sync_queue', where: 'entity_id = ? AND entity_type = ?', whereArgs: [id, 'photo']);
     } else {

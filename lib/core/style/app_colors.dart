@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Application Colors
+//  Location: lib/core/style/app_colors.dart
+// ─────────────────────────────────────────────────────────────
+
 /// Defines the central color palette, entry tag colors, and dynamic 
 /// customization palettes used throughout the application.
 class AppColors {
   AppColors._();
 
-  // --- Poppy Defaults (Base Theme) ---
+  // ─────────────────────────────────────────────────────────────
+  //  Poppy Defaults (Base Theme)
+  // ─────────────────────────────────────────────────────────────
   static const accent = Color(0xFFC94040);
   static const accentLight = Color(0xFFFBEAEA);
   static const accentMuted = Color(0xFFE8A0A0);
@@ -16,7 +23,9 @@ class AppColors {
   static const textTertiary = Color(0xFFAA8888);
   static const border = Color(0xFFEDD8D8);
   
-  // --- Semantic & Absolute ---
+  // ─────────────────────────────────────────────────────────────
+  //  Semantic & Absolute
+  // ─────────────────────────────────────────────────────────────
   static const success = Color(0xFF2E7D32);
   static const successLight = Color(0xFFEAF7EC);
   static const successMuted = Color(0xFFA5D6A7);
@@ -33,7 +42,9 @@ class AppColors {
   static const black = Color(0xFF000000);
   static const transparent = Colors.transparent;
 
-  // --- Brand & Assets ---
+  // ─────────────────────────────────────────────────────────────
+  //  Brand & Assets
+  // ─────────────────────────────────────────────────────────────
   static const photoViewerBg = Color(0xFF000000);
   static const logoCentre = Color(0xFF2D1B0E);
   static const logoHighlight = Color(0xFFF2D100);
@@ -104,6 +115,10 @@ class MonthColors {
   static Color of(int month) => colors[month] ?? Colors.grey;
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Entry Tag Data & Registry
+// ─────────────────────────────────────────────────────────────
+
 /// Data structure representing an entry color tag.
 class TagColorData {
   /// Unique identifier for the tag.
@@ -125,7 +140,7 @@ class TagColorData {
     this.isBuiltIn = false,
   });
 
-  /// Alias for id to support existing code.
+  /// Alias for id to support database column mapping.
   String get dbValue => id;
 
   Map<String, dynamic> toMap() => {
@@ -171,10 +186,7 @@ class TagColorData {
 class EntryTags {
   EntryTags._();
 
-  /// Minimum number of tags a user must have.
   static const int minTags = 3;
-
-  /// Maximum number of tags a user can have.
   static const int maxTags = 12;
 
   static const List<TagColorData> defaults = [
@@ -199,7 +211,7 @@ class EntryTags {
     _registry = tags;
   }
 
-  /// Retrieves [TagColorData] from its [id] (or [dbValue]).
+  /// Retrieves [TagColorData] from its ID, falling back to defaults.
   static TagColorData fromDbValue(String id) {
     return _registry.firstWhere(
       (c) => c.id == id, 

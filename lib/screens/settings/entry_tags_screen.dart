@@ -164,7 +164,7 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
                   .where((e) => e.colorTag.id == tag.id)
                   .length;
               if (affected > 0) {
-                AppSnackbar.success(
+                PoppySnackbar.success(
                   context,
                   '$affected ${affected == 1 ? 'entry' : 'entries'} updated.',
                 );
@@ -257,7 +257,7 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
     themeProvider.pushTagColors(authProvider.updateProfile);
 
     if (mounted && affectedCount > 0) {
-      AppSnackbar.info(context,
+      PoppySnackbar.info(context,
           '$affectedCount ${affectedCount == 1 ? 'entry' : 'entries'} moved to "${fallback.name}".');
     }
   }
@@ -316,7 +316,7 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
     themeProvider.pushTagColors(authProvider.updateProfile);
 
     if (mounted) {
-      AppSnackbar.success(context, 'Tags reset to defaults.');
+      PoppySnackbar.success(context, 'Tags reset to defaults.');
     }
   }
 }

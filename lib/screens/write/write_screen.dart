@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb, setEquals;
 import 'package:flutter/material.dart';
@@ -27,6 +26,7 @@ const int kWordLimit = 10000;
 /// Handles text input, title, date selection, color tagging, and photo
 /// management. Automatically saves changes when the user navigates back.
 class WriteScreen extends StatefulWidget {
+  /// The ID of the entry being edited, or null if creating a new one.
   final String? entryId;
 
   const WriteScreen({super.key, this.entryId});
@@ -55,18 +55,23 @@ class _WriteScreenState extends State<WriteScreen> {
 
   DateTime? _lastLimitSnackbarTime;
 
+  // ─────────────────────────────────────────────────────────────
+  //  Getters
+  // ─────────────────────────────────────────────────────────────
+
   bool get _isEditing => _existingEntry != null;
+
   int get _totalPhotos => _savedPhotos.length + _pendingPhotos.length;
+
   int get _liveWordCount => Entry.countWords(_contentController.text);
 
+  /// Checks if photos have been added or removed compared to the original state.
   bool get _photosChanged {
     if (_savedPhotos.length != _initialPhotos.length) {
       return true;
     }
-
     final currentIds = _savedPhotos.map((p) => p.id).toSet();
     final initialIds = _initialPhotos.map((p) => p.id).toSet();
-
     return !setEquals(currentIds, initialIds);
   }
 
@@ -86,6 +91,10 @@ class _WriteScreenState extends State<WriteScreen> {
         _photosChanged;
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Lifecycle
+  // ─────────────────────────────────────────────────────────────
+
   @override
   void initState() {
     super.initState();
@@ -102,8 +111,11 @@ class _WriteScreenState extends State<WriteScreen> {
     super.dispose();
   }
 
-  // ─── Persistence ───
+  // ─────────────────────────────────────────────────────────────
+  //  Persistence
+  // ─────────────────────────────────────────────────────────────
 
+  /// Loads existing entry data and its associated photos.
   Future<void> _loadExistingEntry() async {
     final entry = context.read<EntriesProvider>().getById(widget.entryId!);
     if (entry == null) return;
@@ -128,10 +140,7 @@ class _WriteScreenState extends State<WriteScreen> {
     } catch (_) {}
   }
 
-  /// Saves the current entry to the database.
-  ///
-  /// Returns [true] if the save was successful or not required,
-  /// [false] if blocked by validation (e.g., word limit).
+  /// Saves the current entry and any pending photo attachments.
   Future<bool> _save() async {
     if (!_hasChanges || _isSaving) return true;
 
@@ -160,7 +169,6 @@ class _WriteScreenState extends State<WriteScreen> {
           wordCount: wordCount,
           updatedAt: DateTime.now(),
         );
-
         updatedEntry = await provider.updateEntry(draft);
       } else {
         updatedEntry = await provider.createEntry(
@@ -219,8 +227,11 @@ class _WriteScreenState extends State<WriteScreen> {
     }
   }
 
-  // ─── Actions ───
+  // ─────────────────────────────────────────────────────────────
+  //  User Actions
+  // ─────────────────────────────────────────────────────────────
 
+  /// Opens the system date picker.
   Future<void> _pickDate() async {
     final t = context.poppyTheme;
     final picked = await showDatePicker(
@@ -240,6 +251,7 @@ class _WriteScreenState extends State<WriteScreen> {
     }
   }
 
+  /// Handles photo selection from camera or gallery.
   Future<void> _onAddPhoto() async {
     if (_totalPhotos >= 10) return;
 
@@ -272,7 +284,7 @@ class _WriteScreenState extends State<WriteScreen> {
 
       final int remaining = 10 - _totalPhotos;
       final int countToTake =
-      pickedFiles.length > remaining ? remaining : pickedFiles.length;
+          pickedFiles.length > remaining ? remaining : pickedFiles.length;
       final List<XFile> toProcess = pickedFiles.take(countToTake).toList();
 
       final List<_PendingPhoto> newPhotos = [];
@@ -289,7 +301,7 @@ class _WriteScreenState extends State<WriteScreen> {
         });
 
         if (pickedFiles.length > remaining) {
-          AppSnackbar.warning(
+          PoppySnackbar.warning(
             context,
             'Only 10 photos allowed. ${pickedFiles.length - remaining} photos were skipped.',
           );
@@ -298,6 +310,7 @@ class _WriteScreenState extends State<WriteScreen> {
     }
   }
 
+  /// Shows the photo source selection sheet.
   Future _showSourceSheet() {
     final t = context.poppyTheme;
     return showModalBottomSheet(
@@ -329,7 +342,7 @@ class _WriteScreenState extends State<WriteScreen> {
             ListTile(
               leading: Icon(AppIcons.camera, color: t.accent),
               title:
-              Text('Take a photo', style: TextStyle(color: t.textPrimary)),
+                  Text('Take a photo', style: TextStyle(color: t.textPrimary)),
               onTap: () => Navigator.pop(context, 'camera'),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -350,6 +363,7 @@ class _WriteScreenState extends State<WriteScreen> {
     });
   }
 
+  /// Deletes the current entry after confirmation.
   Future<void> _onDelete() async {
     if (_existingEntry == null) return;
     final confirmed = await PoppyDialog.showDestructive(
@@ -363,7 +377,7 @@ class _WriteScreenState extends State<WriteScreen> {
     if (mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil(
         AppRoutes.home,
-            (route) => false,
+        (route) => false,
       );
     }
   }
@@ -377,17 +391,19 @@ class _WriteScreenState extends State<WriteScreen> {
     _lastLimitSnackbarTime = now;
 
     if (!mounted) return;
-    AppSnackbar.warning(
+    PoppySnackbar.warning(
       context,
       'You’ve hit the word limit. Try shortening your entry to save.',
     );
   }
 
-  // ─── Build ───
+  // ─────────────────────────────────────────────────────────────
+  //  Build
+  // ─────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final t  = context.poppyTheme;
+    final t = context.poppyTheme;
     final fp = context.watch<ThemeProvider>().currentFontPairData;
 
     return PopScope(
@@ -426,17 +442,18 @@ class _WriteScreenState extends State<WriteScreen> {
             },
             icon: _isSaving
                 ? SizedBox(
-                height: AppIconSize.sm,
-                width: AppIconSize.sm,
-                child: CircularProgressIndicator(
-                    color: t.surface, strokeWidth: AppStroke.thin))
+                    height: AppIconSize.sm,
+                    width: AppIconSize.sm,
+                    child: CircularProgressIndicator(
+                        color: t.surface, strokeWidth: AppStroke.thin))
                 : Icon(AppIcons.back,
-                color: t.background, size: AppIconSize.sm),
+                    color: t.background, size: AppIconSize.sm),
           ),
           title: Row(
             mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Date Indicator
               InkWell(
                 onTap: _pickDate,
                 borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -444,11 +461,12 @@ class _WriteScreenState extends State<WriteScreen> {
                   height: AppComponentSize.inputHeight,
                   width: AppComponentSize.inputHeight,
                   padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                   decoration: BoxDecoration(
                     color: t.surface,
                     borderRadius: BorderRadius.circular(AppRadius.sm),
-                    border: Border.all(color: t.accentMuted, width: AppStroke.thick),
+                    border: Border.all(
+                        color: t.accentMuted, width: AppStroke.thick),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -465,13 +483,14 @@ class _WriteScreenState extends State<WriteScreen> {
                       const SizedBox(height: 2),
                       Text(
                         DateFormat('MMM').format(_entryDate).toUpperCase(),
-                        style: AppTextStyles.labelSmall(t.textTertiary,fp),
+                        style: AppTextStyles.labelSmall(t.textTertiary, fp),
                       ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
+              // Title Field
               Expanded(
                 child: SizedBox(
                   height: AppComponentSize.inputHeight,
@@ -501,7 +520,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       ),
                       isDense: false,
                       contentPadding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                          const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                     ),
                   ),
                 ),
@@ -509,6 +528,7 @@ class _WriteScreenState extends State<WriteScreen> {
             ],
           ),
           actions: [
+            // More Options Menu
             PopupMenuButton(
               enabled: _isEditing ? true : false,
               menuPadding: const EdgeInsets.all(0),
@@ -542,7 +562,8 @@ class _WriteScreenState extends State<WriteScreen> {
                       Text(
                         'Delete entry',
                         style: AppTextStyles.bodyLarge(
-                          Theme.of(context).colorScheme.error, fp,
+                          Theme.of(context).colorScheme.error,
+                          fp,
                         ),
                       ),
                     ],
@@ -568,7 +589,7 @@ class _WriteScreenState extends State<WriteScreen> {
                     ),
                     child: Column(
                       children: [
-                        // Meta row
+                        // Metadata Row (Word count and Tag)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(
                               AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
@@ -590,20 +611,24 @@ class _WriteScreenState extends State<WriteScreen> {
                                     final color = over
                                         ? AppColors.error
                                         : near
-                                        ? AppColors.warning
-                                        : t.textTertiary;
+                                            ? AppColors.warning
+                                            : t.textTertiary;
 
                                     return Row(
                                       children: [
                                         Flexible(
                                           child: Text(
                                             '$count / $kWordLimit words',
-                                            style: AppTextStyles.labelLargeSerif(color, fp),
+                                            style:
+                                                AppTextStyles.labelLargeSerif(
+                                                    color, fp),
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         if (over) ...[
-                                          const SizedBox(width: AppSpacing.sm,),
+                                          const SizedBox(
+                                            width: AppSpacing.sm,
+                                          ),
                                           const Icon(
                                             AppIcons.info,
                                             color: AppColors.error,
@@ -624,10 +649,10 @@ class _WriteScreenState extends State<WriteScreen> {
                                       setState(() => _selectedColor = c);
                                     }
                                   },
-                                  leading: Text(
-                                    'Tag',
-                                    style: AppTextStyles.labelLargeSerif(
-                                        t.textTertiary, fp),
+                                  leading: Icon(
+                                    AppIcons.tag,
+                                    size: AppIconSize.xs,
+                                    color: t.textTertiary,
                                   ),
                                 ),
                               ),
@@ -635,7 +660,7 @@ class _WriteScreenState extends State<WriteScreen> {
                           ),
                         ),
 
-                        // Writing area
+                        // Writing Area
                         Expanded(
                           child: BidiTextField(
                             controller: _contentController,
@@ -644,7 +669,7 @@ class _WriteScreenState extends State<WriteScreen> {
                             decoration: InputDecoration(
                               hintText: 'Write anything…',
                               hintStyle:
-                              AppTextStyles.bodyLarge(t.textTertiary, fp),
+                                  AppTextStyles.bodyLarge(t.textTertiary, fp),
                               border: InputBorder.none,
                             ),
                             keyboardType: TextInputType.multiline,
@@ -661,14 +686,14 @@ class _WriteScreenState extends State<WriteScreen> {
                           ),
                         ),
 
-                        // Collapsible photos
+                        // Collapsible Photo Section
                         _PhotoSection(
                           savedPhotos: _savedPhotos,
                           pendingPhotos: _pendingPhotos,
                           isExpanded: _photosExpanded,
                           totalCount: _totalPhotos,
                           onToggle: () => setState(
-                                  () => _photosExpanded = !_photosExpanded),
+                              () => _photosExpanded = !_photosExpanded),
                           onAdd: _onAddPhoto,
                           onDeleteSaved: _onDeleteSavedPhoto,
                           onDeletePending: _onDeletePendingPhoto,
@@ -686,22 +711,25 @@ class _WriteScreenState extends State<WriteScreen> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Internal Helpers
+// ─────────────────────────────────────────────────────────────
+
 /// Safely blocks typing AND pasting when the word limit is exceeded.
-/// Prevents destructive truncation of pasted text to avoid bad UX.
 class WordLimitFormatter extends TextInputFormatter {
   final int maxWords;
   final VoidCallback? onBlocked;
 
   WordLimitFormatter(
-      this.maxWords, {
-        this.onBlocked,
-      });
+    this.maxWords, {
+    this.onBlocked,
+  });
 
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue,
-      TextEditingValue newValue,
-      ) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     final newCount = Entry.countWords(newValue.text);
     final oldCount = Entry.countWords(oldValue.text);
 
@@ -713,16 +741,16 @@ class WordLimitFormatter extends TextInputFormatter {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Photo Section Components
-// ─────────────────────────────────────────────────────────────
-
 class _PendingPhoto {
   final XFile xFile;
   final Uint8List? bytes;
 
   const _PendingPhoto({required this.xFile, this.bytes});
 }
+
+// ─────────────────────────────────────────────────────────────
+//  Photo Section Components
+// ─────────────────────────────────────────────────────────────
 
 class _PhotoSection extends StatelessWidget {
   final List<Photo> savedPhotos;
@@ -799,11 +827,10 @@ class _PhotoSection extends StatelessWidget {
             ),
           ),
         ),
-
         AnimatedCrossFade(
           duration: AppDuration.normal,
           crossFadeState:
-          isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           firstChild: const SizedBox(height: 0),
           secondChild: SizedBox(
             height: AppComponentSize.photoStripHeight,
@@ -874,7 +901,9 @@ class _PhotoPendingThumb extends StatelessWidget {
               color: t.accentLight,
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.sm - AppStroke.hairline,),
+              borderRadius: BorderRadius.circular(
+                AppRadius.sm - AppStroke.hairline,
+              ),
               child: image,
             ),
           ),
@@ -937,11 +966,14 @@ class _PhotoSavedThumb extends StatelessWidget {
               borderRadius: BorderRadius.circular(
                 AppRadius.sm - AppStroke.hairline,
               ),
-              child: photo.signedUrl != null ? Image.network(
-                photoPath,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Icon(AppIcons.imageBroken, color: t.textTertiary),
-              ) : Image.file(File(photoPath), fit: BoxFit.cover),
+              child: photo.signedUrl != null
+                  ? Image.network(
+                      photoPath,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Icon(AppIcons.imageBroken, color: t.textTertiary),
+                    )
+                  : Image.file(File(photoPath), fit: BoxFit.cover),
             ),
           ),
           Positioned(
@@ -1064,51 +1096,50 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
         ),
         iconTheme: const IconThemeData(color: AppColors.white),
       ),
-        body: PageView.builder(
-          controller: _controller,
-          onPageChanged: (index) => setState(() => _currentIndex = index),
-          itemCount: widget.photos.length,
-          itemBuilder: (context, index) {
-            final item = widget.photos[index];
+      body: PageView.builder(
+        controller: _controller,
+        onPageChanged: (index) => setState(() => _currentIndex = index),
+        itemCount: widget.photos.length,
+        itemBuilder: (context, index) {
+          final item = widget.photos[index];
 
-            Widget image = const Icon(
-              AppIcons.imageBroken,
-              color: Colors.white54,
-              size: AppIconSize.xl,
-            );
+          Widget image = const Icon(
+            AppIcons.imageBroken,
+            color: Colors.white54,
+            size: AppIconSize.xl,
+          );
 
-            if (item is Photo) {
-              final url = item.signedUrl;
-              final local = item.localPath;
+          if (item is Photo) {
+            final url = item.signedUrl;
+            final local = item.localPath;
 
-              if (url != null && url.isNotEmpty) {
-                image = Image.network(
-                  url,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) {
-                    // Fall back to local file when the network image fails
-                    if (local != null && local.isNotEmpty) {
-                      return Image.file(File(local), fit: BoxFit.contain);
-                    }
-                    return const Icon(
-                      AppIcons.imageBroken,
-                      color: Colors.white54,
-                      size: AppIconSize.xl,
-                    );
-                  },
-                );
-              } else if (local != null && local.isNotEmpty) {
-                image = Image.file(File(local), fit: BoxFit.contain);
-              }
+            if (url != null && url.isNotEmpty) {
+              image = Image.network(
+                url,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) {
+                  if (local != null && local.isNotEmpty) {
+                    return Image.file(File(local), fit: BoxFit.contain);
+                  }
+                  return const Icon(
+                    AppIcons.imageBroken,
+                    color: Colors.white54,
+                    size: AppIconSize.xl,
+                  );
+                },
+              );
+            } else if (local != null && local.isNotEmpty) {
+              image = Image.file(File(local), fit: BoxFit.contain);
             }
+          }
 
-            return InteractiveViewer(
-              minScale: 1.0,
-              maxScale: 4.0,
-              child: Center(child: image),
-            );
-          },
-        ),
+          return InteractiveViewer(
+            minScale: 1.0,
+            maxScale: 4.0,
+            child: Center(child: image),
+          );
+        },
+      ),
     );
   }
 }

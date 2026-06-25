@@ -3,6 +3,11 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:poppy/core/constants.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — PIN Security Service
+//  Location: lib/services/pin_service.dart
+// ─────────────────────────────────────────────────────────────
+
 /// Manages the application-level PIN lock lifecycle.
 ///
 /// This service handles the storage and verification of a 4-digit security PIN.
@@ -11,12 +16,9 @@ import 'package:poppy/core/constants.dart';
 class PinService {
   final _storage = const FlutterSecureStorage();
 
-  /// Generates a SHA-256 hash of the given [pin].
-  String _hash(String pin) {
-    final bytes = utf8.encode(pin);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
-  }
+  // ─────────────────────────────────────────────────────────────
+  //  PIN Management
+  // ─────────────────────────────────────────────────────────────
 
   /// Persists a new PIN hash to secure storage and enables the lock state.
   Future<void> savePin(String pin) async {
@@ -44,8 +46,6 @@ class PinService {
   }
 
   /// Updates the PIN after verifying the [oldPin].
-  ///
-  /// Returns true if the [oldPin] was correct and the [newPin] was successfully saved.
   Future<bool> changePin({
     required String oldPin,
     required String newPin,
@@ -54,5 +54,16 @@ class PinService {
     if (!isCorrect) return false;
     await savePin(newPin);
     return true;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Internal Helpers
+  // ─────────────────────────────────────────────────────────────
+
+  /// Generates a SHA-256 hash of the given [pin].
+  String _hash(String pin) {
+    final bytes = utf8.encode(pin);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 }

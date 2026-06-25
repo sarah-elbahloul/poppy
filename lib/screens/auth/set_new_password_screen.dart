@@ -54,7 +54,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
   Future<void> _onSubmit() async {
     final passErr = AppErrors.validatePassword(_newPassController.text);
     if (passErr != null) {
-      AppSnackbar.error(context, passErr);
+      PoppySnackbar.error(context, passErr);
       return;
     }
 
@@ -62,7 +62,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
       _newPassController.text, _confirmPassController.text,
     );
     if (confirmErr != null) {
-      AppSnackbar.error(context, confirmErr);
+      PoppySnackbar.error(context, confirmErr);
       return;
     }
 

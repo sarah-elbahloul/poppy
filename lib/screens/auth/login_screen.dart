@@ -39,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _onSignIn() async {
     final emailErr = AppErrors.validateEmail(_emailController.text);
     if (emailErr != null) {
-      AppSnackbar.error(context, emailErr);
+      PoppySnackbar.error(context, emailErr);
       return;
     }
     final auth = context.read<AuthProvider>();
@@ -54,14 +54,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _onSendResetEmail() async {
     final emailErr = AppErrors.validateEmail(_emailController.text);
     if (emailErr != null) {
-      AppSnackbar.error(context, emailErr);
+      PoppySnackbar.error(context, emailErr);
       return;
     }
     final auth = context.read<AuthProvider>();
     auth.clearError();
     final ok = await auth.sendPasswordResetEmail(_emailController.text);
     if (ok && mounted) {
-      AppSnackbar.success(
+      PoppySnackbar.success(
         context,
         'Reset link sent — check your inbox and tap the link.',
         title: 'Check your email',

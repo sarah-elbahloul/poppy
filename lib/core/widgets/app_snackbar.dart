@@ -8,8 +8,8 @@ import 'package:poppy/providers/providers.dart';
 ///
 /// Provides a consistent, branded, and premium appearance for
 /// notifications across the application.
-class AppSnackbar {
-  AppSnackbar._();
+class PoppySnackbar {
+  PoppySnackbar._();
 
   /// Shows a success snackbar.
   static void success(

@@ -1,6 +1,11 @@
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Typography Registry
+//  Location: lib/core/style/app_fonts.dart
+// ─────────────────────────────────────────────────────────────
+
 /// Enumeration of all supported fonts in the application.
 enum PoppyFont {
   lora,

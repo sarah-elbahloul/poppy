@@ -62,22 +62,16 @@ class _PoppyAppState extends State<PoppyApp> {
               .style(Colors.black, size: 16),
         ]);
 
-        // Show a neutral background while determining the session state.
-        if (auth.status == AuthStatus.unknown) {
-          return MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: theme,
-            home: Scaffold(
-              backgroundColor: theme.scaffoldBackgroundColor,
-            ),
-          );
-        }
-
         return MaterialApp(
           title: 'Poppy',
           debugShowCheckedModeBanner: false,
           theme: theme,
-          home: const _RootRouter(),
+          // Show a neutral background while determining the session state,
+          // then switch to the internal router. This avoid swapping the
+          // entire MaterialApp widget which can cause cold-start hangs.
+          home: auth.status == AuthStatus.unknown
+              ? Scaffold(backgroundColor: theme.scaffoldBackgroundColor)
+              : const _RootRouter(),
           routes: {
             AppRoutes.login: (_) => const LoginScreen(),
             AppRoutes.register: (_) => const RegisterScreen(),

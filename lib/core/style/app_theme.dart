@@ -1,42 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
 
+// ─────────────────────────────────────────────────────────────
+//  POPPY — Theme Configuration
+//  Location: lib/core/style/app_theme.dart
+// ─────────────────────────────────────────────────────────────
+
 /// Supported application theme identifiers.
 enum PoppyTheme { poppy, iris, lily, marigold, lavender }
 
 /// Encapsulates the color scheme and Material [ThemeData] generation for the application.
+/// 
+/// This class serves as the bridge between Poppy's custom design tokens 
+/// and Flutter's standard Material theme system.
 class PoppyThemeData {
-  /// Unique identifier for the theme.
   final PoppyTheme id;
-
-  /// Display name of the theme.
   final String name;
 
-  /// Primary accent color.
+  // Primary palette
   final Color accent;
-
-  /// Light variation of the accent color, used for backgrounds or highlights.
   final Color accentLight;
-
-  /// Muted variation of the accent color.
   final Color accentMuted;
 
-  /// Surface color for cards and secondary backgrounds.
+  // Surface & Background
   final Color surface;
-
-  /// Main application background color.
   final Color background;
 
-  /// Primary text color.
+  // Typography colors
   final Color textPrimary;
-
-  /// Secondary text color for subheadings and body text.
   final Color textSecondary;
-
-  /// Tertiary text color for hints and metadata.
   final Color textTertiary;
 
-  /// Border and divider color.
+  // Structural
   final Color border;
 
   const PoppyThemeData({
@@ -52,6 +47,10 @@ class PoppyThemeData {
     required this.textTertiary,
     required this.border,
   });
+
+  // ─────────────────────────────────────────────────────────────
+  //  Material Theme Generation
+  // ─────────────────────────────────────────────────────────────
 
   /// Maps the Poppy theme properties to a standard Flutter [ThemeData] object.
   ThemeData toThemeData() {
@@ -175,7 +174,13 @@ class PoppyThemeData {
   }
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Theme Extensions
+// ─────────────────────────────────────────────────────────────
+
 /// A [ThemeExtension] that allows direct access to Poppy's custom color tokens.
+/// 
+/// Usage: `Theme.of(context).extension<PoppyThemeExtension>()` or `context.poppyTheme`.
 class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
   final Color accent;
   final Color accentLight;

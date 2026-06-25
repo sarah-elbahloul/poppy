@@ -47,7 +47,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
     } else {
       await _pinService.removePin();
       await context.read<AuthProvider>().setPinEnabled(false);
-      if (mounted) AppSnackbar.info(context, 'PIN lock removed.');
+      if (mounted) PoppySnackbar.info(context, 'PIN lock removed.');
     }
   }
 
@@ -66,7 +66,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         await context.read<AuthProvider>().setPinEnabled(true);
         if (mounted) {
           setState(() => _step = _PinStep.idle);
-          AppSnackbar.success(context, 'PIN lock enabled.');
+          PoppySnackbar.success(context, 'PIN lock enabled.');
         }
       } else {
         await _shake();
@@ -75,7 +75,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
             _firstPin = '';
             _step     = _PinStep.setNew;
           });
-          AppSnackbar.error(context, AppErrors.pinMismatch);
+          PoppySnackbar.error(context, AppErrors.pinMismatch);
         }
       }
     }
@@ -89,7 +89,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         setState(() => _step = _PinStep.changeNew);
       } else {
         await _shake();
-        if (mounted) AppSnackbar.error(context, AppErrors.pinIncorrect);
+        if (mounted) PoppySnackbar.error(context, AppErrors.pinIncorrect);
       }
       return;
     }
@@ -105,7 +105,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         await _pinService.savePin(pin);
         if (mounted) {
           setState(() => _step = _PinStep.idle);
-          AppSnackbar.success(context, 'PIN updated successfully.');
+          PoppySnackbar.success(context, 'PIN updated successfully.');
         }
       } else {
         await _shake();
@@ -114,7 +114,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
             _firstPin = '';
             _step     = _PinStep.changeNew;
           });
-          AppSnackbar.error(context, AppErrors.pinMismatch);
+          PoppySnackbar.error(context, AppErrors.pinMismatch);
         }
       }
     }

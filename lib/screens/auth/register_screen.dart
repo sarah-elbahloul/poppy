@@ -62,7 +62,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _onRegister() async {
     final err = _validate();
     if (err != null) {
-      AppSnackbar.error(context, err);
+      PoppySnackbar.error(context, err);
       return;
     }
 
