@@ -165,8 +165,8 @@ class _ColorTagOption extends StatelessWidget {
               width: AppComponentSize.colorDotPicker,
               height: AppComponentSize.colorDotPicker,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
                 color: colorData.color,
+                borderRadius: BorderRadius.circular(AppRadius.full),
               ),
             ),
             if (isSelected && showLabelOnSelect) ...[

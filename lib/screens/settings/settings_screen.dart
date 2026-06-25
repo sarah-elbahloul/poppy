@@ -150,6 +150,7 @@ class SettingsScreen extends StatelessWidget {
             _SettingsRow(
               icon: AppIcons.logout,
               label: 'Sign out',
+              isDestructive: true,
               onTap: () => _onSignOut(context),
             ),
             _RowLine(),

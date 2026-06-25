@@ -48,9 +48,9 @@ class SettingsDrawer extends StatelessWidget {
                     width: 54,
                     height: 54,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
                       color: t.accentLight,
-                      border: Border.all(color: t.accent.withValues(alpha: 0.1), width: 2),
+                      border: Border.all(color: t.accent.withValues(alpha: 0.1)),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
                     child: Center(
                       child: Text(

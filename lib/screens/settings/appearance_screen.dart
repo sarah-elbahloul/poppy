@@ -208,8 +208,7 @@ class _FontRow extends StatelessWidget {
           final sel = f.id == selected;
           return GestureDetector(
             onTap: () => onSelect(f.id),
-            child: AnimatedContainer(
-              duration: AppDuration.normal,
+            child: Container(
               padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.md, vertical: AppSpacing.sm),
               decoration: BoxDecoration(

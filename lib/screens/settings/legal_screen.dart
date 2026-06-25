@@ -36,7 +36,6 @@ class LegalScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: t.background,
         elevation: 0,
-        centerTitle: true,
         leading: IconButton(
           icon: Icon(AppIcons.back,
               size: AppIconSize.xs, color: t.textSecondary),

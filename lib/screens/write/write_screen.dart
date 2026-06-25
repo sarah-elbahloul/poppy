@@ -591,8 +591,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       children: [
                         // Metadata Row (Word count and Tag)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                              AppSpacing.md, AppSpacing.md, AppSpacing.md, 0),
+                          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
                           child: Row(
                             children: [
                               Icon(
@@ -640,7 +639,6 @@ class _WriteScreenState extends State<WriteScreen> {
                                   },
                                 ),
                               ),
-                              const SizedBox(width: AppSpacing.sm),
                               Flexible(
                                 child: ColorTagSelector(
                                   selected: _selectedColor,
@@ -662,27 +660,35 @@ class _WriteScreenState extends State<WriteScreen> {
 
                         // Writing Area
                         Expanded(
-                          child: BidiTextField(
-                            controller: _contentController,
-                            autofocus: true,
-                            style: AppTextStyles.bodyLarge(t.textPrimary, fp),
-                            decoration: InputDecoration(
-                              hintText: 'Write anything…',
-                              hintStyle:
-                                  AppTextStyles.bodyLarge(t.textTertiary, fp),
-                              border: InputBorder.none,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm,
+
                             ),
-                            keyboardType: TextInputType.multiline,
-                            maxLines: null,
-                            expands: true,
-                            textAlignVertical: TextAlignVertical.top,
-                            textAlign: TextAlign.start,
-                            inputFormatters: [
-                              WordLimitFormatter(
-                                kWordLimit,
-                                onBlocked: _maybeShowLimitSnackBar,
+                            child: BidiTextField(
+                              controller: _contentController,
+                              autofocus: true,
+                              style: AppTextStyles.bodyLarge(t.textPrimary, fp),
+                              decoration: InputDecoration(
+                                hintText: 'Write anything…',
+                                hintStyle:
+                                    AppTextStyles.bodyLarge(t.textTertiary, fp),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+
                               ),
-                            ],
+                              keyboardType: TextInputType.multiline,
+                              maxLines: null,
+                              expands: true,
+                              textAlignVertical: TextAlignVertical.top,
+                              textAlign: TextAlign.start,
+                              inputFormatters: [
+                                WordLimitFormatter(
+                                  kWordLimit,
+                                  onBlocked: _maybeShowLimitSnackBar,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
 
