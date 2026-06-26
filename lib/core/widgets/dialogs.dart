@@ -211,6 +211,7 @@ class PoppyDialog extends StatelessWidget {
           horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
       actionsPadding: const EdgeInsets.fromLTRB(
           AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.md),
+      actionsAlignment: MainAxisAlignment.spaceBetween,
       title: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

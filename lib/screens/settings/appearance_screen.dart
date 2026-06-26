@@ -378,7 +378,7 @@ class _ColorSwatch extends StatelessWidget {
                     width: 9,
                     height: 9,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                       color: t.accent,
                       border: Border.all(color: t.surface, width: 1.5),
                     ),
