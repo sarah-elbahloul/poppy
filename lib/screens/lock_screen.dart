@@ -47,11 +47,13 @@ class _LockScreenState extends State<LockScreen> {
   /// On success, unlocks the [AuthProvider]. On failure, triggers the error
   /// animation on the [PinPad].
   Future<void> _onPinComplete(String pin) async {
-    final auth = context.read<AuthProvider>();
-    final success = await auth.verifyAndUnlock(pin);
+    final isCorrect = await _pinService.verify(pin);
     if (!mounted) return;
 
-    if (!success){
+    if (isCorrect) {
+      // Unlocking the provider triggers a state change in the RootRouter.
+      context.read<AuthProvider>().unlock();
+    } else {
       setState(() => _hasError = true);
       await Future.delayed(AppDuration.errorReset);
       if (mounted) setState(() => _hasError = false);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
 import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/providers/providers.dart';
+import 'package:poppy/services/pin_service.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -31,9 +32,11 @@ class SecurityScreen extends StatefulWidget {
 }
 
 class _SecurityScreenState extends State<SecurityScreen> {
-  _PinStep _step = _PinStep.idle;
-  String _firstPin = '';
-  bool _hasError = false;
+  final _pinService = PinService();
+
+  _PinStep _step     = _PinStep.idle;
+  String   _firstPin = '';
+  bool     _hasError = false;
 
   // ─── PIN Lifecycle ───
 
@@ -42,7 +45,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
     if (enabled) {
       setState(() => _step = _PinStep.setNew);
     } else {
-      await context.read<AuthProvider>().removePin();
+      await _pinService.removePin();
+      await context.read<AuthProvider>().setPinEnabled(false);
       if (mounted) PoppySnackbar.info(context, 'PIN lock removed.');
     }
   }
@@ -52,13 +56,14 @@ class _SecurityScreenState extends State<SecurityScreen> {
     if (_step == _PinStep.setNew) {
       setState(() {
         _firstPin = pin;
-        _step = _PinStep.confirmNew;
+        _step     = _PinStep.confirmNew;
       });
       return;
     }
     if (_step == _PinStep.confirmNew) {
       if (pin == _firstPin) {
-        await context.read<AuthProvider>().setPin(pin);
+        await _pinService.savePin(pin);
+        await context.read<AuthProvider>().setPinEnabled(true);
         if (mounted) {
           setState(() => _step = _PinStep.idle);
           PoppySnackbar.success(context, 'PIN lock enabled.');
@@ -68,7 +73,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         if (mounted) {
           setState(() {
             _firstPin = '';
-            _step = _PinStep.setNew;
+            _step     = _PinStep.setNew;
           });
           PoppySnackbar.error(context, AppErrors.pinMismatch);
         }
@@ -79,8 +84,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
   /// Progresses through the "Change PIN" flow.
   Future<void> _onChangePinStep(String pin) async {
     if (_step == _PinStep.changeOld) {
-      // Verify current PIN without unlocking (user is already authenticated).
-      final correct = await context.read<AuthProvider>().verifyPin(pin);
+      final correct = await _pinService.verify(pin);
       if (correct) {
         setState(() => _step = _PinStep.changeNew);
       } else {
@@ -92,18 +96,14 @@ class _SecurityScreenState extends State<SecurityScreen> {
     if (_step == _PinStep.changeNew) {
       setState(() {
         _firstPin = pin;
-        _step = _PinStep.changeConfirm;
+        _step     = _PinStep.changeConfirm;
       });
       return;
     }
     if (_step == _PinStep.changeConfirm) {
       if (pin == _firstPin) {
-        // Change PIN using the provider (handles hash update).
-        final success = await context.read<AuthProvider>().changePin(
-          currentPin: _firstPin,
-          newPin: pin,
-        );
-        if (mounted && success) {
+        await _pinService.savePin(pin);
+        if (mounted) {
           setState(() => _step = _PinStep.idle);
           PoppySnackbar.success(context, 'PIN updated successfully.');
         }
@@ -112,7 +112,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         if (mounted) {
           setState(() {
             _firstPin = '';
-            _step = _PinStep.changeNew;
+            _step     = _PinStep.changeNew;
           });
           PoppySnackbar.error(context, AppErrors.pinMismatch);
         }
@@ -131,36 +131,38 @@ class _SecurityScreenState extends State<SecurityScreen> {
       case _PinStep.setNew:
       case _PinStep.confirmNew:
         _onSetNewPin(pin);
+        break;
       case _PinStep.changeOld:
       case _PinStep.changeNew:
       case _PinStep.changeConfirm:
         _onChangePinStep(pin);
+        break;
       case _PinStep.idle:
         break;
     }
   }
 
   String get _pinLabel => switch (_step) {
-    _PinStep.setNew => 'Choose a 4-digit PIN',
-    _PinStep.confirmNew => 'Confirm your PIN',
-    _PinStep.changeOld => 'Enter your current PIN',
-    _PinStep.changeNew => 'Choose a new PIN',
+    _PinStep.setNew        => 'Choose a 4-digit PIN',
+    _PinStep.confirmNew    => 'Confirm your PIN',
+    _PinStep.changeOld     => 'Enter your current PIN',
+    _PinStep.changeNew     => 'Choose a new PIN',
     _PinStep.changeConfirm => 'Confirm your new PIN',
-    _PinStep.idle => '',
+    _PinStep.idle          => '',
   };
 
   String get _stepSubtitle => switch (_step) {
-    _PinStep.setNew => 'You will confirm it on the next step.',
-    _PinStep.confirmNew => 'Enter the same PIN again to confirm.',
-    _PinStep.changeOld => 'Enter your existing PIN to continue.',
-    _PinStep.changeNew => 'Choose a new 4-digit PIN.',
+    _PinStep.setNew        => 'You will confirm it on the next step.',
+    _PinStep.confirmNew    => 'Enter the same PIN again to confirm.',
+    _PinStep.changeOld     => 'Enter your existing PIN to continue.',
+    _PinStep.changeNew     => 'Choose a new 4-digit PIN.',
     _PinStep.changeConfirm => 'Enter the new PIN again to confirm.',
-    _PinStep.idle => '',
+    _PinStep.idle          => '',
   };
 
   @override
   Widget build(BuildContext context) {
-    final t = context.poppyTheme;
+    final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
@@ -169,15 +171,17 @@ class _SecurityScreenState extends State<SecurityScreen> {
       appBar: AppBar(
         backgroundColor: t.background,
         leading: IconButton(
-          icon: Icon(AppIcons.back, size: AppIconSize.xs, color: t.textSecondary),
+          icon: Icon(AppIcons.back,
+              size: AppIconSize.xs, color: t.textSecondary),
           onPressed: _step == _PinStep.idle
               ? () => Navigator.of(context).pop()
               : () => setState(() {
-            _step = _PinStep.idle;
+            _step     = _PinStep.idle;
             _firstPin = '';
           }),
         ),
-        title: Text('Security', style: AppTextStyles.titleLarge(t.textPrimary, fp)),
+        title: Text('Security',
+            style: AppTextStyles.titleLarge(t.textPrimary,fp)),
       ),
       body: _step == _PinStep.idle
           ? _buildIdleView(context, t, auth)
@@ -203,14 +207,15 @@ class _SecurityScreenState extends State<SecurityScreen> {
             border: Border.all(color: t.border, width: AppStroke.hairline),
           ),
           child: SwitchListTile(
-            title: Text('PIN lock', style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
+            title: Text('PIN lock',
+                style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
             subtitle: Text(
               'Require a 4-digit PIN when opening Poppy.',
               style: AppTextStyles.labelLargeSans(t.textTertiary, fp),
             ),
-            value: auth.pinEnabled,
+            value:       auth.pinEnabled,
             activeColor: t.accent,
-            onChanged: _onTogglePin,
+            onChanged:   _onTogglePin,
           ),
         ),
 
@@ -220,25 +225,29 @@ class _SecurityScreenState extends State<SecurityScreen> {
             decoration: BoxDecoration(
               color: t.surface,
               borderRadius: BorderRadius.circular(AppRadius.md),
-              border: Border.all(color: t.border, width: AppStroke.hairline),
+              border: Border.all(
+                  color: t.border, width: AppStroke.hairline),
             ),
             child: InkWell(
-              onTap: () => setState(() => _step = _PinStep.changeOld),
+              onTap: () =>
+                  setState(() => _step = _PinStep.changeOld),
               borderRadius: BorderRadius.circular(AppRadius.md),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.md,
+                  horizontal: AppSpacing.md, vertical: AppSpacing.md,
                 ),
                 child: Row(
                   children: [
-                    Icon(AppIcons.pin, size: AppIconSize.sm, color: t.textTertiary),
+                    Icon(AppIcons.pin,
+                        size: AppIconSize.sm, color: t.textTertiary),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Text('Change PIN',
-                          style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
+                          style: AppTextStyles.titleSmallSans(
+                              t.textPrimary, fp)),
                     ),
-                    Icon(AppIcons.chevronRight, size: AppIconSize.xs, color: t.textTertiary),
+                    Icon(AppIcons.chevronRight,
+                        size: AppIconSize.xs, color: t.textTertiary),
                   ],
                 ),
               ),
@@ -253,12 +262,15 @@ class _SecurityScreenState extends State<SecurityScreen> {
           decoration: BoxDecoration(
             color: t.accentLight,
             borderRadius: BorderRadius.circular(AppRadius.sm),
-            border: Border.all(color: t.accent.withValues(alpha: 0.2), width: AppStroke.hairline),
+            border: Border.all(
+                color: t.accent.withValues(alpha: 0.2),
+                width: AppStroke.hairline),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
+              Icon(AppIcons.info,
+                  size: AppIconSize.xs, color: t.accent),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
@@ -292,10 +304,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
               const SizedBox(height: AppSpacing.lg),
             ],
             PinPad(
-              label: _pinLabel,
-              hasError: _hasError,
-              onComplete: _onPinComplete,
-              autoSubmit: false,
+              label:       _pinLabel,
+              hasError:    _hasError,
+              onComplete:  _onPinComplete,
+              autoSubmit:  false, // Requires explicit confirmation.
             ),
           ],
         ),
