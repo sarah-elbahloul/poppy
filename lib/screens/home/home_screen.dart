@@ -199,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
             body: Center(
               child: ColorTagSelector(
                 selected: tempSelected,
-                layout: ColorTagSelectorLayout.wrap,
+                layout: ColorTagSelectorLayout.scrollRow,
                 showLabelOnSelect: true,
                 onSelected: (colorData) {
                   setDialogState(() => tempSelected = colorData);
@@ -229,6 +229,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await _entriesProvider.deleteEntries(_selectedIds.toList());
     setState(() => _selectedIds.clear());
+    if (mounted) _entriesProvider.fetchEntries();
   }
 
   Future<void> _changeColorBatch(TagColorData color) async {
@@ -242,6 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _entriesProvider.updateEntries(toUpdate);
     }
     setState(() => _selectedIds.clear());
+    if (mounted) _entriesProvider.fetchEntries();
   }
 
   // ─────────────────────────────────────────────────────────────

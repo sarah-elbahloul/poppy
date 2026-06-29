@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
-import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/providers/providers.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
@@ -8,6 +7,12 @@ import 'package:uuid/uuid.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Entry Tags Screen
 //  Location: lib/screens/settings/entry_tags_screen.dart
+//
+//  Visually paired with the Appearance screen: the same rounded
+//  preview card, the same ringed circular swatches, and the same
+//  sentence-case section labels — so the two color-related
+//  settings screens read as one family rather than two unrelated
+//  list screens.
 // ─────────────────────────────────────────────────────────────
 
 class EntryTagsScreen extends StatefulWidget {
@@ -19,6 +24,9 @@ class EntryTagsScreen extends StatefulWidget {
 
 class _EntryTagsScreenState extends State<EntryTagsScreen> {
   final _uuid = const Uuid();
+
+  bool _isBatchMode = false;
+  final Set<String> _selectedTagIds = {};
 
   bool _isModifiedFromDefaults(List<TagColorData> tags) {
     const defaults = EntryTags.defaults;
@@ -33,6 +41,35 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
     return false;
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Batch Mode
+  // ─────────────────────────────────────────────────────────────
+
+  void _enterBatchMode([String? withTagSelected]) {
+    setState(() {
+      _isBatchMode = true;
+      if (withTagSelected != null) _selectedTagIds.add(withTagSelected);
+    });
+  }
+
+  void _exitBatchMode() {
+    setState(() {
+      _isBatchMode = false;
+      _selectedTagIds.clear();
+    });
+  }
+
+  void _toggleTagSelected(String id) {
+    setState(() {
+      if (_selectedTagIds.contains(id)) {
+        _selectedTagIds.remove(id);
+        if (_selectedTagIds.isEmpty) _exitBatchMode();
+      } else {
+        _selectedTagIds.add(id);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
@@ -44,62 +81,130 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
     final canAdd = tags.length < EntryTags.maxTags;
     final isModified = _isModifiedFromDefaults(tags);
 
-    return Scaffold(
-      backgroundColor: td.background,
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_isBatchMode) {
+          setState(() {
+            _selectedTagIds.clear();
+            _isBatchMode = !_isBatchMode;
+          });
+          return;
+        }
+        Navigator.of(context).maybePop();
+      },
+      child: Scaffold(
         backgroundColor: td.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: Icon(AppIcons.back,
-              size: AppIconSize.xs, color: td.textSecondary),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text('Entry Tags',
-            style: AppTextStyles.titleLarge(td.textPrimary, fp)),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-        children: [
-          _SectionLabel('Tags (${tags.length}/${EntryTags.maxTags})'),
-          _Card(
-            children: [
-              for (var i = 0; i < tags.length; i++) ...[
-                if (i > 0) _RowDivider(),
-                _TagRow(
-                  tag: tags[i],
-                  onEdit: () => _showTagEditor(tags[i]),
-                  onDelete: canDelete ? () => _deleteTag(tags[i]) : null,
-                ),
+        appBar: _isBatchMode ? _batchAppBar(td, fp, tags) : _normalAppBar(td, fp, canDelete),
+        body: ListView(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+          children: [
+            _SectionRow(label: 'Tags (${tags.length}/${EntryTags.maxTags})'),
+            _Card(
+              children: [
+                for (var i = 0; i < tags.length; i++) ...[
+                  if (i > 0) _RowDivider(),
+                  _TagRow(
+                    tag: tags[i],
+                    batchMode: _isBatchMode,
+                    isSelected: _selectedTagIds.contains(tags[i].id),
+                    onEdit: () => _showTagEditor(tags[i]),
+                    onDelete: (canDelete && !_isBatchMode) ? () => _deleteTag(tags[i]) : null,
+                    onToggleSelected: () => _toggleTagSelected(tags[i].id),
+                    onLongPress: canDelete ? () => _enterBatchMode(tags[i].id) : null,
+                  ),
+                ],
               ],
+            ),
+            if (!_isBatchMode && canAdd) ...[
+              const _SectionRow(label: 'Add'),
+              _Card(
+                children: [_AddRow(onTap: _addNewTag)],
+              ),
             ],
-          ),
-          if (canAdd) ...[
-            const _SectionLabel('Add'),
-            _Card(
-              children: [_AddRow(onTap: _addNewTag)],
+            if (!_isBatchMode && isModified) ...[
+              const _SectionRow(label: 'Reset'),
+              _Card(
+                children: [_ResetRow(onTap: () => _resetToDefaults())],
+              ),
+            ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
+              child: Text(
+                !_isBatchMode
+                    ? 'Tap tags to edit them, or long-press a tag to start selecting.'
+                    : 'Colour strips on journal entries update immediately. '
+                    'Changes sync to the cloud when you\'re online.',
+                style: AppTextStyles.labelLargeSans(td.textSecondary, fp)
+                    .copyWith(height: 1.5),
+              ),
             ),
           ],
-          if (isModified) ...[
-            const _SectionLabel('Reset'),
-            _Card(
-              children: [_ResetRow(onTap: () => _resetToDefaults())],
-            ),
-          ],
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
-            child: Text(
-              'Colour strips on journal entries update immediately. '
-                  'Changes sync to the cloud when you\'re online.',
-              style: AppTextStyles.labelLargeSans(td.textSecondary, fp)
-                  .copyWith(height: 1.5),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
+
+  // ─────────────────────────────────────────────────────────────
+  //  AppBar Variants
+  // ─────────────────────────────────────────────────────────────
+
+  AppBar _normalAppBar(PoppyThemeData t, FontPairData fp, bool canDelete) {
+    return AppBar(
+      backgroundColor: t.background,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      leading: IconButton(
+        icon: Icon(AppIcons.back, size: AppIconSize.xs, color: t.textSecondary),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      title: Text('Entry Tags', style: AppTextStyles.titleLarge(t.textPrimary, fp)),
+    );
+  }
+
+  AppBar _batchAppBar(PoppyThemeData t, FontPairData fp, List<TagColorData> tags) {
+    return AppBar(
+      actionsPadding: const EdgeInsets.all(AppSpacing.sm),
+      backgroundColor: t.background,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      leading: IconButton(
+        icon: Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
+        onPressed: _exitBatchMode,
+      ),
+      title: Text('${_selectedTagIds.length} selected',
+          style: AppTextStyles.titleLarge(t.textPrimary, fp)),
+      actions: [
+        IconButton(
+          tooltip: 'Select All',
+          onPressed: () {
+            setState(() {
+              if (_selectedTagIds.length == tags.length) {
+                _selectedTagIds.clear();
+              } else{
+                _selectedTagIds
+                  ..clear()
+                  ..addAll(tags.map((e) => e.id));
+              }
+            });
+          },
+          icon:
+          Icon(AppIcons.checkCircle, color: t.accent, size: AppIconSize.sm),
+        ),
+        IconButton(
+          icon: const Icon(AppIcons.delete, color: AppColors.error, size: AppIconSize.sm),
+          tooltip: 'Delete selected tags',
+          onPressed: _selectedTagIds.isEmpty ? null : () => _deleteBatch(tags),
+        ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  //  Editor Sheet
+  // ─────────────────────────────────────────────────────────────
 
   void _addNewTag() {
     final newTag = TagColorData(
@@ -221,6 +326,10 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  //  Delete (single & batch)
+  // ─────────────────────────────────────────────────────────────
+
   Future<void> _deleteTag(TagColorData tag) async {
     final themeProvider = context.read<ThemeProvider>();
     final authProvider = context.read<AuthProvider>();
@@ -239,10 +348,10 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
       message: 'This cannot be undone.',
       body: affectedCount > 0
           ? DialogInfoBanner(
-              icon: AppIcons.warning,
-              tone: DialogBannerTone.warning,
-              text: '$affectedCount ${affectedCount == 1 ? 'entry uses' : 'entries use'} this tag. They will fall back to "${fallback.name}".',
-            )
+        icon: AppIcons.warning,
+        tone: DialogBannerTone.warning,
+        text: '$affectedCount ${affectedCount == 1 ? 'entry uses' : 'entries use'} this tag. They will fall back to "${fallback.name}".',
+      )
           : null,
     );
 
@@ -259,6 +368,69 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
     if (mounted && affectedCount > 0) {
       PoppySnackbar.info(context,
           '$affectedCount ${affectedCount == 1 ? 'entry' : 'entries'} moved to "${fallback.name}".');
+    }
+  }
+
+  Future<void> _deleteBatch(List<TagColorData> tags) async {
+    final themeProvider = context.read<ThemeProvider>();
+    final authProvider = context.read<AuthProvider>();
+    final entriesProvider = context.read<EntriesProvider>();
+
+    final toDelete = tags.where((t) => _selectedTagIds.contains(t.id)).toList();
+    if (toDelete.isEmpty) return;
+
+    final remaining = tags.where((t) => !_selectedTagIds.contains(t.id)).toList();
+
+    if (remaining.length < EntryTags.minTags) {
+      PoppySnackbar.warning(
+        context,
+        'You need at least ${EntryTags.minTags} tags. Deselect some and try again.',
+      );
+      return;
+    }
+
+    final affectedCount = entriesProvider.entries
+        .where((e) => _selectedTagIds.contains(e.colorTag.id))
+        .length;
+
+    final count = toDelete.length;
+    final confirm = await PoppyDialog.showDestructive(
+      context,
+      title: 'Delete $count ${count == 1 ? 'tag' : 'tags'}?',
+      message: 'This cannot be undone.',
+      body: affectedCount > 0
+          ? DialogInfoBanner(
+        icon: AppIcons.warning,
+        tone: DialogBannerTone.warning,
+        text: '$affectedCount ${affectedCount == 1 ? 'entry uses' : 'entries use'} these tags and will fall back to another tag.',
+      )
+          : null,
+    );
+
+    if (confirm != true || !mounted) return;
+
+    // Fall back each deleted tag to the first tag that will still exist
+    // afterwards, defaulting to the registry's default color.
+    final fallback = remaining.firstWhere(
+          (t) => t.id == EntryTags.defaultColor.id,
+      orElse: () => remaining.first,
+    );
+
+    for (final tag in toDelete) {
+      await entriesProvider.propagateTagDeletion(tag, fallback);
+    }
+
+    themeProvider.setTagColors(remaining);
+    themeProvider.pushTagColors(authProvider.updateProfile);
+
+    if (mounted) {
+      _exitBatchMode();
+      if (affectedCount > 0) {
+        PoppySnackbar.info(context,
+            '$affectedCount ${affectedCount == 1 ? 'entry' : 'entries'} moved to "${fallback.name}".');
+      } else {
+        PoppySnackbar.success(context, '$count ${count == 1 ? 'tag' : 'tags'} deleted.');
+      }
     }
   }
 
@@ -293,10 +465,10 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
       message: 'All custom tags will be removed and built-in tags will be restored.',
       body: totalAffected > 0
           ? DialogInfoBanner(
-              icon: AppIcons.warning,
-              tone: DialogBannerTone.warning,
-              text: '$totalAffected ${totalAffected == 1 ? 'entry' : 'entries'} will be updated.',
-            )
+        icon: AppIcons.warning,
+        tone: DialogBannerTone.warning,
+        text: '$totalAffected ${totalAffected == 1 ? 'entry' : 'entries'} will be updated.',
+      )
           : null,
     );
 
@@ -321,21 +493,22 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
   }
 }
 
-class _SectionLabel extends StatelessWidget {
-  final String text;
-  const _SectionLabel(this.text);
+// ── sub‑widgets ──────────────────────────────────────────────
+
+class _SectionRow extends StatelessWidget {
+  final String label;
+  const _SectionRow({required this.label});
 
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
-    final fp = context.watch<ThemeProvider>().currentFontPairData;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
           AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.sm),
       child: Text(
-        text.toUpperCase(),
-        style: AppTextStyles.labelSmall(t.textTertiary, fp)
-            .copyWith(letterSpacing: 0.8),
+        label,
+        style: AppTextStyles.labelLargeSans(t.textTertiary, fp),
       ),
     );
   }
@@ -368,20 +541,31 @@ class _RowDivider extends StatelessWidget {
       height: AppStroke.hairline,
       thickness: AppStroke.hairline,
       color: t.border,
-      indent: AppSpacing.md + 20 + AppSpacing.md,
+      indent: AppSpacing.md + 32 + AppSpacing.md,
     );
   }
 }
 
+/// A single tag row. Doubles as a selectable row in batch mode, using the
+/// same ringed-swatch + checkmark-badge language as the Appearance screen's
+/// color swatches and the Home screen's batch selection checkboxes.
 class _TagRow extends StatelessWidget {
   final TagColorData tag;
+  final bool batchMode;
+  final bool isSelected;
   final VoidCallback onEdit;
   final VoidCallback? onDelete;
+  final VoidCallback onToggleSelected;
+  final VoidCallback? onLongPress;
 
   const _TagRow({
     required this.tag,
+    required this.batchMode,
+    required this.isSelected,
     required this.onEdit,
     this.onDelete,
+    required this.onToggleSelected,
+    this.onLongPress,
   });
 
   @override
@@ -390,19 +574,15 @@ class _TagRow extends StatelessWidget {
     final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return InkWell(
-      onTap: onEdit,
+      onTap: batchMode ? onToggleSelected : onEdit,
+      onLongPress: onLongPress,
       borderRadius: BorderRadius.circular(AppRadius.md),
       child: Padding(
         padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md, vertical: AppSpacing.md),
         child: Row(
           children: [
-            Container(
-              width: 20,
-              height: 20,
-              decoration:
-              BoxDecoration(color: tag.color, shape: BoxShape.circle),
-            ),
+            _TagSwatch(color: tag.color, batchMode: batchMode, isSelected: isSelected),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Row(
@@ -425,7 +605,7 @@ class _TagRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (onDelete != null) ...[
+            if (!batchMode && onDelete != null) ...[
               const SizedBox(width: AppSpacing.sm),
               GestureDetector(
                 onTap: onDelete,
@@ -433,11 +613,81 @@ class _TagRow extends StatelessWidget {
                     size: AppIconSize.xs,
                     color: AppColors.error.withValues(alpha: 0.5)),
               ),
-            ] else
-              const SizedBox(width: AppSpacing.xs + AppIconSize.xs),
+            ] else if (batchMode)...[
+              if (batchMode)
+                AnimatedContainer(
+                  duration: AppDuration.fast,
+                  width: AppIconSize.sm,
+                  height: AppIconSize.sm,
+                  decoration: BoxDecoration(
+                    color: isSelected ? t.accent : t.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                    border: Border.all(
+                      color: isSelected ? t.accent : t.border,
+                      width: AppStroke.thin,
+                    ),
+                  ),
+                  child: isSelected
+                      ? const Icon(AppIcons.check,
+                      size: AppIconSize.sm * 0.65, color: AppColors.white)
+                      : null,
+                ),
+
+            ]
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A circular color swatch with the Appearance screen's accent ring —
+/// or, in batch mode, a checkmark badge matching the Home screen's
+/// selection checkboxes.
+class _TagSwatch extends StatelessWidget {
+  final Color color;
+  final bool batchMode;
+  final bool isSelected;
+
+  const _TagSwatch({
+    required this.color,
+    required this.batchMode,
+    required this.isSelected,
+  });
+
+  static const double _size = 26;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.poppyTheme;
+    const ringSize = _size + 6;
+
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        AnimatedContainer(
+          duration: AppDuration.fast,
+          width: ringSize,
+          height: ringSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isSelected ? t.accent : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        Container(
+          width: _size,
+          height: _size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color,
+            border: Border.all(color: t.border, width: AppStroke.hairline),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -459,17 +709,23 @@ class _AddRow extends StatelessWidget {
             horizontal: AppSpacing.md, vertical: AppSpacing.md),
         child: Row(
           children: [
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.full),
-                border: Border.all(
-                    color: t.accent.withValues(alpha: 0.5),
-                    width: AppStroke.thin),
+            SizedBox(
+              width: 32,
+              height: 32,
+              child: Center(
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                    border: Border.all(
+                        color: t.accent.withValues(alpha: 0.5),
+                        width: AppStroke.thin),
+                  ),
+                  child: Icon(AppIcons.add,
+                      size: 14, color: t.accent.withValues(alpha: 0.8)),
+                ),
               ),
-              child: Icon(AppIcons.add,
-                  size: 12, color: t.accent.withValues(alpha: 0.8)),
             ),
             const SizedBox(width: AppSpacing.md),
             Text('Add new tag',
@@ -501,16 +757,22 @@ class _ResetRow extends StatelessWidget {
             horizontal: AppSpacing.md, vertical: AppSpacing.md),
         child: Row(
           children: [
-            Container(
-              width: 20,
-              height: 20,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.errorLight,
+            SizedBox(
+              width: 32,
+              height: 32,
+              child: Center(
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                    color: AppColors.errorLight,
+                  ),
+                  child: Icon(AppIcons.retry,
+                      size: 13,
+                      color: AppColors.error.withValues(alpha: 0.8)),
+                ),
               ),
-              child: Icon(AppIcons.retry,
-                  size: 11,
-                  color: AppColors.error.withValues(alpha: 0.8)),
             ),
             const SizedBox(width: AppSpacing.md),
             Expanded(
