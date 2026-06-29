@@ -24,8 +24,8 @@ class AppIcons {
   static const IconData add          = Iconsax.add;
   static const IconData delete       = Iconsax.trash;
   static const IconData edit         = Iconsax.edit_2;
-  static const IconData sortAsc      = Iconsax.arrow_swap;   // oldest → newest
-  static const IconData sortDesc     = Iconsax.arrow_swap; // newest → oldest
+  static const IconData sortAsc = Iconsax.arrow_up_1;   // oldest → newest
+  static const IconData sortDesc = Iconsax.arrow_down_2; // newest → oldest
   static const IconData copy         = Iconsax.copy;
   static const IconData chevronRight = Iconsax.arrow_right_3;
   static const IconData chevronDown  = Iconsax.arrow_down_1;
