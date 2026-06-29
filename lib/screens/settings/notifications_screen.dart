@@ -128,8 +128,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t  = context.poppyTheme;
-    final fp = context.watch<ThemeProvider>().currentFontPairData;
+    final t = context.poppyTheme;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -141,7 +140,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text('Notifications',
-            style: AppTextStyles.titleLarge(t.textPrimary, fp)),
+            style: AppTextStyles.titleLarge(t.textPrimary, t.fontPair)),
       ),
       body: _loading
           ? Center(child: CircularProgressIndicator(color: t.accent))
@@ -161,10 +160,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 vertical:   AppSpacing.xs,
               ),
               title: Text('Daily writing reminder',
-                  style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
+                  style: AppTextStyles.titleSmallSans(t.textPrimary, t.fontPair)),
               subtitle: Text(
                 'A gentle nudge to write in your diary.',
-                style: AppTextStyles.labelLargeSans(t.textTertiary, fp),
+                style: AppTextStyles.labelLargeSans(t.textTertiary, t.fontPair),
               ),
               value:       _enabled,
               activeColor: t.accent,
@@ -200,11 +199,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('Reminder time',
-                                style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
+                                style: AppTextStyles.titleSmallSans(t.textPrimary, t.fontPair)),
                             const SizedBox(height: 2),
                             Text(
                               _reminderAt.format(context),
-                              style: AppTextStyles.labelLargeSans(t.accent, fp),
+                              style: AppTextStyles.labelLargeSans(t.accent, t.fontPair),
                             ),
                           ],
                         ),
@@ -241,7 +240,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   child: Text(
                     'Your device must allow notifications from Poppy. '
                         'You can manage this in your system settings.',
-                    style: AppTextStyles.labelLargeSans(t.accent, fp),
+                    style: AppTextStyles.labelLargeSans(t.accent, t.fontPair),
                   ),
                 ),
               ],

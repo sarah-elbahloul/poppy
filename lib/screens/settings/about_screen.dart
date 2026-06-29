@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:poppy/core/core.dart';
-import 'package:provider/provider.dart';
-import 'package:poppy/providers/theme_provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — About Screen
@@ -41,7 +39,6 @@ class _AboutScreenState extends State<AboutScreen> {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -54,7 +51,7 @@ class _AboutScreenState extends State<AboutScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text('About Poppy',
-            style: AppTextStyles.titleLarge(t.textPrimary, fp)),
+            style: AppTextStyles.titleLarge(t.textPrimary, t.fontPair)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -67,12 +64,12 @@ class _AboutScreenState extends State<AboutScreen> {
                 const PoppyLogo(size: AppIconSize.logo),
                 const SizedBox(height: AppSpacing.sm),
                 Text('Poppy',
-                    style: AppTextStyles.titleLarge(t.textPrimary, fp)),
+                    style: AppTextStyles.titleLarge(t.textPrimary, t.fontPair)),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   'Version $_version (build $_build)',
                   style:
-                  AppTextStyles.labelLargeSans(t.textTertiary, fp),
+                  AppTextStyles.labelLargeSans(t.textTertiary, t.fontPair),
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Container(
@@ -89,7 +86,7 @@ class _AboutScreenState extends State<AboutScreen> {
                   child: Text(
                     'End-to-end encrypted diary',
                     style:
-                    AppTextStyles.labelLargeSans(t.accent,fp),
+                    AppTextStyles.labelLargeSans(t.accent, t.fontPair),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -100,7 +97,7 @@ class _AboutScreenState extends State<AboutScreen> {
           // ── Description ────────────────────────────────
           Text(
             'About',
-            style: AppTextStyles.labelLargeSans(t.textTertiary,fp)
+            style: AppTextStyles.labelLargeSans(t.textTertiary, t.fontPair)
                 .copyWith(letterSpacing: 0.6),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -116,7 +113,7 @@ class _AboutScreenState extends State<AboutScreen> {
               'Poppy is a private diary app. Every entry is encrypted '
                   'on your device before it leaves — nobody but you can '
                   'read your words, not even us.',
-              style: AppTextStyles.bodySmallSans(t.textSecondary,fp)
+              style: AppTextStyles.bodySmallSans(t.textSecondary, t.fontPair)
                   .copyWith(height: 1.7),
             ),
           ),
@@ -126,7 +123,7 @@ class _AboutScreenState extends State<AboutScreen> {
           // ── Legal links ─────────────────────────────────
           Text(
             'Legal',
-            style: AppTextStyles.labelLargeSans(t.textTertiary,fp)
+            style: AppTextStyles.labelLargeSans(t.textTertiary, t.fontPair)
                 .copyWith(letterSpacing: 0.6),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -158,7 +155,7 @@ class _AboutScreenState extends State<AboutScreen> {
           Center(
             child: Text(
               '© 2025 Poppy. Made with care.',
-              style: AppTextStyles.labelSmall(t.textTertiary, fp),
+              style: AppTextStyles.labelSmall(t.textTertiary, t.fontPair),
             ),
           ),
 
@@ -199,7 +196,6 @@ class _LegalRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     return InkWell(
       onTap: onTap,
@@ -216,7 +212,7 @@ class _LegalRow extends StatelessWidget {
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Text(label,
-                  style: AppTextStyles.titleSmallSans(t.textPrimary,fp)),
+                  style: AppTextStyles.titleSmallSans(t.textPrimary, t.fontPair)),
             ),
             Icon(AppIcons.chevronRight,
                 size: AppIconSize.xs, color: t.textTertiary),

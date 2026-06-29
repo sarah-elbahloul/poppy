@@ -148,6 +148,7 @@ class ThemeProvider extends ChangeNotifier {
     textSecondary: colorFor(ColorSlots.textSecondary),
     textTertiary: colorFor(ColorSlots.textTertiary),
     border: colorFor(ColorSlots.border),
+    fontPair: currentFontPairData,
   );
 
   // ─────────────────────────────────────────────────────────────

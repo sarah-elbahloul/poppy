@@ -77,7 +77,6 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
   Widget build(BuildContext context) {
     final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
-    final fp   = context.read<ThemeProvider>().currentFontPairData;
 
     final showChecker = _newPassFocused ||
         _newPassController.text.isNotEmpty;
@@ -96,11 +95,11 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
               const Center(child: PoppyLogo(size: AppIconSize.logo)),
               const SizedBox(height: AppSpacing.xl * 1.5),
               Text('Set new password',
-                  style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
+                  style: AppTextStyles.headlineSmall(t.textPrimary, t.fontPair)),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Choose a strong password. Your diary entries will stay intact.',
-                style: AppTextStyles.bodySmallSans(t.textTertiary, fp)
+                style: AppTextStyles.bodySmallSans(t.textTertiary, t.fontPair)
                     .copyWith(height: 1.6),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -221,8 +220,7 @@ class _FieldState extends State<_Field> {
 
   @override
   Widget build(BuildContext context) {
-    final t  = context.poppyTheme;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
+    final t = context.poppyTheme;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -238,11 +236,11 @@ class _FieldState extends State<_Field> {
         controller:  widget.controller,
         focusNode:   _internalFocus,
         obscureText: widget.obscureText,
-        style: AppTextStyles.bodyMedium(t.textPrimary, fp),
+        style: AppTextStyles.bodyMedium(t.textPrimary, t.fontPair),
         decoration: InputDecoration(
           labelText:  widget.label,
           labelStyle: AppTextStyles.bodySmallSans(
-              _focused ? t.accent : t.textTertiary, fp),
+              _focused ? t.accent : t.textTertiary, t.fontPair),
           suffixIcon: widget.suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -278,7 +276,7 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fp = context.read<ThemeProvider>().currentFontPairData;
+    final fontPair = context.fontPair;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -295,7 +293,7 @@ class _ErrorBanner extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(message,
-                style: AppTextStyles.bodySmallSans(AppColors.error, fp)
+                style: AppTextStyles.bodySmallSans(AppColors.error, fontPair)
                     .copyWith(height: 1.4)),
           ),
         ],

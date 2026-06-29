@@ -34,6 +34,9 @@ class PoppyThemeData {
   // Structural
   final Color border;
 
+  // Typography Data
+  final FontPairData fontPair;
+
   const PoppyThemeData({
     required this.id,
     required this.name,
@@ -46,6 +49,7 @@ class PoppyThemeData {
     required this.textSecondary,
     required this.textTertiary,
     required this.border,
+    required this.fontPair,
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -168,6 +172,7 @@ class PoppyThemeData {
           textTertiary: textTertiary,
           border: border,
           themeName: name,
+          fontPair: fontPair,
         ),
       ],
     );
@@ -192,6 +197,7 @@ class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
   final Color textTertiary;
   final Color border;
   final String themeName;
+  final FontPairData fontPair;
 
   const PoppyThemeExtension({
     required this.accent,
@@ -204,6 +210,7 @@ class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
     required this.textTertiary,
     required this.border,
     required this.themeName,
+    required this.fontPair,
   });
 
   @override
@@ -218,6 +225,7 @@ class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
     Color? textTertiary,
     Color? border,
     String? themeName,
+    FontPairData? fontPair,
   }) =>
       PoppyThemeExtension(
         accent: accent ?? this.accent,
@@ -230,6 +238,7 @@ class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
         textTertiary: textTertiary ?? this.textTertiary,
         border: border ?? this.border,
         themeName: themeName ?? this.themeName,
+        fontPair: fontPair ?? this.fontPair,
       );
 
   @override
@@ -246,6 +255,7 @@ class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
       textTertiary: Color.lerp(textTertiary, other.textTertiary, t)!,
       border: Color.lerp(border, other.border, t)!,
       themeName: other.themeName,
+      fontPair: t < 0.5 ? fontPair : other.fontPair,
     );
   }
 }
@@ -255,4 +265,7 @@ extension PoppyThemeContext on BuildContext {
   /// Returns the current [PoppyThemeExtension] from the theme.
   PoppyThemeExtension get poppyTheme =>
       Theme.of(this).extension<PoppyThemeExtension>()!;
+
+  /// Returns the current [FontPairData] from the theme extension.
+  FontPairData get fontPair => poppyTheme.fontPair;
 }

@@ -87,7 +87,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final t    = context.poppyTheme;
     final auth = context.watch<AuthProvider>();
-    final fp   = context.read<ThemeProvider>().currentFontPairData;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -105,13 +104,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Center(child: Text(AppConstants.AppName,
                   style: AppTextStyles.displayLarge(t.textPrimary))),
               Center(child: Text(AppConstants.AppTagline,
-                  style: AppTextStyles.bodySmallSerif(t.textTertiary, fp))),
+                  style: AppTextStyles.bodySmallSerif(t.textTertiary, t.fontPair))),
               const SizedBox(height: AppSpacing.xl * 1.5),
               Text('Create your diary',
-                  style: AppTextStyles.headlineSmall(t.textPrimary, fp)),
+                  style: AppTextStyles.headlineSmall(t.textPrimary, t.fontPair)),
               const SizedBox(height: AppSpacing.xs),
               Text('Your entries are private and encrypted.',
-                  style: AppTextStyles.bodySmallSans(t.textTertiary, fp)),
+                  style: AppTextStyles.bodySmallSans(t.textTertiary, t.fontPair)),
               const SizedBox(height: AppSpacing.lg),
 
               // ── Email ──────────────────────────────────────
@@ -204,7 +203,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text('Already have an account? Sign in',
-                      style: AppTextStyles.bodySmallSans(t.textTertiary, fp)),
+                      style: AppTextStyles.bodySmallSans(t.textTertiary, t.fontPair)),
                 ),
               ),
             ],
@@ -225,8 +224,7 @@ class _ConfirmationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t  = context.poppyTheme;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
+    final t = context.poppyTheme;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -248,14 +246,14 @@ class _ConfirmationScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text('Check your email',
-                  style: AppTextStyles.headlineLarge(t.textPrimary, fp),
+                  style: AppTextStyles.headlineLarge(t.textPrimary, t.fontPair),
                   textAlign: TextAlign.center),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 'We sent a confirmation link to\n$email\n\n'
                     'Tap the link to activate your account, '
                     'then come back and sign in.',
-                style: AppTextStyles.bodySmallSans(t.textSecondary, fp)
+                style: AppTextStyles.bodySmallSans(t.textSecondary, t.fontPair)
                     .copyWith(height: 1.6),
                 textAlign: TextAlign.center,
               ),
@@ -330,8 +328,7 @@ class _FieldState extends State<_Field> {
 
   @override
   Widget build(BuildContext context) {
-    final t  = context.poppyTheme;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
+    final t = context.poppyTheme;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -348,11 +345,11 @@ class _FieldState extends State<_Field> {
         focusNode:    _internalFocus,
         obscureText:  widget.obscureText,
         keyboardType: widget.keyboardType,
-        style: AppTextStyles.bodyMedium(t.textPrimary, fp),
+        style: AppTextStyles.bodyMedium(t.textPrimary, t.fontPair),
         decoration: InputDecoration(
           labelText:  widget.label,
           labelStyle: AppTextStyles.bodySmallSans(
-              _focused ? t.accent : t.textTertiary, fp),
+              _focused ? t.accent : t.textTertiary, t.fontPair),
           suffixIcon: widget.suffixIcon,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
@@ -388,8 +385,7 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t  = context.poppyTheme;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
+    final t = context.poppyTheme;
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -405,7 +401,7 @@ class _ErrorBanner extends StatelessWidget {
           Icon(AppIcons.info, size: AppIconSize.xs, color: t.accent),
           const SizedBox(width: AppSpacing.sm),
           Expanded(child: Text(message,
-              style: AppTextStyles.bodySmallSans(t.accent, fp))),
+              style: AppTextStyles.bodySmallSans(t.accent, t.fontPair))),
         ],
       ),
     );
