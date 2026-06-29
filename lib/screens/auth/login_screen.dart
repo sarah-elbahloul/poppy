@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     final auth = context.read<AuthProvider>();
     auth.clearError();
-    final ok = await auth.sendPasswordResetEmail(_emailController.text);
+    final ok = await auth.sendPasswordReset(_emailController.text);
     if (ok && mounted) {
       PoppySnackbar.success(
         context,

@@ -224,8 +224,7 @@ class _LineText extends StatelessWidget {
         line.isEmpty ? ' ' : line,
         style: style,
         textDirection: direction,
-        textAlign:
-        direction == TextDirection.rtl ? TextAlign.right : TextAlign.left,
+        textAlign: direction == TextDirection.rtl ? TextAlign.right : TextAlign.left,
         softWrap: true,
       ),
     );

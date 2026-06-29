@@ -5,15 +5,7 @@ import 'package:poppy/screens/screens.dart';
 import 'package:poppy/core/core.dart';
 import 'package:provider/provider.dart';
 
-// ─────────────────────────────────────────────────────────────
-//  POPPY — Application Root
-//  Location: lib/app.dart
-// ─────────────────────────────────────────────────────────────
-
-/// The root widget of the Poppy application.
-///
-/// Handles the top-level [MaterialApp] configuration, global theme application,
-/// and authentication-based routing logic via [_RootRouter].
+/// Application root widget.
 class PoppyApp extends StatefulWidget {
   const PoppyApp({super.key});
 
@@ -24,23 +16,17 @@ class PoppyApp extends StatefulWidget {
 class _PoppyAppState extends State<PoppyApp> {
   bool _callbacksWired = false;
 
-  /// Wire up AuthProvider lifecycle callbacks once the widget tree is ready.
-  /// 
-  /// We do this here to avoid circular constructor dependencies.
-  /// It connects [AuthProvider] events to [ThemeProvider] and [EntriesProvider].
-  void _wireCallbacks(AuthProvider auth, ThemeProvider themeProvider,
-      EntriesProvider entries) {
+  void _wireCallbacks(AuthProvider auth, ThemeProvider theme, EntriesProvider entries) {
     if (_callbacksWired) return;
     _callbacksWired = true;
 
-    // On sign-in: Load user-specific personalization.
     auth.onSignedIn = () async {
       final profile = await auth.fetchProfile();
-      await themeProvider.applyTagsFromProfile(profile);
-      await auth.syncPinState(profile);
+      if (profile != null) {
+        await theme.applyTagsFromProfile(profile);
+      }
     };
 
-    // On sign-out: Purge local memory for security.
     auth.onSignedOut = () {
       entries.clear();
     };
@@ -49,28 +35,22 @@ class _PoppyAppState extends State<PoppyApp> {
   @override
   Widget build(BuildContext context) {
     return Consumer3<ThemeProvider, AuthProvider, EntriesProvider>(
-      builder: (context, themeProvider, auth, entries, _) {
-        _wireCallbacks(auth, themeProvider, entries);
+      builder: (context, theme, auth, entries, _) {
+        _wireCallbacks(auth, theme, entries);
 
-        final theme = themeProvider.currentThemeData.toThemeData();
+        final themeData = theme.currentThemeData.toThemeData();
 
-        // Ensure active fonts are warmed up for the current frame.
         GoogleFonts.pendingFonts([
-          themeProvider.currentFontPairData.titleFont
-              .style(Colors.black, size: 16),
-          themeProvider.currentFontPairData.bodyFont
-              .style(Colors.black, size: 16),
+          theme.currentFontPairData.titleFont.style(Colors.black, size: 16),
+          theme.currentFontPairData.bodyFont.style(Colors.black, size: 16),
         ]);
 
         return MaterialApp(
           title: 'Poppy',
           debugShowCheckedModeBanner: false,
-          theme: theme,
-          // Show a neutral background while determining the session state,
-          // then switch to the internal router. This avoid swapping the
-          // entire MaterialApp widget which can cause cold-start hangs.
+          theme: themeData,
           home: auth.status == AuthStatus.unknown
-              ? Scaffold(backgroundColor: theme.scaffoldBackgroundColor)
+              ? Scaffold(backgroundColor: themeData.scaffoldBackgroundColor)
               : const _RootRouter(),
           routes: {
             AppRoutes.login: (_) => const LoginScreen(),
@@ -106,12 +86,7 @@ class _PoppyAppState extends State<PoppyApp> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Internal Router
-// ─────────────────────────────────────────────────────────────
-
-/// A router widget that determines the initial screen based on the
-/// current authentication and security state.
+/// Determines initial screen based on auth and lock state.
 class _RootRouter extends StatelessWidget {
   const _RootRouter();
 
@@ -119,22 +94,13 @@ class _RootRouter extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
 
-    switch (auth.status) {
-      case AuthStatus.unknown:
-        return const Scaffold(body: SizedBox());
-
-      case AuthStatus.unauthenticated:
-        return const LoginScreen();
-
-      case AuthStatus.passwordRecovery:
-        return const SetNewPasswordScreen();
-
-      case AuthStatus.authenticated:
-        // Redirect to PIN lock screen if active and app is currently "locked".
-        if (auth.pinEnabled && auth.isLocked) {
-          return const LockScreen();
-        }
-        return const HomeScreen();
-    }
+    return switch (auth.status) {
+      AuthStatus.unknown => const Scaffold(body: SizedBox()),
+      AuthStatus.unauthenticated => const LoginScreen(),
+      AuthStatus.passwordRecovery => const SetNewPasswordScreen(),
+      AuthStatus.authenticated => auth.isLocked
+          ? const LockScreen()
+          : const HomeScreen(),
+    };
   }
 }

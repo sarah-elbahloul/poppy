@@ -591,7 +591,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       children: [
                         // Metadata Row (Word count and Tag)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
+                          padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.sm, 0, AppSpacing.sm),
                           child: Row(
                             children: [
                               Icon(

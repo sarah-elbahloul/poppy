@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/style/style.dart';
+import 'package:poppy/models/entry.dart';
 import 'package:poppy/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -74,18 +75,25 @@ class ColorTagSelector extends StatelessWidget {
 
     final options = EntryTags.all.map((colorData) {
       final isSelected = selected?.id == colorData.id;
-      return _ColorTagOption(
-        colorData: colorData,
-        isSelected: isSelected,
-        showLabelOnSelect: showLabelOnSelect,
-        fp: fp,
-        onTap: () {
-          if (isSelected && allowDeselect) {
-            onSelected(null);
-          } else {
-            onSelected(colorData);
-          }
-        },
+      return Row(
+        children: [
+          _ColorTagOption(
+            colorData: colorData,
+            isSelected: isSelected,
+            showLabelOnSelect: showLabelOnSelect,
+            fp: fp,
+            onTap: () {
+              if (isSelected && allowDeselect) {
+                onSelected(null);
+              } else {
+                onSelected(colorData);
+              }
+            },
+          ),
+          if (colorData == EntryTags.all.last)...[
+            SizedBox(width: AppSpacing.xs)
+      ]
+        ],
       );
     }).toList();
 
@@ -96,7 +104,7 @@ class ColorTagSelector extends StatelessWidget {
           children: [
             if (leading != null) ...[
               leading!,
-              const SizedBox(width: AppSpacing.xs),
+              const SizedBox(width: AppSpacing.sm),
             ],
             Flexible(
               child: SingleChildScrollView(
