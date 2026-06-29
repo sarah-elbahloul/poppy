@@ -7,20 +7,19 @@ import 'package:poppy/services/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─────────────────────────────────────────────────────────────
-//  POPPY — Auth Provider
-//  Location: lib/providers/auth_provider.dart
+//  POPPY — Auth Provider (FIXED)
 // ─────────────────────────────────────────────────────────────
 
 /// Represents the various authentication states of the application.
-enum AuthStatus { unknown, authenticated, unauthenticated, passwordRecovery }
+enum AuthStatus {
+  unknown,
+  authenticated,
+  unauthenticated,
+  passwordRecovery,
+  restoringKey,  // ← NEW: Key needs to be restored from cloud
+}
 
 /// Manages the authentication lifecycle, encryption keys, and security state.
-///
-/// This provider acts as the central authority for:
-/// - Sign-in/Sign-up/Sign-out flows.
-/// - PIN lock state and validation.
-/// - End-to-end encryption key management (via [EncryptionService]).
-/// - User profile metadata synchronization.
 class AuthProvider extends ChangeNotifier {
   final _storage = const FlutterSecureStorage();
   final _enc = EncryptionService.instance;
@@ -37,9 +36,10 @@ class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _encryptionReady = false;
 
-  /// Optional callbacks registered by other providers/screens so that
-  /// AuthProvider can drive cross-provider lifecycle events without
-  /// introducing circular dependencies.
+  /// Tracks whether we're in the middle of a signIn() call
+  /// to prevent the listener from interfering.
+  bool _isSigningIn = false;
+
   VoidCallback? onSignedIn;
   VoidCallback? onSignedOut;
 
@@ -55,8 +55,8 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   bool get encryptionReady => _encryptionReady;
+  bool get needsKeyRestore => _status == AuthStatus.restoringKey;
 
-  /// Returns a display-friendly name for the user, falling back to email prefix.
   String get displayName {
     final meta = _user?.userMetadata;
     if (meta != null) {
@@ -82,10 +82,19 @@ class AuthProvider extends ChangeNotifier {
     if (session != null) {
       _user = session.user;
       await _checkPinLock(resetLock: true);
+
       final loaded = await _enc.loadCachedKey();
       _encryptionReady = loaded;
-      _status = AuthStatus.authenticated;
-      if (_encryptionReady) _startSync();
+
+      if (_encryptionReady) {
+        // Key is cached locally - we're fully ready
+        _status = AuthStatus.authenticated;
+        _startSync();
+      } else {
+        // Key not cached - user needs to enter password to restore it
+        // DO NOT set authenticated until key is restored
+        _status = AuthStatus.restoringKey;
+      }
     } else {
       _status = AuthStatus.unauthenticated;
     }
@@ -93,26 +102,38 @@ class AuthProvider extends ChangeNotifier {
 
     SupabaseConfig.authStateStream.listen((data) async {
       _user = data.session?.user;
+
       switch (data.event) {
         case AuthChangeEvent.passwordRecovery:
           _status = AuthStatus.passwordRecovery;
           await _enc.loadCachedKey();
+          _encryptionReady = _enc.hasKey;
           _safeNotify();
           break;
+
+      // ─────────────────────────────────────────────────────
+      //  CRITICAL FIX: Do NOT handle signedIn here
+      //  The signIn() method controls this flow completely
+      //  to avoid the race condition
+      // ─────────────────────────────────────────────────────
         case AuthChangeEvent.signedIn:
-          _user = data.session?.user;
-          _status = AuthStatus.authenticated;
-          await _checkPinLock(resetLock: true);
-          final loaded = await _enc.loadCachedKey();
-          _encryptionReady = loaded;
-          if (_encryptionReady) _startSync();
-          onSignedIn?.call();
-          _safeNotify();
+        // Only update user reference - don't touch status or encryption
+        // signIn() will handle everything
+          if (!_isSigningIn) {
+            // This handles automatic session refresh, not manual signIn
+            // In this case, the key should already be in memory
+            if (_encryptionReady) {
+              _status = AuthStatus.authenticated;
+              _safeNotify();
+            }
+          }
           break;
+
         case AuthChangeEvent.userUpdated:
           _user = data.session?.user;
           _safeNotify();
           break;
+
         case AuthChangeEvent.signedOut:
           if (_isCompletingPasswordReset) break;
           _stopSync();
@@ -120,10 +141,11 @@ class AuthProvider extends ChangeNotifier {
           _status = AuthStatus.unauthenticated;
           _isLocked = false;
           _encryptionReady = false;
-          await _enc.clearKey();
+          // Keep the cached key for convenience (see clearKey below)
           onSignedOut?.call();
           _safeNotify();
           break;
+
         default:
           break;
       }
@@ -131,10 +153,51 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ─────────────────────────────────────────────────────────────
+  //  Key Restoration (NEW)
+  // ─────────────────────────────────────────────────────────────
+
+  /// Called when the app has a session but no cached key.
+  /// Prompts user for password to unwrap the cloud-stored key.
+  Future<bool> restoreKeyWithPassword(String password) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      final success = await _keyService.loadAndUnwrapWithPassword(password);
+
+      if (success && _enc.hasKey) {
+        _encryptionReady = true;
+        _status = AuthStatus.authenticated;
+        await _checkPinLock();
+        _isLocked = false;
+        _startSync();
+        onSignedIn?.call();
+        _safeNotify();
+        return true;
+      } else {
+        _errorMessage = 'Incorrect password. Please try again.';
+        _safeNotify();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Failed to restore encryption key: ${e.toString()}';
+      _safeNotify();
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Signs out and forces a fresh sign-in (used when key restore fails too many times).
+  Future<void> signOutForFreshLogin() async {
+    await _enc.clearKey();  // Actually clear the key this time
+    await SupabaseConfig.client.auth.signOut();
+  }
+
+  // ─────────────────────────────────────────────────────────────
   //  Profile & Data Sync
   // ─────────────────────────────────────────────────────────────
 
-  /// Fetches the current user's raw profile row from the backend.
   Future<Map<String, dynamic>?> fetchProfile() async {
     try {
       return await _authService.fetchProfile();
@@ -144,12 +207,10 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Persists a partial update to the current user's profile row.
   Future<void> updateProfile(Map<String, dynamic> data) {
     return _authService.updateProfile(data);
   }
 
-  /// Reconciles local PIN-lock state with what's stored remotely.
   Future<void> syncPinState([Map<String, dynamic>? profile]) async {
     final data = profile ?? await fetchProfile();
     if (data == null) return;
@@ -171,13 +232,11 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Removes the UI lock barrier.
   void unlock() {
     _isLocked = false;
     _safeNotify();
   }
 
-  /// Enables or disables the PIN lock requirement.
   Future<void> setPinEnabled(bool enabled, {bool syncToCloud = true}) async {
     _pinEnabled = enabled;
     await _storage.write(key: StorageKeys.pinEnabled, value: enabled.toString());
@@ -201,15 +260,21 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     _clearError();
     _encryptionReady = false;
+    _isSigningIn = true;  // ← Prevent listener from interfering
 
     try {
+      // This will trigger the signedIn event, but our listener
+      // now ignores it because _isSigningIn is true
       await SupabaseConfig.client.auth.signInWithPassword(
         email: email.trim(),
         password: password,
       );
 
+      // Now we're in control - load the key
       final hasKeys = await _keyService.hasKeysRow();
+
       if (!hasKeys) {
+        // New account - check for pending key from signUp
         final pending = await _storage.read(key: StorageKeys.pendingEncKey);
         if (pending != null) {
           await _keyService.saveWrappedKey(encDataKeyJson: pending);
@@ -220,21 +285,31 @@ class AuthProvider extends ChangeNotifier {
           await _keyService.loadAndUnwrapWithPassword(password);
         }
       } else {
+        // Existing account - try cached key first, then unwrap
         final loaded = await _enc.loadCachedKey();
         if (!loaded) {
           await _keyService.loadAndUnwrapWithPassword(password);
         }
       }
 
+      // NOW check if we actually have the key
       _encryptionReady = _enc.hasKey;
-      if (_encryptionReady) _startSync();
+
+      if (!_encryptionReady) {
+        // This shouldn't happen with correct password, but handle it
+        _errorMessage = 'Failed to load encryption key. Please try again.';
+        _safeNotify();
+        return false;
+      }
 
       await _checkPinLock();
       _isLocked = false;
       _status = AuthStatus.authenticated;
-
+      _startSync();
+      onSignedIn?.call();
       _safeNotify();
       return true;
+
     } on AuthException catch (e) {
       _errorMessage = AppErrors.signIn(e.message);
       _encryptionReady = false;
@@ -246,6 +321,7 @@ class AuthProvider extends ChangeNotifier {
       _safeNotify();
       return false;
     } finally {
+      _isSigningIn = false;  // ← Release the lock
       _setLoading(false);
     }
   }
@@ -289,6 +365,9 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> signOut() async {
     await SupabaseConfig.client.auth.signOut();
+    // Note: We do NOT call _enc.clearKey() here anymore
+    // The key stays cached for convenience on next sign-in
+    // See EncryptionService.clearKey() modification below
   }
 
   Future<bool> sendPasswordResetEmail(String email) async {
@@ -314,7 +393,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Finalizes the password reset flow by updating the password and re-encrypting the data key.
   Future<bool> completePasswordReset(String newPassword) async {
     _setLoading(true);
     _clearError();
@@ -466,7 +544,7 @@ class AuthProvider extends ChangeNotifier {
       _stopSync();
       await _clearLocalCache();
       await SupabaseConfig.client.auth.signOut();
-      await _enc.clearKey();
+      await _enc.clearKey();  // Actually clear on account delete
       _status = AuthStatus.unauthenticated;
       _encryptionReady = false;
       _safeNotify();

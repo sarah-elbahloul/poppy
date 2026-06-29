@@ -145,6 +145,7 @@ class _WriteScreenState extends State<WriteScreen> {
     if (!_hasChanges || _isSaving) return true;
 
     final content = _contentController.text.trim();
+    final title = _titleController.text.trim();
     final wordCount = Entry.countWords(content);
 
     if (wordCount > kWordLimit) {
@@ -156,8 +157,6 @@ class _WriteScreenState extends State<WriteScreen> {
 
     try {
       final provider = context.read<EntriesProvider>();
-      final title = _titleController.text.trim();
-
       Entry? updatedEntry;
 
       if (_isEditing && _existingEntry != null) {

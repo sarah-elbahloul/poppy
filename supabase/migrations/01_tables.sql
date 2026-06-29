@@ -21,7 +21,7 @@ create table public.profiles (
                           references auth.users(id)
                           on delete cascade,
   theme       text        not null default 'poppy',
-  tags        jsonb       not null default '[{"id": "poppy", "name": "Poppy", "color": 4291346496, "isBuiltIn": true}, {"id": "iris", "name": "Iris", "color": 4284247232, "isBuiltIn": true}, {"id": "lily", "name": "Lily", "color": 4288498789, "isBuiltIn": true}, {"id": "marigold", "name": "Marigold", "color": 4294947584, "isBuiltIn": true}, {"id": "lavender", "name": "Lavender", "color": 4290373832, "isBuiltIn": true}, {"id": "stone", "name": "Stone", "color": 4287636654, "isBuiltIn": true}]',
+  tags        jsonb       not null default '[{"id": "poppy", "name": "Poppy", "color": 4291379264, "isBuiltIn": true}, {"id": "iris", "name": "Iris", "color": 4284246976, "isBuiltIn": true}, {"id": "lily", "name": "Lily", "color": 4288466021, "isBuiltIn": true}, {"id": "marigold", "name": "Marigold", "color": 4294947584, "isBuiltIn": true}, {"id": "lavender", "name": "Lavender", "color": 4290406600, "isBuiltIn": true}, {"id": "stone", "name": "Stone", "color": 4287669422, "isBuiltIn": true}]',
   pin_enabled boolean     not null default false,
   created_at  timestamptz not null default now(),
 

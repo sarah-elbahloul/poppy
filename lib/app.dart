@@ -96,6 +96,7 @@ class _RootRouter extends StatelessWidget {
 
     return switch (auth.status) {
       AuthStatus.unknown => const Scaffold(body: SizedBox()),
+      AuthStatus.restoringKey => const Scaffold(body: Center(child:CircularProgressIndicator())),
       AuthStatus.unauthenticated => const LoginScreen(),
       AuthStatus.passwordRecovery => const SetNewPasswordScreen(),
       AuthStatus.authenticated => auth.isLocked
