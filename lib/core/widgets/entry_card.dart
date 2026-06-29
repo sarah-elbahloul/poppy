@@ -231,7 +231,7 @@ class _WordCountWithStatus extends StatelessWidget {
                       height: 6,
                       decoration: BoxDecoration(
                         color: dotColor,
-                        borderRadius: BorderRadius.circular(AppRadius.full),
+                        shape: BoxShape.circle,
                       ),
                     ),
                   ),

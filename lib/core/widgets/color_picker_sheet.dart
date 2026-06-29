@@ -199,7 +199,7 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(AppRadius.full),
+                        shape: BoxShape.circle,
                         color: _current,
                         border: Border.all(
                           color: _showWheel
@@ -297,7 +297,7 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
                     height: 32,
                     decoration: BoxDecoration(
                       color: _current,
-                      borderRadius: BorderRadius.circular(AppRadius.full),
+                      shape: BoxShape.circle,
                       border: Border.all(
                         color: t.border,
                         width: AppStroke.hairline,
