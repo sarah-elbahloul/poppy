@@ -284,7 +284,7 @@ class _WriteScreenState extends State<WriteScreen> {
 
       final int remaining = 10 - _totalPhotos;
       final int countToTake =
-          pickedFiles.length > remaining ? remaining : pickedFiles.length;
+      pickedFiles.length > remaining ? remaining : pickedFiles.length;
       final List<XFile> toProcess = pickedFiles.take(countToTake).toList();
 
       final List<_PendingPhoto> newPhotos = [];
@@ -342,7 +342,7 @@ class _WriteScreenState extends State<WriteScreen> {
             ListTile(
               leading: Icon(AppIcons.camera, color: t.accent),
               title:
-                  Text('Take a photo', style: TextStyle(color: t.textPrimary)),
+              Text('Take a photo', style: TextStyle(color: t.textPrimary)),
               onTap: () => Navigator.pop(context, 'camera'),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -377,7 +377,7 @@ class _WriteScreenState extends State<WriteScreen> {
     if (mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil(
         AppRoutes.home,
-        (route) => false,
+            (route) => false,
       );
     }
   }
@@ -442,12 +442,12 @@ class _WriteScreenState extends State<WriteScreen> {
             },
             icon: _isSaving
                 ? SizedBox(
-                    height: AppIconSize.sm,
-                    width: AppIconSize.sm,
-                    child: CircularProgressIndicator(
-                        color: t.surface, strokeWidth: AppStroke.thin))
+                height: AppIconSize.sm,
+                width: AppIconSize.sm,
+                child: CircularProgressIndicator(
+                    color: t.surface, strokeWidth: AppStroke.thin))
                 : Icon(AppIcons.back,
-                    color: t.background, size: AppIconSize.sm),
+                color: t.background, size: AppIconSize.sm),
           ),
           title: Row(
             mainAxisSize: MainAxisSize.max,
@@ -461,7 +461,7 @@ class _WriteScreenState extends State<WriteScreen> {
                   height: AppComponentSize.inputHeight,
                   width: AppComponentSize.inputHeight,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                   decoration: BoxDecoration(
                     color: t.surface,
                     borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -520,7 +520,7 @@ class _WriteScreenState extends State<WriteScreen> {
                       ),
                       isDense: false,
                       contentPadding:
-                          const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                     ),
                   ),
                 ),
@@ -610,8 +610,8 @@ class _WriteScreenState extends State<WriteScreen> {
                                     final color = over
                                         ? AppColors.error
                                         : near
-                                            ? AppColors.warning
-                                            : t.textTertiary;
+                                        ? AppColors.warning
+                                        : t.textTertiary;
 
                                     return Row(
                                       children: [
@@ -619,8 +619,8 @@ class _WriteScreenState extends State<WriteScreen> {
                                           child: Text(
                                             '$count / $kWordLimit words',
                                             style:
-                                                AppTextStyles.labelLargeSerif(
-                                                    color, fp),
+                                            AppTextStyles.labelLargeSerif(
+                                                color, fp),
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
@@ -672,7 +672,7 @@ class _WriteScreenState extends State<WriteScreen> {
                               decoration: InputDecoration(
                                 hintText: 'Write anything…',
                                 hintStyle:
-                                    AppTextStyles.bodyLarge(t.textTertiary, fp),
+                                AppTextStyles.bodyLarge(t.textTertiary, fp),
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.zero,
 
@@ -699,7 +699,7 @@ class _WriteScreenState extends State<WriteScreen> {
                           isExpanded: _photosExpanded,
                           totalCount: _totalPhotos,
                           onToggle: () => setState(
-                              () => _photosExpanded = !_photosExpanded),
+                                  () => _photosExpanded = !_photosExpanded),
                           onAdd: _onAddPhoto,
                           onDeleteSaved: _onDeleteSavedPhoto,
                           onDeletePending: _onDeletePendingPhoto,
@@ -727,15 +727,15 @@ class WordLimitFormatter extends TextInputFormatter {
   final VoidCallback? onBlocked;
 
   WordLimitFormatter(
-    this.maxWords, {
-    this.onBlocked,
-  });
+      this.maxWords, {
+        this.onBlocked,
+      });
 
   @override
   TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
+      TextEditingValue oldValue,
+      TextEditingValue newValue,
+      ) {
     final newCount = Entry.countWords(newValue.text);
     final oldCount = Entry.countWords(oldValue.text);
 
@@ -836,7 +836,7 @@ class _PhotoSection extends StatelessWidget {
         AnimatedCrossFade(
           duration: AppDuration.normal,
           crossFadeState:
-              isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           firstChild: const SizedBox(height: 0),
           secondChild: SizedBox(
             height: AppComponentSize.photoStripHeight,
@@ -974,11 +974,11 @@ class _PhotoSavedThumb extends StatelessWidget {
               ),
               child: photo.signedUrl != null
                   ? Image.network(
-                      photoPath,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          Icon(AppIcons.imageBroken, color: t.textTertiary),
-                    )
+                photoPath,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Icon(AppIcons.imageBroken, color: t.textTertiary),
+              )
                   : Image.file(File(photoPath), fit: BoxFit.cover),
             ),
           ),
