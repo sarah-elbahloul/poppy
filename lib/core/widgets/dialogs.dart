@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/style/style.dart';
-import 'package:poppy/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
+
+import '../../features/settings/presentation/providers/theme_provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Shared Dialogs

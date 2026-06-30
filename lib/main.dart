@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:poppy/app.dart';
-import 'package:poppy/core/supabase_client.dart';
-import 'package:poppy/providers/providers.dart';
-import 'package:poppy/services/services.dart';
+import 'package:poppy/core/core.dart';
+import 'package:poppy/features/auth/auth.dart';
+import 'package:poppy/features/journal/presentation/providers/entries_provider.dart';
+import 'package:poppy/features/settings/presentation/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -12,13 +13,6 @@ import 'package:provider/provider.dart';
 //  Location: lib/main.dart
 // ─────────────────────────────────────────────────────────────
 
-/// The main entry point for the Poppy application.
-///
-/// This function is responsible for:
-/// 1. Initializing Flutter bindings and system UI settings.
-/// 2. Setting up core infrastructure (Supabase, Notifications, SQLite).
-/// 3. Pre-loading user preferences and Warming up fonts.
-/// 4. Launching the [MultiProvider] and the root [PoppyApp].
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -43,7 +37,6 @@ void main() async {
   await LocalDbService.instance.init();
 
   // 3. Pre-warm User Preferences
-  // Load font + color preferences before the first frame is drawn to avoid UI jump.
   final themeProvider = await ThemeProvider.initialise();
 
   // Pre-warm the default font pair.

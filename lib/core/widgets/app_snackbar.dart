@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:poppy/core/core.dart';
 import 'package:provider/provider.dart';
-import 'package:poppy/providers/providers.dart';
+
+import '../../features/settings/presentation/providers/theme_provider.dart';
 
 /// A centralized snackbar system for the Poppy app.
 ///

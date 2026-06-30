@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:poppy/providers/providers.dart';
-import 'package:poppy/screens/screens.dart';
+import 'package:poppy/features/auth/auth.dart';
+import 'package:poppy/features/journal/journal.dart';
+import 'package:poppy/features/settings/settings.dart';
 import 'package:poppy/core/core.dart';
 import 'package:provider/provider.dart';
+
+import 'features/auth/presentation/screens/security_screen.dart';
 
 /// Application root widget.
 class PoppyApp extends StatefulWidget {
@@ -15,20 +18,22 @@ class PoppyApp extends StatefulWidget {
 
 class _PoppyAppState extends State<PoppyApp> {
   bool _callbacksWired = false;
+  String? _lastAppliedProfileId;
 
   void _wireCallbacks(AuthProvider auth, ThemeProvider theme, EntriesProvider entries) {
     if (_callbacksWired) return;
     _callbacksWired = true;
 
     auth.onSignedIn = () async {
-      final profile = await auth.fetchProfile();
-      if (profile != null) {
-        await theme.applyTagsFromProfile(profile);
+      if (auth.profile != null) {
+        await theme.applyProfile(auth.profile!);
+        _lastAppliedProfileId = auth.profile!.id;
       }
     };
 
     auth.onSignedOut = () {
       entries.clear();
+      _lastAppliedProfileId = null;
     };
   }
 
@@ -37,6 +42,16 @@ class _PoppyAppState extends State<PoppyApp> {
     return Consumer3<ThemeProvider, AuthProvider, EntriesProvider>(
       builder: (context, theme, auth, entries, _) {
         _wireCallbacks(auth, theme, entries);
+
+        // Only apply profile ONCE on initial load, not on every rebuild
+        if (auth.isAuthenticated &&
+            auth.profile != null &&
+            _lastAppliedProfileId == null) {
+          _lastAppliedProfileId = auth.profile!.id;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            theme.applyProfile(auth.profile!);
+          });
+        }
 
         final themeData = theme.currentThemeData.toThemeData();
 
@@ -96,12 +111,13 @@ class _RootRouter extends StatelessWidget {
 
     return switch (auth.status) {
       AuthStatus.unknown => const Scaffold(body: SizedBox()),
-      AuthStatus.restoringKey => const Scaffold(body: Center(child:CircularProgressIndicator())),
+      AuthStatus.restoringKey => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
       AuthStatus.unauthenticated => const LoginScreen(),
       AuthStatus.passwordRecovery => const SetNewPasswordScreen(),
-      AuthStatus.authenticated => auth.isLocked
-          ? const LockScreen()
-          : const HomeScreen(),
+      AuthStatus.authenticated =>
+      auth.isLocked ? const LockScreen() : const HomeScreen(),
     };
   }
 }

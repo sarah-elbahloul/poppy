@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 import 'dart:html' as html;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
-import 'package:poppy/core/core.dart';
+import 'package:poppy/core/widgets/poppy_logo.dart';
 
 /// A utility screen used to export the [PoppyLogo] as a high-resolution PNG.
 ///

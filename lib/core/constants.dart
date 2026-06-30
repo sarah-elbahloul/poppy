@@ -29,6 +29,7 @@ class StorageKeys {
   static const String selectedBodyFont = 'poppy_body_font';
   static const String selectedFontSize = 'poppy_font_size';
   static const String selectedLineHeight = 'poppy_line_height';
+  static const String selectedBorderRadius = 'poppy_border_radius';
 
   // Per-slot color overrides (for custom theme tweaks)
   static const String colorAccent = 'poppy_color_accent';
@@ -85,7 +86,12 @@ class DBColumn {
   static const String entryId = 'entry_id';
   static const String storagePath = 'storage_path';
   static const String orderIndex = 'order_index';
-  static const String theme = 'theme';
+  
+  // Theme Settings
+  static const String fontTitle = 'font_title';
+  static const String fontBody = 'font_body';
+  static const String themeColors = 'theme_colors';
+
   static const String pinEnabled = 'pin_enabled';
   static const String tags = 'tags';
 
