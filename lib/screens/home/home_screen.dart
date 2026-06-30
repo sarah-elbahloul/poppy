@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bidi_text/bidi_text_field.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -283,7 +284,11 @@ class _HomeScreenState extends State<HomeScreen> {
           PoppySnackbar.info(context, 'Press back again to exit');
           return;
         }
-        Navigator.of(context).maybePop();
+        // Home is always the root/only route on the stack, so there is
+        // nothing for the Navigator to pop here. `maybePop()` would also
+        // be blocked by this same `canPop: false`, so it could never
+        // actually exit the app. Ask the platform to close the app instead.
+        SystemNavigator.pop();
       },
       child: Scaffold(
         key: _scaffoldKey,
@@ -297,13 +302,13 @@ class _HomeScreenState extends State<HomeScreen> {
         floatingActionButton: _isBatchMode
             ? null
             : FloatingActionButton(
-                onPressed: () =>
-                    Navigator.of(context).pushNamed(AppRoutes.write).then((_) {
-                  if (mounted) _entriesProvider.fetchEntries();
-                }),
-                tooltip: 'New entry',
-                child: const Icon(AppIcons.add, size: AppIconSize.sm),
-              ),
+          onPressed: () =>
+              Navigator.of(context).pushNamed(AppRoutes.write).then((_) {
+                if (mounted) _entriesProvider.fetchEntries();
+              }),
+          tooltip: 'New entry',
+          child: const Icon(AppIcons.add, size: AppIconSize.sm),
+        ),
       ),
     );
   }
@@ -324,9 +329,9 @@ class _HomeScreenState extends State<HomeScreen> {
       title: _searching
           ? null
           : Text(
-              '$_greeting, $username!',
-              style: AppTextStyles.titleLarge(t.textPrimary, _fp),
-            ),
+        '$_greeting, $username!',
+        style: AppTextStyles.titleLarge(t.textPrimary, _fp),
+      ),
       leading: Padding(
         padding: const EdgeInsets.all(AppSpacing.sm),
         child: Builder(
@@ -340,58 +345,58 @@ class _HomeScreenState extends State<HomeScreen> {
       actions: [
         _searching
             ? SizedBox(
-                key: const ValueKey('searchField'),
-                width: AppComponentSize.searchFieldWidth(context),
-                height: AppComponentSize.filterBarHeight,
-                child: BidiTextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    autofocus: true,
-                    style: AppTextStyles.bodyMedium(t.textPrimary, _fp),
-                    textAlignVertical: TextAlignVertical.center,
-                    textAlign: TextAlign.start,
-                    onChanged: (_) => _applyAllFilters(),
-                    decoration: InputDecoration(
-                      fillColor: t.surface,
-                      filled: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: 0,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        borderSide:
-                            BorderSide(color: t.accent, width: AppStroke.thin),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        borderSide:
-                            BorderSide(color: t.accent, width: AppStroke.thin),
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        borderSide:
-                            BorderSide(color: t.border, width: AppStroke.thin),
-                      ),
-                      hintText: 'Search entries...',
-                      hintStyle:
-                          AppTextStyles.labelLargeSerif(t.textTertiary, _fp),
-                      suffixIcon: GestureDetector(
-                        onTap: _exitSearch,
-                        child: Padding(
-                          padding: const EdgeInsets.only(left: AppSpacing.xs),
-                          child: Icon(AppIcons.close,
-                              size: AppIconSize.xs, color: t.textSecondary),
-                        ),
-                      ),
-                    )),
-              )
+          key: const ValueKey('searchField'),
+          width: AppComponentSize.searchFieldWidth(context),
+          height: AppComponentSize.filterBarHeight,
+          child: BidiTextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              autofocus: true,
+              style: AppTextStyles.bodyMedium(t.textPrimary, _fp),
+              textAlignVertical: TextAlignVertical.center,
+              textAlign: TextAlign.start,
+              onChanged: (_) => _applyAllFilters(),
+              decoration: InputDecoration(
+                fillColor: t.surface,
+                filled: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: 0,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  borderSide:
+                  BorderSide(color: t.accent, width: AppStroke.thin),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  borderSide:
+                  BorderSide(color: t.accent, width: AppStroke.thin),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  borderSide:
+                  BorderSide(color: t.border, width: AppStroke.thin),
+                ),
+                hintText: 'Search entries...',
+                hintStyle:
+                AppTextStyles.labelLargeSerif(t.textTertiary, _fp),
+                suffixIcon: GestureDetector(
+                  onTap: _exitSearch,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.xs),
+                    child: Icon(AppIcons.close,
+                        size: AppIconSize.xs, color: t.textSecondary),
+                  ),
+                ),
+              )),
+        )
             : IconButton(
-                key: const ValueKey('searchIcon'),
-                icon: Icon(AppIcons.search,
-                    color: t.textSecondary, size: AppIconSize.sm),
-                onPressed: _startSearch,
-              ),
+          key: const ValueKey('searchIcon'),
+          icon: Icon(AppIcons.search,
+              color: t.textSecondary, size: AppIconSize.sm),
+          onPressed: _startSearch,
+        ),
         IconButton(
           tooltip: _sortDesc ? 'Newest first' : 'Oldest first',
           icon: Icon(
@@ -414,7 +419,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: t.background,
       leading: IconButton(
         icon:
-            Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
+        Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
         onPressed: _cancelBatch,
       ),
       title: Text('${_selectedIds.length} selected',
@@ -430,7 +435,7 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           },
           icon:
-              Icon(AppIcons.checkCircle, color: t.accent, size: AppIconSize.sm),
+          Icon(AppIcons.checkCircle, color: t.accent, size: AppIconSize.sm),
         ),
         IconButton(
           tooltip: 'Set Color Tag',
@@ -534,12 +539,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     Icon(AppIcons.calendar,
                         size: AppIconSize.sm,
                         color:
-                            _selectedYear != null ? t.accent : t.textSecondary),
+                        _selectedYear != null ? t.accent : t.textSecondary),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: MenuAnchor(
                         alignmentOffset:
-                            const Offset(-AppSpacing.sm, AppSpacing.xs),
+                        const Offset(-AppSpacing.sm, AppSpacing.xs),
                         style: MenuStyle(
                           minimumSize: WidgetStatePropertyAll(Size(
                               AppComponentSize.searchFieldWidth(context) / 2.7,
@@ -550,10 +555,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           backgroundColor: WidgetStatePropertyAll(t.surface),
                           shape: const WidgetStatePropertyAll(
                               RoundedRectangleBorder(
-                            borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(AppRadius.sm),
-                                bottomRight: Radius.circular(AppRadius.sm)),
-                          )),
+                                borderRadius: BorderRadius.only(
+                                    bottomLeft: Radius.circular(AppRadius.sm),
+                                    bottomRight: Radius.circular(AppRadius.sm)),
+                              )),
                         ),
                         menuChildren: years.map((year) {
                           final isSelected = year == _selectedYear;

@@ -82,17 +82,24 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
     final isModified = _isModifiedFromDefaults(tags);
 
     return PopScope(
-      canPop: false,
+      // Only intercept back navigation while we need to do something other
+      // than actually leaving the screen (i.e. exiting batch-select mode).
+      // In every other case canPop is true, so the system handles back
+      // navigation (gesture, hardware button, predictive back) natively.
+      //
+      // Previously this was hardcoded to `canPop: false` with a fallback
+      // that called `Navigator.of(context).maybePop()` from inside
+      // `onPopInvokedWithResult`. `maybePop()` is itself gated by this same
+      // `canPop`, so that call could never succeed — back navigation (most
+      // visibly the edge-swipe/predictive-back gesture) would be silently
+      // swallowed and the screen could appear to "hang" mid-gesture.
+      canPop: !_isBatchMode,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (_isBatchMode) {
-          setState(() {
-            _selectedTagIds.clear();
-            _isBatchMode = !_isBatchMode;
-          });
-          return;
-        }
-        Navigator.of(context).maybePop();
+        setState(() {
+          _selectedTagIds.clear();
+          _isBatchMode = false;
+        });
       },
       child: Scaffold(
         backgroundColor: td.background,
