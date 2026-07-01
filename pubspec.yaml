@@ -1,5 +1,5 @@
 name: poppy
-description: Poppy — where every day finds its petal. A calm, personal diary app.
+description: Poppy — where every day finds its petal. Privacy-first Flutter journaling app with offline-first synchronization and client-side encryption.
 publish_to: "none"
 version: 1.0.0+1
 
@@ -9,56 +9,65 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # ── Backend ──────────────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────
+  # Backend & Cloud
+  # ──────────────────────────────────────────────────────────────
   supabase_flutter: ^2.5.6
 
-  # ── State management ─────────────────────────────────────────
+  # ──────────────────────────────────────────────────────────────
+  # State Management
+  # ──────────────────────────────────────────────────────────────
   provider: ^6.1.2
 
-  # ── Secure storage (PIN lock) ─────────────────────────────────
+  # ──────────────────────────────────────────────────────────────
+  # Local Storage & Offline Support
+  # ──────────────────────────────────────────────────────────────
+  sqflite: ^2.3.3
   flutter_secure_storage: ^9.2.2
-
-  # ── Image picking & display ───────────────────────────────────
-  image_picker: ^1.1.2
-  cached_network_image: ^3.3.1
-
-  # ── File handling (import / export) ───────────────────────────
+  connectivity_plus: ^6.0.5
   path_provider: ^2.1.4
-  share_plus: ^10.0.2
-  file_picker: ^8.1.2
-  flutter_image_compress: ^2.3.0
   path: ^1.9.0
+  uuid: ^4.4.0
 
-  # ── Notifications ─────────────────────────────────────────────
-  flutter_local_notifications: ^17.2.4
-  timezone: ^0.9.4
-
-  # ── Icons ──────────────────────────────────────────────────
-  iconsax: ^0.0.8
-
-  # ── Encryption (PIN hashing) ──────────────────────────────────
+  # ──────────────────────────────────────────────────────────────
+  # Security & Cryptography
+  # ──────────────────────────────────────────────────────────────
   crypto: ^3.0.3
   cryptography: ^2.9.0
 
-  # ── Date & text utilities ─────────────────────────────────────
-  intl: ^0.20.3
-  google_fonts: ^6.2.1
+  # ──────────────────────────────────────────────────────────────
+  # Media & File Handling
+  # ──────────────────────────────────────────────────────────────
+  image_picker: ^1.1.2
+  cached_network_image: ^3.3.1
+  flutter_image_compress: ^2.3.0
+  file_picker: ^8.1.2
+  share_plus: ^10.0.2
 
-  # ── UI niceties ───────────────────────────────────────────────
-  flutter_svg: ^2.0.10+1       # for the Poppy logo SVG
-  gap: ^3.0.1                  # clean spacing widget
-  modal_bottom_sheet: ^3.0.0   # smooth bottom sheets
-  shimmer: ^3.0.0              # loading skeleton effect
+  # ──────────────────────────────────────────────────────────────
+  # Notifications
+  # ──────────────────────────────────────────────────────────────
+  flutter_local_notifications: ^17.2.4
+  flutter_timezone: ^5.1.0
+  timezone: ^0.9.4
+
+  # ──────────────────────────────────────────────────────────────
+  # User Interface
+  # ──────────────────────────────────────────────────────────────
+  flutter_svg: ^2.0.10+1
+  google_fonts: ^6.2.1
+  iconsax: ^0.0.8
+  gap: ^3.0.1
+  modal_bottom_sheet: ^3.0.0
+  shimmer: ^3.0.0
   dropdown_button2: ^3.1.0
   flutter_bidi_text: ^1.1.1
-  package_info_plus: ^9.0.1
 
-  # ── Offline support ───────────────────────────────────────────
-  sqflite: ^2.3.3              # local SQLite database
-  connectivity_plus: ^6.0.5   # detect network changes
-  flutter_timezone: ^5.1.0    # get device IANA timezone name for notifications
-  uuid: ^4.4.0                 # client-side UUID generation for offline creates
+  # ──────────────────────────────────────────────────────────────
+  # Utilities
+  # ──────────────────────────────────────────────────────────────
+  intl: ^0.20.3
+  package_info_plus: ^9.0.1
 
 dev_dependencies:
   flutter_test:
