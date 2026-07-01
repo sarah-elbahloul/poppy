@@ -31,12 +31,14 @@ class PoppyDialog extends StatelessWidget {
   final IconData? titleIcon;
   final String? message;
   final Widget? body;
-  final String? cancelLabel;
-  final String? confirmLabel;
+  final dynamic cancelLabel;
+  final dynamic confirmLabel;
+  final Widget? confirmContent;
   final bool confirmEnabled;
   final PoppyDialogIntent intent;
   final List<Widget> extraActions;
   final void Function(BuildContext context)? onConfirm;
+  final void Function(BuildContext context)? onCancel;
   final bool barrierDismissible;
   final bool showPrimaryAction;
 
@@ -48,11 +50,13 @@ class PoppyDialog extends StatelessWidget {
     this.body,
     this.cancelLabel = 'Cancel',
     required this.confirmLabel,
+    this.confirmContent,
     this.showPrimaryAction = true,
     this.confirmEnabled = true,
     this.intent = PoppyDialogIntent.standard,
     this.extraActions = const [],
     this.onConfirm,
+    this.onCancel,
     this.barrierDismissible = true,
   });
 
@@ -64,10 +68,12 @@ class PoppyDialog extends StatelessWidget {
     this.body,
     this.cancelLabel = 'Cancel',
     required this.confirmLabel,
+    this.confirmContent,
     this.showPrimaryAction = true,
     this.confirmEnabled = true,
     this.extraActions = const [],
     this.onConfirm,
+    this.onCancel,
     this.barrierDismissible = true,
   }) : intent = PoppyDialogIntent.standard;
 
@@ -79,10 +85,12 @@ class PoppyDialog extends StatelessWidget {
     this.body,
     this.cancelLabel = 'Cancel',
     required this.confirmLabel,
+    this.confirmContent,
     this.showPrimaryAction = true,
     this.confirmEnabled = true,
     this.extraActions = const [],
     this.onConfirm,
+    this.onCancel,
     this.barrierDismissible = true,
   }) : intent = PoppyDialogIntent.destructive;
 
@@ -93,8 +101,10 @@ class PoppyDialog extends StatelessWidget {
     this.message,
     this.body,
     this.confirmLabel = 'Done',
+    this.confirmContent,
     this.showPrimaryAction = true,
     this.onConfirm,
+    this.onCancel,
     this.barrierDismissible = true,
   })  : intent = PoppyDialogIntent.info,
         cancelLabel = '',
@@ -261,7 +271,10 @@ class PoppyDialog extends StatelessWidget {
       actions: [
         if (!isInfo && cancelLabel != null) ...[
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              if (onCancel != null) onCancel!(context);
+              Navigator.pop(context);
+            },
             child: Text(cancelLabel!, style: TextStyle(color: t.textTertiary)),
           )
         ],
@@ -281,7 +294,7 @@ class PoppyDialog extends StatelessWidget {
               ),
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             ),
-            child: Text(confirmLabel!),
+            child: confirmContent ?? Text(confirmLabel!),
           ),
         ]
       ],

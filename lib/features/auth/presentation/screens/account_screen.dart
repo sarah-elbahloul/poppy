@@ -524,7 +524,7 @@ class _SubmitButton extends StatelessWidget {
             ? const SizedBox(
           width: 16, height: 16,
           child: CircularProgressIndicator(
-              strokeWidth: 2, color: Colors.white),
+              strokeWidth: AppSpacing.xxs, color: Colors.white),
         )
             : Text(label),
       ),

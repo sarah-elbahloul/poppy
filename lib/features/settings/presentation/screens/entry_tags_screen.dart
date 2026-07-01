@@ -234,17 +234,19 @@ class _EntryTagsScreenState extends State<EntryTagsScreen> {
           );
 
           if (isNew) {
-            currentTags.add(updatedTag);
-            themeProvider.setTagColors(currentTags);
-            themeProvider.pushTheme(authProvider.updateProfile);
+            setState(() {
+              currentTags.add(updatedTag);
+              themeProvider.setTagColors(currentTags);
+              themeProvider.pushTheme(authProvider.updateProfile);
+            });
           } else {
             final index = currentTags.indexWhere((t) => t.id == tag.id);
             if (index != -1) currentTags[index] = updatedTag;
-
-            themeProvider.setTagColors(currentTags);
-            entriesProvider.propagateTagEdit(tag, updatedTag);
-            themeProvider.pushTheme(authProvider.updateProfile);
-
+            setState(() {
+              themeProvider.setTagColors(currentTags);
+              entriesProvider.propagateTagEdit(tag, updatedTag);
+              themeProvider.pushTheme(authProvider.updateProfile);
+            });
             if (context.mounted) {
               final affected = entriesProvider.entries
                   .where((e) => e.colorTag.id == tag.id)
@@ -643,7 +645,7 @@ class _TagSwatch extends StatelessWidget {
             shape: BoxShape.circle,
             border: Border.all(
               color: isSelected ? t.accent : Colors.transparent,
-              width: 2,
+              width: AppSpacing.xxs,
             ),
           ),
         ),

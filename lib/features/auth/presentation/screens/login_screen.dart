@@ -149,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ? const SizedBox(
                     width: 18, height: 18,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
+                        strokeWidth: AppSpacing.xxs, color: Colors.white),
                   )
                       : Text(
                     _forgotMode ? 'Send reset link' : 'Sign in',

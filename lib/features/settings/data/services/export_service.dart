@@ -52,7 +52,7 @@ class ExportService {
     final bytes = utf8.encode(jsonString);
     final filename = ExportConfig.fileName();
 
-    return _saveToDownloads(bytes, filename);
+    return await _saveToDownloads(bytes, filename);
   }
 
   Future<String?> _saveToDownloads(List<int> bytes, String filename) async {

@@ -149,7 +149,7 @@ class _SetNewPasswordScreenState extends State<SetNewPasswordScreen> {
                       ? const SizedBox(
                     width: 18, height: 18,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
+                        strokeWidth: AppSpacing.xxs, color: Colors.white),
                   )
                       : const Text('Set password',
                       style: TextStyle(fontSize: 15)),

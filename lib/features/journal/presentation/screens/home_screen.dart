@@ -31,8 +31,11 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   EntriesProvider get _entriesProvider => context.read<EntriesProvider>();
+
   ThemeProvider get _themeProvider => context.read<ThemeProvider>();
+
   FontPairData get _fp => _themeProvider.currentFontPairData;
+
   AuthProvider get _authProvider => context.read<AuthProvider>();
 
   String? _selectedYear;
@@ -58,8 +61,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _greeting = hour < 12
         ? 'Good morning'
         : hour < 17
-        ? 'Good afternoon'
-        : 'Good evening';
+            ? 'Good afternoon'
+            : 'Good evening';
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -270,13 +273,13 @@ class _HomeScreenState extends State<HomeScreen> {
         floatingActionButton: _isBatchMode
             ? null
             : FloatingActionButton(
-          onPressed: () =>
-              Navigator.of(context).pushNamed(AppRoutes.write).then((_) {
-                if (mounted) _entriesProvider.fetchEntries();
-              }),
-          tooltip: 'New entry',
-          child: const Icon(AppIcons.add, size: AppIconSize.sm),
-        ),
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.write).then((_) {
+                  if (mounted) _entriesProvider.fetchEntries();
+                }),
+                tooltip: 'New entry',
+                child: const Icon(AppIcons.add, size: AppIconSize.sm),
+              ),
       ),
     );
   }
@@ -293,9 +296,9 @@ class _HomeScreenState extends State<HomeScreen> {
       title: _searching
           ? null
           : Text(
-        '$_greeting, $username!',
-        style: AppTextStyles.titleLarge(t.textPrimary, _fp),
-      ),
+              '$_greeting, $username!',
+              style: AppTextStyles.titleLarge(t.textPrimary, _fp),
+            ),
       leading: Padding(
         padding: const EdgeInsets.all(AppSpacing.sm),
         child: Builder(
@@ -309,58 +312,58 @@ class _HomeScreenState extends State<HomeScreen> {
       actions: [
         _searching
             ? SizedBox(
-          key: const ValueKey('searchField'),
-          width: AppComponentSize.searchFieldWidth(context),
-          height: AppComponentSize.filterBarHeight,
-          child: BidiTextField(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              autofocus: true,
-              style: AppTextStyles.bodyMedium(t.textPrimary, _fp),
-              textAlignVertical: TextAlignVertical.center,
-              textAlign: TextAlign.start,
-              onChanged: (_) => _applyAllFilters(),
-              decoration: InputDecoration(
-                fillColor: t.surface,
-                filled: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: 0,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  borderSide:
-                  BorderSide(color: t.accent, width: AppStroke.thin),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  borderSide:
-                  BorderSide(color: t.accent, width: AppStroke.thin),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  borderSide:
-                  BorderSide(color: t.border, width: AppStroke.thin),
-                ),
-                hintText: 'Search entries...',
-                hintStyle:
-                AppTextStyles.labelLargeSerif(t.textTertiary, _fp),
-                suffixIcon: GestureDetector(
-                  onTap: _exitSearch,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: AppSpacing.xs),
-                    child: Icon(AppIcons.close,
-                        size: AppIconSize.xs, color: t.textSecondary),
-                  ),
-                ),
-              )),
-        )
+                key: const ValueKey('searchField'),
+                width: AppComponentSize.searchFieldWidth(context),
+                height: AppComponentSize.filterBarHeight,
+                child: BidiTextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    autofocus: true,
+                    style: AppTextStyles.bodyMedium(t.textPrimary, _fp),
+                    textAlignVertical: TextAlignVertical.center,
+                    textAlign: TextAlign.start,
+                    onChanged: (_) => _applyAllFilters(),
+                    decoration: InputDecoration(
+                      fillColor: t.surface,
+                      filled: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: 0,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        borderSide:
+                            BorderSide(color: t.accent, width: AppStroke.thin),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        borderSide:
+                            BorderSide(color: t.accent, width: AppStroke.thin),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        borderSide:
+                            BorderSide(color: t.border, width: AppStroke.thin),
+                      ),
+                      hintText: 'Search entries...',
+                      hintStyle:
+                          AppTextStyles.labelLargeSerif(t.textTertiary, _fp),
+                      suffixIcon: GestureDetector(
+                        onTap: _exitSearch,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: AppSpacing.xs),
+                          child: Icon(AppIcons.close,
+                              size: AppIconSize.xs, color: t.textSecondary),
+                        ),
+                      ),
+                    )),
+              )
             : IconButton(
-          key: const ValueKey('searchIcon'),
-          icon: Icon(AppIcons.search,
-              color: t.textSecondary, size: AppIconSize.sm),
-          onPressed: _startSearch,
-        ),
+                key: const ValueKey('searchIcon'),
+                icon: Icon(AppIcons.search,
+                    color: t.textSecondary, size: AppIconSize.sm),
+                onPressed: _startSearch,
+              ),
         IconButton(
           tooltip: _sortDesc ? 'Newest first' : 'Oldest first',
           icon: Icon(
@@ -383,7 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: t.background,
       leading: IconButton(
         icon:
-        Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
+            Icon(AppIcons.close, color: t.textSecondary, size: AppIconSize.sm),
         onPressed: _cancelBatch,
       ),
       title: Text('${_selectedIds.length} selected',
@@ -399,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           },
           icon:
-          Icon(AppIcons.checkCircle, color: t.accent, size: AppIconSize.sm),
+              Icon(AppIcons.checkCircle, color: t.accent, size: AppIconSize.sm),
         ),
         IconButton(
           tooltip: 'Set Color Tag',
@@ -498,12 +501,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     Icon(AppIcons.calendar,
                         size: AppIconSize.sm,
                         color:
-                        _selectedYear != null ? t.accent : t.textSecondary),
+                            _selectedYear != null ? t.accent : t.textSecondary),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: MenuAnchor(
                         alignmentOffset:
-                        const Offset(-AppSpacing.sm, AppSpacing.xs),
+                            const Offset(-AppSpacing.sm, AppSpacing.xs),
                         style: MenuStyle(
                           minimumSize: WidgetStatePropertyAll(Size(
                               AppComponentSize.searchFieldWidth(context) / 2.7,
@@ -514,10 +517,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           backgroundColor: WidgetStatePropertyAll(t.surface),
                           shape: const WidgetStatePropertyAll(
                               RoundedRectangleBorder(
-                                borderRadius: BorderRadius.only(
-                                    bottomLeft: Radius.circular(AppRadius.sm),
-                                    bottomRight: Radius.circular(AppRadius.sm)),
-                              )),
+                            borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(AppRadius.sm),
+                                bottomRight: Radius.circular(AppRadius.sm)),
+                          )),
                         ),
                         menuChildren: years.map((year) {
                           final isSelected = year == _selectedYear;
@@ -641,43 +644,50 @@ class _HomeScreenState extends State<HomeScreen> {
             height: AppStroke.hairline,
             thickness: AppStroke.hairline,
             color: t.border),
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.only(bottom: 100),
-            itemCount: displayedEntries.length,
-            separatorBuilder: (_, __) => Divider(
-                height: AppStroke.hairline,
-                thickness: AppStroke.hairline,
-                color: t.border),
-            itemBuilder: (context, i) {
-              final entry = displayedEntries[i];
-              final isSelected = _selectedIds.contains(entry.id);
-              return Column(
-                children: [
-                  Stack(
-                    children: [
-                      if (isSelected)
-                        Positioned.fill(child: Container(color: t.accentLight)),
-                      EntryCard(
-                        entry: entry,
-                        onTap: () => _onEntryTap(entry),
-                        onLongPress: () => _onEntryLongPress(entry),
-                        isBatchMode: _isBatchMode,
-                        isSelected: isSelected,
-                      ),
-                    ],
-                  ),
-                  if (i == displayedEntries.length - 1) ...[
-                    Divider(
-                        height: AppStroke.hairline,
-                        thickness: AppStroke.hairline,
-                        color: t.border)
-                  ]
-                ],
-              );
-            },
+        if (displayedEntries.isNotEmpty) ...[
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.only(bottom: 100),
+              itemCount: displayedEntries.length,
+              separatorBuilder: (_, __) => Divider(
+                  height: AppStroke.hairline,
+                  thickness: AppStroke.hairline,
+                  color: t.border),
+              itemBuilder: (context, i) {
+                final entry = displayedEntries[i];
+                final isSelected = _selectedIds.contains(entry.id);
+                return Column(
+                  children: [
+                    Stack(
+                      children: [
+                        if (isSelected)
+                          Positioned.fill(
+                              child: Container(color: t.accentLight)),
+                        EntryCard(
+                          entry: entry,
+                          onTap: () => _onEntryTap(entry),
+                          onLongPress: () => _onEntryLongPress(entry),
+                          isBatchMode: _isBatchMode,
+                          isSelected: isSelected,
+                        ),
+                      ],
+                    ),
+                    if (i == displayedEntries.length - 1) ...[
+                      Divider(
+                          height: AppStroke.hairline,
+                          thickness: AppStroke.hairline,
+                          color: t.border)
+                    ]
+                  ],
+                );
+              },
+            ),
+          )
+        ] else ...[
+          Expanded(
+            child: _EmptySearchState(),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -709,6 +719,39 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text('Tap + to write your first entry.',
               style: AppTextStyles.bodySmallSans(t.textTertiary, fp)),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptySearchState extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final t = context.poppyTheme;
+    final fp = context.read<ThemeProvider>().currentFontPairData;
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            AppIcons.search,
+            size: AppIconSize.logo,
+            color: t.textTertiary,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'No matching entries.',
+            style: AppTextStyles.bodyLarge(t.textPrimary, fp),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Try changing your search or filters.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodySmallSans(t.textTertiary, fp),
+          ),
         ],
       ),
     );

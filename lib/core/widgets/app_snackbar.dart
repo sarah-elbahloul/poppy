@@ -212,7 +212,7 @@ class PoppySnackbar {
                                     height: 1.2,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: AppSpacing.xxs),
                               ],
                               Text(
                                 message,

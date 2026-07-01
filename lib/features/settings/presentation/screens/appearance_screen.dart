@@ -384,7 +384,7 @@ class _ColorSwatch extends StatelessWidget {
                     color: isCustom
                         ? t.accent.withValues(alpha: 0.45)
                         : Colors.transparent,
-                    width: 2,
+                    width: AppSpacing.xxs,
                   ),
                 ),
               ),

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb, setEquals;
 import 'package:flutter/material.dart';
@@ -443,7 +444,7 @@ class _WriteScreenState extends State<WriteScreen> {
                           height: 1,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
                         DateFormat('MMM').format(_entryDate).toUpperCase(),
                         style: AppTextStyles.labelSmall(t.textTertiary, fp),
@@ -1064,28 +1065,32 @@ class _FullscreenViewerState extends State<_FullscreenViewer> {
             size: AppIconSize.xl,
           );
 
+          dynamic url;
+          dynamic local;
           if (item is Photo) {
-            final url = item.signedUrl;
-            final local = item.localPath;
+            url = item.signedUrl;
+            local = item.localPath;
+          } else if (item is _PendingPhoto) {
+            local = item.xFile.path;
+          }
 
-            if (url != null && url.isNotEmpty) {
-              image = Image.network(
-                url,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) {
-                  if (local != null && local.isNotEmpty) {
-                    return Image.file(File(local), fit: BoxFit.contain);
-                  }
-                  return const Icon(
-                    AppIcons.imageBroken,
-                    color: Colors.white54,
-                    size: AppIconSize.xl,
-                  );
-                },
-              );
-            } else if (local != null && local.isNotEmpty) {
-              image = Image.file(File(local), fit: BoxFit.contain);
-            }
+          if (url != null && url.isNotEmpty) {
+            image = Image.network(
+              url,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) {
+                if (local != null && local.isNotEmpty) {
+                  return Image.file(File(local), fit: BoxFit.contain);
+                }
+                return const Icon(
+                  AppIcons.imageBroken,
+                  color: Colors.white54,
+                  size: AppIconSize.xl,
+                );
+              },
+            );
+          } else if (local != null && local.isNotEmpty) {
+            image = Image.file(File(local), fit: BoxFit.contain);
           }
 
           return InteractiveViewer(

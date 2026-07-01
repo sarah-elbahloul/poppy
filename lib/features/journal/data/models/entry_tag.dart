@@ -66,6 +66,13 @@ class TagColorData {
   bool operator ==(Object other) =>
       identical(this, other) || (other is TagColorData && other.id == id);
 
+  /// Deep equality check for all fields (not just id)
+  bool isSameAs(TagColorData other) =>
+      id == other.id &&
+          name == other.name &&
+          color.toARGB32() == other.color.toARGB32() &&
+          isBuiltIn == other.isBuiltIn;
+
   @override
   int get hashCode => id.hashCode;
 }

@@ -31,6 +31,7 @@ class SyncService {
   VoidCallback? onSyncComplete;
 
   bool _isSyncing = false;
+  Future<void>? _runningSync;
 
   void startListening() {
     _connectivitySub?.cancel();
@@ -44,15 +45,30 @@ class SyncService {
     _connectivitySub = null;
   }
 
-  Future<void> syncNow() async {
+  Future<void> syncNow() {
+    _runningSync ??= _performSync().whenComplete(() {
+      _runningSync = null;
+    });
+
+    return _runningSync!;
+  }
+
+  Future<void> _performSync() async {
     if (_isSyncing) return;
+
     final userId = SupabaseConfig.userId;
     if (userId.isEmpty) return;
 
     _isSyncing = true;
+
     try {
       final justSyncedEntryIds = await _processQueue(userId);
-      await _refreshFromServer(userId, excludeIds: justSyncedEntryIds);
+
+      await _refreshFromServer(
+        userId,
+        excludeIds: justSyncedEntryIds,
+      );
+
       onSyncComplete?.call();
     } catch (e) {
       debugPrint('Sync failed: $e');

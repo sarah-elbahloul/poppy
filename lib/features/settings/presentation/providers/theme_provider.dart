@@ -269,7 +269,10 @@ class ThemeProvider extends ChangeNotifier {
   }
 
   Future<void> setTagColors(List<TagColorData> tags, {bool persist = true}) async {
-    if (listEquals(_tagColors, tags)) return;
+    if (_tagColors.length == tags.length &&
+        _tagColors.asMap().entries.every((e) => e.value.isSameAs(tags[e.key]))) {
+      return;
+    }
     _tagColors = tags;
     EntryTags.updateRegistry(tags);
     notifyListeners();
@@ -329,7 +332,8 @@ class ThemeProvider extends ChangeNotifier {
       }
     }
 
-    if (!listEquals(_tagColors, profile.tags)) {
+    if (!(_tagColors.length == profile.tags.length &&
+        _tagColors.asMap().entries.every((e) => e.value.isSameAs(profile.tags[e.key])))) {
       _tagColors = List.from(profile.tags);
       EntryTags.updateRegistry(_tagColors);
       final json = jsonEncode(_tagColors.map((t) => t.toMap()).toList());

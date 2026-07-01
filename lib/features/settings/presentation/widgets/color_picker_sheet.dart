@@ -181,7 +181,7 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
                           ).copyWith(fontWeight: FontWeight.w600),
                         ),
                         if (widget.description != null) ...[
-                          const SizedBox(height: 2),
+                          const SizedBox(height: AppSpacing.xxs),
                           Text(
                             widget.description!,
                             style: AppTextStyles.labelLargeSans(

@@ -125,7 +125,18 @@ class LocalDbService {
     return _db!;
   }
 
-  Future<void> _enqueue(Batch batch, String type, String id, String op) async {
+  Future<void> _enqueue(
+      Batch batch,
+      String type,
+      String id,
+      String op,
+      ) async {
+    batch.delete(
+      'sync_queue',
+      where: 'entity_type = ? AND entity_id = ?',
+      whereArgs: [type, id],
+    );
+
     batch.insert('sync_queue', {
       'entity_type': type,
       'entity_id': id,
@@ -202,6 +213,12 @@ class LocalDbService {
         batch.delete('sync_queue', where: 'entity_id = ? AND entity_type = ?', whereArgs: [id, 'entry']);
       } else {
         batch.update('entries', {DBColumn.syncStatus: SyncStatus.pendingDelete, DBColumn.isDeleted: 1}, where: '${DBColumn.id} = ?', whereArgs: [id]);
+        batch.delete(
+          'sync_queue',
+          where: 'entity_type = ? AND entity_id = ?',
+          whereArgs: ['entry', id],
+        );
+
         batch.insert('sync_queue', {
           'entity_type': 'entry',
           'entity_id': id,
@@ -280,9 +297,30 @@ class LocalDbService {
     for (final row in serverRows) {
       final id = row[DBColumn.id] as String;
 
-      // Don't overwrite entries that were just synced in this cycle.
       if (excludeIds?.contains(id) ?? false) {
         continue;
+      }
+
+      final local = await getEntryById(id);
+
+      if (local != null) {
+        final status = local[DBColumn.syncStatus] as String;
+
+        // Never overwrite local pending changes.
+        if (status != SyncStatus.synced) {
+          continue;
+        }
+
+        final localUpdated =
+        DateTime.parse(local[DBColumn.updatedAt] as String).toUtc();
+
+        final serverUpdated =
+        DateTime.parse(row[DBColumn.updatedAt] as String).toUtc();
+
+        // Ignore stale server copies.
+        if (serverUpdated.isBefore(localUpdated)) {
+          continue;
+        }
       }
 
       batch.insert(

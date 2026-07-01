@@ -75,28 +75,25 @@ class ColorTagSelector extends StatelessWidget {
 
     final options = EntryTags.all.map((colorData) {
       final isSelected = selected?.id == colorData.id;
-      return Padding(
-        padding: isSelected ? const EdgeInsets.symmetric(horizontal: AppSpacing.xs) : EdgeInsets.zero,
-        child: Row(
-          children: [
-            _ColorTagOption(
-              colorData: colorData,
-              isSelected: isSelected,
-              showLabelOnSelect: showLabelOnSelect,
-              fp: fp,
-              onTap: () {
-                if (isSelected && allowDeselect) {
-                  onSelected(null);
-                } else {
-                  onSelected(colorData);
-                }
-              },
-            ),
-            if (colorData == EntryTags.all.last)...[
-              SizedBox(width: AppSpacing.xs)
-            ]
-          ],
-        ),
+      return Row(
+        children: [
+          _ColorTagOption(
+            colorData: colorData,
+            isSelected: isSelected,
+            showLabelOnSelect: showLabelOnSelect,
+            fp: fp,
+            onTap: () {
+              if (isSelected && allowDeselect) {
+                onSelected(null);
+              } else {
+                onSelected(colorData);
+              }
+            },
+          ),
+          if (colorData == EntryTags.all.last)...[
+            SizedBox(width: AppSpacing.sm)
+          ]
+        ],
       );
     }).toList();
 
@@ -155,10 +152,24 @@ class _ColorTagOption extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.xs,
-          vertical: AppSpacing.xs,
+        margin: isSelected ? const EdgeInsets.only(
+          left: AppSpacing.xxs,
+          right: AppSpacing.xxs,
+          top: AppSpacing.xxs,
+          bottom: AppSpacing.xxs,
+        ) : const EdgeInsets.only(
+          left: AppSpacing.xs,
+          right: AppSpacing.xs,
+          top: AppSpacing.xxs,
+          bottom: AppSpacing.xxs,
         ),
+        padding: isSelected
+            ? const EdgeInsets.only(
+          left: AppSpacing.xs,
+          right: AppSpacing.xs,
+          top: AppSpacing.xs,
+          bottom: AppSpacing.xs,
+        ) : EdgeInsets.zero,
         decoration: BoxDecoration(
           color: isSelected
               ? colorData.color.withValues(alpha: 0.12)
@@ -166,7 +177,7 @@ class _ColorTagOption extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.full),
           border: Border.all(
             color: isSelected ? colorData.color : Colors.transparent,
-            width: AppStroke.thin,
+            width: isSelected? AppStroke.thin : 0,
           ),
         ),
         child: Row(

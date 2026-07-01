@@ -208,7 +208,7 @@ class _OpenSourceContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 4,
+                width: AppSpacing.xs,
                 height: 40,
                 decoration: BoxDecoration(
                   color: t.accentMuted,
@@ -222,7 +222,7 @@ class _OpenSourceContent extends StatelessWidget {
                   children: [
                     Text(p.$1,
                         style: AppTextStyles.bodySmallSans(t.textPrimary, fp)),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxs),
                     Text('${p.$3} · ${p.$2}',
                         style: AppTextStyles.labelLargeSerif(t.textTertiary, fp)),
                   ],

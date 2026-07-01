@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:poppy/core/core.dart';
 import 'package:poppy/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poppy/features/journal/data/models/entry.dart';
 import 'package:poppy/features/journal/presentation/providers/entries_provider.dart';
 import 'package:poppy/features/settings/presentation/providers/theme_provider.dart';
 import 'package:poppy/features/settings/data/services/export_service.dart';
@@ -10,6 +11,11 @@ import 'package:provider/provider.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Settings Screen
 // ─────────────────────────────────────────────────────────────
+
+class _ExportResult {
+  final String? savedPath;
+  const _ExportResult({this.savedPath});
+}
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -166,43 +172,31 @@ class SettingsScreen extends StatelessWidget {
       return;
     }
 
-    final choice = await PoppyDialog.show<_ExportChoice>(
+    final result = await PoppyDialog.show<_ExportResult>(
       context,
-      builder: () => const _ExportChoiceDialog(),
+      builder: () => _ExportChoiceDialog(entries: entries),
     );
 
-    if (choice == null || !context.mounted) return;
-    final encrypted = choice == _ExportChoice.encrypted;
+    if (result == null || !context.mounted) return;
 
-    try {
-      final svc = ExportService();
-      final savedPath = await svc.exportEntries(entries, encrypted: encrypted);
-      if (!context.mounted) return;
-
-      if (savedPath != null) {
-        final filename = savedPath.split('/').last;
-        PoppySnackbar.success(
-          context,
-          'Saved to Downloads/$filename',
-          action: SnackBarAction(
-            label: 'Share',
-            onPressed: () => svc.shareExportFile(savedPath),
-          ),
-        );
-      } else {
-        PoppySnackbar.info(context, 'Export ready to share.');
-      }
-    } catch (_) {
-      if (context.mounted) {
-        PoppySnackbar.error(context, 'Export failed. Please try again.');
-      }
+    final svc = ExportService();
+    if (result.savedPath != null) {
+      final filename = result.savedPath!.split('/').last;
+      PoppySnackbar.success(
+        context,
+        'Saved to Downloads/$filename',
+        action: SnackBarAction(
+          label: 'Share',
+          onPressed: () => svc.shareExportFile(result.savedPath!),
+        ),
+      );
+    } else {
+      PoppySnackbar.info(context, 'Export ready to share.');
     }
   }
 
   Future<void> _onImport(BuildContext context) async {
     final svc = ExportService();
-    final t = context.poppyTheme;
-    final fp = context.read<ThemeProvider>().currentFontPairData;
 
     late ImportPreview preview;
     try {
@@ -221,68 +215,22 @@ class SettingsScreen extends StatelessWidget {
 
     if (!context.mounted) return;
 
-    final entryWord = preview.entryCount == 1 ? 'entry' : 'entries';
-
-    final confirmed = await PoppyDialog.showConfirm(
+    final count = await PoppyDialog.show<int>(
       context,
-      title: 'Import entries?',
-      confirmLabel: 'Import ${preview.entryCount} $entryWord',
-      message: 'New entries will be added. Existing entries with the same ID will be skipped.',
-      body: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: t.accentLight,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          border: Border.all(color: t.accent.withValues(alpha: 0.2), width: AppStroke.hairline),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(AppIcons.import_, size: AppIconSize.xs, color: t.accent),
-                const SizedBox(width: AppSpacing.sm),
-                Text('${preview.entryCount} $entryWord found',
-                    style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
-              ],
-            ),
-            if (preview.exportedAt.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.only(left: 20),
-                child: Text('Exported ${preview.exportedAtFormatted}',
-                    style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
-              ),
-            ],
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.only(left: 20),
-              child: Text(preview.isEncrypted ? 'Encrypted backup' : 'Plain text backup',
-                  style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
-            ),
-          ],
-        ),
-      ),
+      builder: () => _ImportConfirmDialog(preview: preview),
     );
 
-    if (confirmed != true || !context.mounted) return;
+    if (count == null || !context.mounted) return;
 
-    try {
-      final count = await svc.commitImport(preview);
-      if (!context.mounted) return;
-      if (count > 0) {
-        await context.read<EntriesProvider>().fetchEntries();
-        if (context.mounted) {
-          PoppySnackbar.success(context, '$count $entryWord imported.');
-        }
-      } else {
-        PoppySnackbar.info(context, 'No new entries found.');
-      }
-    } catch (e) {
+    final entryWord = count == 1 ? 'entry' : 'entries';
+
+    if (count > 0) {
+      await context.read<EntriesProvider>().fetchEntries();
       if (context.mounted) {
-        PoppySnackbar.error(context, e is FormatException ? e.message : 'Import failed.');
+        PoppySnackbar.success(context, '$count $entryWord imported.');
       }
+    } else {
+      PoppySnackbar.info(context, 'No new entries found.');
     }
   }
 
@@ -439,7 +387,7 @@ class _ProfileChip extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(email, style: AppTextStyles.bodySmallSans(t.textPrimary, fp), overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text('Signed in', style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
                 ],
               ),
@@ -451,10 +399,13 @@ class _ProfileChip extends StatelessWidget {
   }
 }
 
-enum _ExportChoice { encrypted, plainText }
+// ─────────────────────────────────────────────────────────────
+//  Export choice dialog
+// ─────────────────────────────────────────────────────────────
 
 class _ExportChoiceDialog extends StatefulWidget {
-  const _ExportChoiceDialog();
+  final List<Entry> entries;
+  const _ExportChoiceDialog({required this.entries});
 
   @override
   State<_ExportChoiceDialog> createState() => _ExportChoiceDialogState();
@@ -462,14 +413,55 @@ class _ExportChoiceDialog extends StatefulWidget {
 
 class _ExportChoiceDialogState extends State<_ExportChoiceDialog> {
   bool _encrypted = true;
+  bool _isExporting = false;
+  String? _error;
+
+  Future<void> _onExport(BuildContext context) async {
+    setState(() {
+      _isExporting = true;
+      _error = null;
+    });
+    try {
+      final svc = ExportService();
+      final savedPath = await svc.exportEntries(
+        widget.entries,
+        encrypted: _encrypted,
+      );
+      if (mounted) {
+        Navigator.pop(context, _ExportResult(savedPath: savedPath));
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isExporting = false;
+          _error = 'Export failed. Please try again.';
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
+
     return PoppyDialog(
       title: 'Export diary',
-      confirmLabel: 'Confirm',
       intent: _encrypted ? PoppyDialogIntent.standard : PoppyDialogIntent.destructive,
-      onConfirm: (ctx) => Navigator.pop(ctx, _encrypted ? _ExportChoice.encrypted : _ExportChoice.plainText),
+      cancelLabel: _isExporting ? null : 'Cancel',
+      confirmLabel: 'Export',
+      confirmEnabled: !_isExporting,
+      confirmContent: _isExporting
+          ? const SizedBox(
+        height: 18,
+        width: 18,
+        child: CircularProgressIndicator(
+          strokeWidth: AppSpacing.xxs,
+          color: Colors.white,
+        ),
+      )
+          : null,
+      onConfirm: _isExporting ? null : _onExport,
+      barrierDismissible: !_isExporting,
       body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -480,7 +472,7 @@ class _ExportChoiceDialogState extends State<_ExportChoiceDialog> {
             desc: 'Entries are scrambled. Only importable back into this account.',
             color: context.poppyTheme.accent,
             isSelected: _encrypted,
-            onTap: () => setState(() => _encrypted = true),
+            onTap: _isExporting ? null : () => setState(() => _encrypted = true),
           ),
           const SizedBox(height: AppSpacing.sm),
           _ExportOptionTile(
@@ -489,10 +481,120 @@ class _ExportChoiceDialogState extends State<_ExportChoiceDialog> {
             desc: 'Readable by anyone who opens the file.',
             color: AppColors.error,
             isSelected: !_encrypted,
-            onTap: () => setState(() => _encrypted = false),
+            onTap: _isExporting ? null : () => setState(() => _encrypted = false),
             warning: 'Your diary entries will be unprotected. Only use if needed outside Poppy.',
           ),
+          if (_error != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(_error!, style: AppTextStyles.labelSmall(AppColors.error, fp)),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Import confirm dialog
+// ─────────────────────────────────────────────────────────────
+
+class _ImportConfirmDialog extends StatefulWidget {
+  final ImportPreview preview;
+  const _ImportConfirmDialog({required this.preview});
+
+  @override
+  State<_ImportConfirmDialog> createState() => _ImportConfirmDialogState();
+}
+
+class _ImportConfirmDialogState extends State<_ImportConfirmDialog> {
+  bool _isImporting = false;
+  String? _error;
+
+  Future<void> _onImport(BuildContext context) async {
+    setState(() {
+      _isImporting = true;
+      _error = null;
+    });
+    try {
+      final svc = ExportService();
+      final count = await svc.commitImport(widget.preview);
+      if (mounted) {
+        Navigator.pop(context, count);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isImporting = false;
+          _error = e is FormatException ? e.message : 'Import failed.';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.poppyTheme;
+    final fp = context.watch<ThemeProvider>().currentFontPairData;
+    final preview = widget.preview;
+    final entryWord = preview.entryCount == 1 ? 'entry' : 'entries';
+
+    return PoppyDialog(
+      title: 'Import entries?',
+      message: 'New entries will be added. Existing entries with the same ID will be skipped.',
+      cancelLabel: _isImporting ? null : 'Cancel',
+      confirmLabel: 'Import $entryWord',
+      confirmEnabled: !_isImporting,
+      confirmContent: _isImporting
+          ? const SizedBox(
+        height: 18,
+        width: 18,
+        child: CircularProgressIndicator(
+          strokeWidth: AppSpacing.xxs,
+          color: Colors.white,
+        ),
+      )
+          : null,
+      onConfirm: _isImporting ? null : _onImport,
+      barrierDismissible: !_isImporting,
+      body: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: t.accentLight,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          border: Border.all(color: t.accent.withValues(alpha: 0.2), width: AppStroke.hairline),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(AppIcons.import_, size: AppIconSize.xs, color: t.accent),
+                const SizedBox(width: AppSpacing.sm),
+                Text('${preview.entryCount} $entryWord found',
+                    style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
+              ],
+            ),
+            if (preview.exportedAt.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Padding(
+                padding: const EdgeInsets.only(left: 20),
+                child: Text('Exported ${preview.exportedAtFormatted}',
+                    style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.xs),
+            Padding(
+              padding: const EdgeInsets.only(left: 20),
+              child: Text(preview.isEncrypted ? 'Encrypted backup' : 'Plain text backup',
+                  style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(_error!, style: AppTextStyles.labelSmall(AppColors.error, fp)),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -504,7 +606,7 @@ class _ExportOptionTile extends StatelessWidget {
   final String desc;
   final Color color;
   final bool isSelected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final String? warning;
 
   const _ExportOptionTile({
@@ -513,7 +615,7 @@ class _ExportOptionTile extends StatelessWidget {
     required this.desc,
     required this.color,
     required this.isSelected,
-    required this.onTap,
+    this.onTap,
     this.warning,
   });
 
@@ -521,6 +623,7 @@ class _ExportOptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
     final fp = context.watch<ThemeProvider>().currentFontPairData;
+    final enabled = onTap != null;
 
     return GestureDetector(
       onTap: onTap,
@@ -536,44 +639,47 @@ class _ExportOptionTile extends StatelessWidget {
             width: isSelected ? AppStroke.medium : AppStroke.hairline,
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Icon(icon, size: AppIconSize.xs, color: color),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
-                      Text(desc, style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  width: AppIconSize.sm,
-                  height: AppIconSize.sm,
-                  child: isSelected ? Icon(AppIcons.checkCircle, size: AppIconSize.sm, color: color) : null,
-                ),
-              ],
-            ),
-            if (isSelected && warning != null) ...[
-              const SizedBox(height: AppSpacing.xs),
+        child: Opacity(
+          opacity: enabled ? 1.0 : 0.5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Icon(AppIcons.info, size: 13, color: color),
-                  const SizedBox(width: 4),
+                  Icon(icon, size: AppIconSize.xs, color: color),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
-                    child: Text(warning!, style: AppTextStyles.labelSmall(color, fp).copyWith(height: 1.5)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
+                        Text(desc, style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    width: AppIconSize.sm,
+                    height: AppIconSize.sm,
+                    child: isSelected ? Icon(AppIcons.checkCircle, size: AppIconSize.sm, color: color) : null,
                   ),
                 ],
               ),
+              if (isSelected && warning != null) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(AppIcons.info, size: 13, color: color),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Text(warning!, style: AppTextStyles.labelSmall(color, fp).copyWith(height: 1.5)),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -657,7 +763,7 @@ class _SettingsRow extends StatelessWidget {
                 children: [
                   Text(label, style: AppTextStyles.titleSmallSans(color, fp)),
                   if (value != null) ...[
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpacing.xxs),
                     Text(value!, style: AppTextStyles.labelLargeSans(t.textTertiary, fp)),
                   ],
                 ],

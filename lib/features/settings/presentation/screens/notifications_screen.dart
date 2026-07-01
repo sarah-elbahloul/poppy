@@ -186,7 +186,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           children: [
                             Text('Reminder time',
                                 style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: AppSpacing.xxs),
                             Text(
                               _reminderAt.format(context),
                               style: AppTextStyles.labelLargeSans(t.accent, fp),
