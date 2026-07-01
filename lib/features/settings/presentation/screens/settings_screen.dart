@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Settings Screen
-//  Location: lib/features/settings/presentation/screens/settings_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 class SettingsScreen extends StatelessWidget {
@@ -354,9 +353,9 @@ class SettingsScreen extends StatelessWidget {
         message: 'This permanently deletes your Poppy account and every diary entry you have written. It cannot be undone.',
         body: entries.isNotEmpty
             ? DialogInfoBanner(
-                icon: AppIcons.export_,
-                text: 'You have ${entries.length} ${entries.length == 1 ? 'entry' : 'entries'}. Export a backup before you go.',
-              )
+          icon: AppIcons.export_,
+          text: 'You have ${entries.length} ${entries.length == 1 ? 'entry' : 'entries'}. Export a backup before you go.',
+        )
             : null,
         extraActions: [
           if (entries.isNotEmpty)

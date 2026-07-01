@@ -4,15 +4,11 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:poppy/core/core.dart';
-import 'package:poppy/core/services/supabase_client.dart';
 import 'package:poppy/features/journal/data/models/photo.dart';
-import 'package:poppy/core/services/local_db_service.dart';
-import 'package:poppy/core/services/sync_service.dart';
 import 'package:uuid/uuid.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Photos Service
-//  Location: lib/features/journal/data/services/photos_service.dart
 // ─────────────────────────────────────────────────────────────
 
 class PhotosService {
@@ -58,9 +54,9 @@ class PhotosService {
   }) async {
     final userId = SupabaseConfig.userId;
     final id = _uuid.v4();
-    
+
     final compressed = await _compressFile(file) ?? file;
-    
+
     final photoMap = {
       DBColumn.id: id,
       DBColumn.entryId: entryId,
@@ -71,7 +67,7 @@ class PhotosService {
     };
 
     await _local.insertPhoto(photoMap);
-    _sync.syncNow(); 
+    _sync.syncNow();
 
     return Photo.fromMap(photoMap);
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
-import 'package:poppy/core/widgets/widgets.dart';
+import 'package:poppy/features/auth/data/services/auth_errors.dart';
 import 'package:poppy/features/auth/data/services/pin_service.dart';
 import 'package:poppy/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poppy/features/auth/presentation/widgets/pin_pad.dart';
@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Security Screen
-//  Location: lib/features/auth/presentation/screens/security_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 enum _PinStep {
@@ -68,7 +67,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
             _firstPin = '';
             _step     = _PinStep.setNew;
           });
-          PoppySnackbar.error(context, AppErrors.pinMismatch);
+          PoppySnackbar.error(context, AuthErrors.pinMismatch);
         }
       }
     }
@@ -81,7 +80,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
         setState(() => _step = _PinStep.changeNew);
       } else {
         await _shake();
-        if (mounted) PoppySnackbar.error(context, AppErrors.pinIncorrect);
+        if (mounted) PoppySnackbar.error(context, AuthErrors.pinIncorrect);
       }
       return;
     }
@@ -106,7 +105,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
             _firstPin = '';
             _step     = _PinStep.changeNew;
           });
-          PoppySnackbar.error(context, AppErrors.pinMismatch);
+          PoppySnackbar.error(context, AuthErrors.pinMismatch);
         }
       }
     }

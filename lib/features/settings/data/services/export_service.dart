@@ -5,15 +5,12 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path_provider/path_provider.dart';
 import 'package:poppy/core/core.dart';
-import 'package:poppy/core/services/supabase_client.dart';
 import 'package:poppy/features/journal/data/models/entry.dart';
 import 'package:poppy/features/auth/data/services/encryption_service.dart';
-import 'package:poppy/core/services/local_db_service.dart';
 import 'package:share_plus/share_plus.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Export Service
-//  Location: lib/features/settings/data/services/export_service.dart
 // ─────────────────────────────────────────────────────────────
 
 class ExportService {
@@ -21,9 +18,9 @@ class ExportService {
   final _local = LocalDbService.instance;
 
   Future<String?> exportEntries(
-    List<Entry> entries, {
-    bool encrypted = true,
-  }) async {
+      List<Entry> entries, {
+        bool encrypted = true,
+      }) async {
     final entriesJson = entries.map((e) => e.toExportMap()).toList();
 
     Map<String, dynamic> payload;

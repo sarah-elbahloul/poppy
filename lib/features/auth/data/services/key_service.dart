@@ -5,7 +5,6 @@ import 'package:poppy/features/auth/data/services/encryption_service.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Key Management Service
-//  Location: lib/features/auth/data/services/key_service.dart
 // ─────────────────────────────────────────────────────────────
 
 class KeyService {
@@ -60,9 +59,9 @@ class KeyService {
   }
 
   Future<void> saveWrappedKeyMapWithRecovery(
-    Map<String, String> wrapped,
-    String uid,
-  ) async {
+      Map<String, String> wrapped,
+      String uid,
+      ) async {
     final keyBytes = await _enc.currentDataKeyBytes();
     final recoveryWrapped = keyBytes != null ? await _enc.wrapWithUid(keyBytes, uid) : null;
 

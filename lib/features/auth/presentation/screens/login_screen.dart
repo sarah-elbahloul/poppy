@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Login Screen
-//  Location: lib/features/auth/presentation/screens/login_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 class LoginScreen extends StatefulWidget {

@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Application Colors
-//  Location: lib/core/style/app_colors.dart
 // ─────────────────────────────────────────────────────────────
 
-/// Defines the central color palette, entry tag colors, and dynamic 
+/// Defines the central color palette, entry tag colors, and dynamic
 /// customization palettes used throughout the application.
 class AppColors {
   AppColors._();
@@ -22,7 +21,7 @@ class AppColors {
   static const textSecondary = Color(0xFF5C4444);
   static const textTertiary = Color(0xFFAA8888);
   static const border = Color(0xFFEDD8D8);
-  
+
   // ─────────────────────────────────────────────────────────────
   //  Semantic & Absolute
   // ─────────────────────────────────────────────────────────────
@@ -93,132 +92,8 @@ class AppColors {
   ];
 }
 
-/// Provides descriptive colors for each month of the year.
-class MonthColors {
-  MonthColors._();
-
-  static const Map<int, Color> colors = {
-    1: Color(0xFF90A4AE),
-    2: Color(0xFFE57373),
-    3: Color(0xFF81C784),
-    4: Color(0xFF64B5F6),
-    5: Color(0xFFFFD54F),
-    6: Color(0xFFBA68C8),
-    7: Color(0xFFFF8A65),
-    8: Color(0xFFFFB74D),
-    9: Color(0xFFA1887F),
-    10: Color(0xFFFF7043),
-    11: Color(0xFF7986CB),
-    12: Color(0xFF4DB6AC),
-  };
-
-  static Color of(int month) => colors[month] ?? Colors.grey;
-}
-
-// ─────────────────────────────────────────────────────────────
-//  Entry Tag Data & Registry
-// ─────────────────────────────────────────────────────────────
-
-/// Data structure representing an entry color tag.
-class TagColorData {
-  /// Unique identifier for the tag.
-  final String id;
-
-  /// The display name of the color.
-  final String name;
-
-  /// The color object.
-  final Color color;
-
-  /// Whether this is a default tag that was provided by the app.
-  final bool isBuiltIn;
-
-  const TagColorData({
-    required this.id,
-    required this.name,
-    required this.color,
-    this.isBuiltIn = false,
-  });
-
-  /// Alias for id to support database column mapping.
-  String get dbValue => id;
-
-  Map<String, dynamic> toMap() => {
-    'id': id,
-    'name': name,
-    'color': color.toARGB32(),
-    'isBuiltIn': isBuiltIn,
-  };
-
-  factory TagColorData.fromMap(Map<String, dynamic> map) {
-    return TagColorData(
-      id: map['id'] as String,
-      name: map['name'] as String,
-      color: Color(map['color'] as int),
-      isBuiltIn: map['isBuiltIn'] as bool? ?? false,
-    );
-  }
-
-  TagColorData copyWith({
-    String? id,
-    String? name,
-    Color? color,
-    bool? isBuiltIn,
-  }) {
-    return TagColorData(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      color: color ?? this.color,
-      isBuiltIn: isBuiltIn ?? this.isBuiltIn,
-    );
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is TagColorData && other.id == id);
-
-  @override
-  int get hashCode => id.hashCode;
-}
-
-/// Central registry for entry color tags.
-class EntryTags {
-  EntryTags._();
-
-  static const int minTags = 3;
-  static const int maxTags = 12;
-
-  static const List<TagColorData> defaults = [
-    TagColorData(id: 'poppy', name: 'Poppy', color: Color(0xFFC94040), isBuiltIn: true),
-    TagColorData(id: 'iris', name: 'Iris', color: Color(0xFF5C6BC0), isBuiltIn: true),
-    TagColorData(id: 'lily', name: 'Lily', color: Color(0xFF9CCC65), isBuiltIn: true),
-    TagColorData(id: 'marigold', name: 'Marigold', color: Color(0xFFFFB300), isBuiltIn: true),
-    TagColorData(id: 'lavender', name: 'Lavender', color: Color(0xFFBA68C8), isBuiltIn: true),
-    TagColorData(id: 'stone', name: 'Stone', color: Color(0xFF90A4AE), isBuiltIn: true),
-  ];
-
-  static List<TagColorData> _registry = defaults;
-
-  /// List of all currently available entry color tags.
-  static List<TagColorData> get all => _registry;
-
-  /// The default entry color tag.
-  static final defaultColor = all[0];
-
-  /// Updates the global registry with the user's custom tags.
-  static void updateRegistry(List<TagColorData> tags) {
-    _registry = tags;
-  }
-
-  /// Retrieves [TagColorData] from its ID, falling back to defaults.
-  static TagColorData fromDbValue(String id) {
-    return _registry.firstWhere(
-      (c) => c.id == id, 
-      orElse: () => defaults.firstWhere(
-        (d) => d.id == id, 
-        orElse: () => defaultColor
-      )
-    );
-  }
-}
+// Note: journal-specific color concepts (entry tags, month colors) used to
+// live in this file. They've moved to
+// `features/journal/data/models/entry_tag.dart` since they're domain data,
+// not reusable design tokens — see that file for `TagColorData`,
+// `EntryTags`, and `MonthColors`.

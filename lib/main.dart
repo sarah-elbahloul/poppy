@@ -10,7 +10,6 @@ import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Entry Point
-//  Location: lib/main.dart
 // ─────────────────────────────────────────────────────────────
 
 void main() async {
@@ -32,7 +31,7 @@ void main() async {
   // 2. Core Infrastructure Initialization
   await SupabaseConfig.init();
   await NotificationService.init();
-  
+
   // Local SQLite database must be ready before any provider initialization.
   await LocalDbService.instance.init();
 

@@ -3,15 +3,14 @@ import 'package:poppy/core/core.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Theme Configuration
-//  Location: lib/core/style/app_theme.dart
 // ─────────────────────────────────────────────────────────────
 
 /// Supported application theme identifiers.
 enum PoppyTheme { poppy, iris, lily, marigold, lavender }
 
 /// Encapsulates the color scheme and Material [ThemeData] generation for the application.
-/// 
-/// This class serves as the bridge between Poppy's custom design tokens 
+///
+/// This class serves as the bridge between Poppy's custom design tokens
 /// and Flutter's standard Material theme system.
 class PoppyThemeData {
   final PoppyTheme id;
@@ -184,7 +183,7 @@ class PoppyThemeData {
 // ─────────────────────────────────────────────────────────────
 
 /// A [ThemeExtension] that allows direct access to Poppy's custom color tokens.
-/// 
+///
 /// Usage: `Theme.of(context).extension<PoppyThemeExtension>()` or `context.poppyTheme`.
 class PoppyThemeExtension extends ThemeExtension<PoppyThemeExtension> {
   final Color accent;

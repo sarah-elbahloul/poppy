@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:poppy/core/core.dart';
 import 'package:provider/provider.dart';
 
+// See the same note in dialogs.dart: this reaches into ThemeProvider
+// (a feature-level class) purely to render snackbar text in the user's
+// chosen font. Swap or stub this out if reusing the file elsewhere.
 import '../../features/settings/presentation/providers/theme_provider.dart';
 
 /// A centralized snackbar system for the Poppy app.
@@ -14,12 +17,12 @@ class PoppySnackbar {
 
   /// Shows a success snackbar.
   static void success(
-    BuildContext context,
-    String message, {
-    String? title,
-    Duration? duration,
-    SnackBarAction? action,
-  }) {
+      BuildContext context,
+      String message, {
+        String? title,
+        Duration? duration,
+        SnackBarAction? action,
+      }) {
     _show(
       context,
       message,
@@ -32,12 +35,12 @@ class PoppySnackbar {
 
   /// Shows an error snackbar.
   static void error(
-    BuildContext context,
-    String message, {
-    String? title,
-    Duration? duration,
-    SnackBarAction? action,
-  }) {
+      BuildContext context,
+      String message, {
+        String? title,
+        Duration? duration,
+        SnackBarAction? action,
+      }) {
     _show(
       context,
       message,
@@ -50,12 +53,12 @@ class PoppySnackbar {
 
   /// Shows a warning snackbar.
   static void warning(
-    BuildContext context,
-    String message, {
-    String? title,
-    Duration? duration,
-    SnackBarAction? action,
-  }) {
+      BuildContext context,
+      String message, {
+        String? title,
+        Duration? duration,
+        SnackBarAction? action,
+      }) {
     _show(
       context,
       message,
@@ -68,12 +71,12 @@ class PoppySnackbar {
 
   /// Shows an info snackbar.
   static void info(
-    BuildContext context,
-    String message, {
-    String? title,
-    Duration? duration,
-    SnackBarAction? action,
-  }) {
+      BuildContext context,
+      String message, {
+        String? title,
+        Duration? duration,
+        SnackBarAction? action,
+      }) {
     _show(
       context,
       message,
@@ -85,13 +88,13 @@ class PoppySnackbar {
   }
 
   static void _show(
-    BuildContext context,
-    String message, {
-    String? title,
-    Duration? duration,
-    SnackBarAction? action,
-    required _SnackbarType type,
-  }) {
+      BuildContext context,
+      String message, {
+        String? title,
+        Duration? duration,
+        SnackBarAction? action,
+        required _SnackbarType type,
+      }) {
     // Haptics
     switch (type) {
       case _SnackbarType.success:

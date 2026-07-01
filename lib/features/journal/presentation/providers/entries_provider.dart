@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/features/journal/data/models/entry_tag.dart';
 import 'package:poppy/features/journal/data/models/entry.dart';
 import 'package:poppy/features/journal/data/services/entries_service.dart';
 import 'package:poppy/features/journal/data/services/photos_service.dart';
-import 'package:poppy/core/services/local_db_service.dart';
-import 'package:poppy/core/services/sync_service.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Entries Provider
-//  Location: lib/features/journal/presentation/providers/entries_provider.dart
 // ─────────────────────────────────────────────────────────────
 
 enum EntriesStatus { initial, loading, loaded, error }
@@ -91,7 +89,7 @@ class EntriesProvider extends ChangeNotifier {
       notifyListeners();
 
       _sync.onSyncComplete = () async {
-        _sync.onSyncComplete = null; 
+        _sync.onSyncComplete = null;
         try {
           _entries = await _entriesService.fetchAll();
         } catch (_) {

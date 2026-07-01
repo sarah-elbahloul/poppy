@@ -8,7 +8,6 @@ import 'package:poppy/core/constants.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Encryption Service
-//  Location: lib/services/encryption_service.dart
 // ─────────────────────────────────────────────────────────────
 
 /// Manages high-level cryptographic operations for the application.

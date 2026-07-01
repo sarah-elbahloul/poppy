@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Auth Service
-//  Location: lib/features/auth/data/services/auth_service.dart
 // ─────────────────────────────────────────────────────────────
 
 /// Orchestrates authentication workflows using Supabase Auth.

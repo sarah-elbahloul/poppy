@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/features/journal/data/models/entry_tag.dart';
 import 'package:poppy/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poppy/features/journal/presentation/providers/entries_provider.dart';
 import 'package:poppy/features/settings/presentation/providers/theme_provider.dart';
@@ -9,7 +10,6 @@ import 'package:poppy/features/settings/presentation/widgets/color_picker_sheet.
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Entry Tags Screen
-//  Location: lib/features/settings/presentation/screens/entry_tags_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 class EntryTagsScreen extends StatefulWidget {

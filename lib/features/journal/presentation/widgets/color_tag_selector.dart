@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/style/style.dart';
+import 'package:poppy/features/journal/data/models/entry_tag.dart';
 import 'package:provider/provider.dart';
 import 'package:poppy/features/settings/presentation/providers/theme_provider.dart';
 

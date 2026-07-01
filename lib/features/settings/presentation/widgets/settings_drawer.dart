@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
-import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poppy/features/journal/presentation/providers/entries_provider.dart';
 import 'package:poppy/features/settings/presentation/providers/theme_provider.dart';
@@ -8,7 +7,6 @@ import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Settings Drawer
-//  Location: lib/features/settings/presentation/widgets/settings_drawer.dart
 // ─────────────────────────────────────────────────────────────
 
 class SettingsDrawer extends StatelessWidget {

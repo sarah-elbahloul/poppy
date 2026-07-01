@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/features/journal/data/models/entry_tag.dart';
 import 'package:poppy/features/journal/data/models/entry.dart';
 import 'package:poppy/features/settings/presentation/providers/theme_provider.dart';
-import 'package:poppy/core/services/local_db_service.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Entry Card Widget
-//  Location: lib/features/journal/presentation/widgets/entry_card.dart
 // ─────────────────────────────────────────────────────────────
 
 class EntryCard extends StatelessWidget {
@@ -128,15 +127,15 @@ class EntryCard extends StatelessWidget {
                 child: Center(
                   child: isBatchMode
                       ? _BatchCheckbox(
-                          isSelected: isSelected,
-                          accent: t.accent,
-                          border: t.border,
-                        )
+                    isSelected: isSelected,
+                    accent: t.accent,
+                    border: t.border,
+                  )
                       : _WordCountWithStatus(
-                          entry: entry,
-                          t: t,
-                          fp: fp,
-                        ),
+                    entry: entry,
+                    t: t,
+                    fp: fp,
+                  ),
                 ),
               ),
             ),
@@ -189,21 +188,21 @@ class _WordCountWithStatus extends StatelessWidget {
           curve: Curves.easeOut,
           child: dotColor != null
               ? Padding(
-                  padding: const EdgeInsets.only(top: 3),
-                  child: Tooltip(
-                    message: entry.syncStatus == SyncStatus.pendingCreate
-                        ? 'Not yet saved to server'
-                        : 'Edit not yet synced',
-                    child: Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: dotColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                )
+            padding: const EdgeInsets.only(top: 3),
+            child: Tooltip(
+              message: entry.syncStatus == SyncStatus.pendingCreate
+                  ? 'Not yet saved to server'
+                  : 'Edit not yet synced',
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: dotColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          )
               : const SizedBox.shrink(),
         ),
       ],

@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — About Screen
-//  Location: lib/features/settings/presentation/screens/about_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 class AboutScreen extends StatefulWidget {

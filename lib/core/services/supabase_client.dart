@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Supabase Configuration
-//  Location: lib/core/services/supabase_client.dart
 // ─────────────────────────────────────────────────────────────
 
 class SupabaseConfig {

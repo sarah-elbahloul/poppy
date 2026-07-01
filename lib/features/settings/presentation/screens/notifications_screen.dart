@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:poppy/core/core.dart';
-import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/features/settings/presentation/providers/theme_provider.dart';
-import 'package:poppy/core/services/notification_service.dart';
 import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Notifications Screen
-//  Location: lib/features/settings/presentation/screens/notifications_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 class NotificationsScreen extends StatefulWidget {

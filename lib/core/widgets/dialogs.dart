@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:provider/provider.dart';
 
+// Note on reuse: this file reads the user's selected font pair from
+// ThemeProvider (a feature-level class) so dialog text renders in the
+// app's chosen font. That's the one place this "core" widget isn't fully
+// framework-agnostic. If you copy this file into another project, either
+// bring a class with a matching `currentFontPairData` getter, or simplify
+// the three `context.watch<ThemeProvider>()` calls below to a fixed
+// TextStyle.
 import '../../features/settings/presentation/providers/theme_provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Shared Dialogs
-//  Location: lib/core/widgets/dialogs.dart
 // ─────────────────────────────────────────────────────────────
 
 /// Visual/semantic intent of a [PoppyDialog]'s primary action.
@@ -101,74 +107,74 @@ class PoppyDialog extends StatelessWidget {
 
   /// Shows a standard confirmation dialog.
   static Future<bool?> showConfirm(
-    BuildContext context, {
-    required String title,
-    String? message,
-    Widget? body,
-    String confirmLabel = 'Confirm',
-    String cancelLabel = 'Cancel',
-    IconData? icon,
-    bool dismissible = true,
-  }) =>
+      BuildContext context, {
+        required String title,
+        String? message,
+        Widget? body,
+        String confirmLabel = 'Confirm',
+        String cancelLabel = 'Cancel',
+        IconData? icon,
+        bool dismissible = true,
+      }) =>
       show<bool>(context,
           builder: () => PoppyDialog.confirm(
-                title: title,
-                message: message,
-                body: body,
-                confirmLabel: confirmLabel,
-                cancelLabel: cancelLabel,
-                titleIcon: icon,
-                barrierDismissible: dismissible,
-              ));
+            title: title,
+            message: message,
+            body: body,
+            confirmLabel: confirmLabel,
+            cancelLabel: cancelLabel,
+            titleIcon: icon,
+            barrierDismissible: dismissible,
+          ));
 
   /// Shows a destructive confirmation dialog (e.g. for deletion).
   static Future<bool?> showDestructive(
-    BuildContext context, {
-    required String title,
-    String? message,
-    Widget? body,
-    String confirmLabel = 'Delete',
-    String cancelLabel = 'Cancel',
-    IconData? icon,
-    bool dismissible = true,
-  }) =>
+      BuildContext context, {
+        required String title,
+        String? message,
+        Widget? body,
+        String confirmLabel = 'Delete',
+        String cancelLabel = 'Cancel',
+        IconData? icon,
+        bool dismissible = true,
+      }) =>
       show<bool>(context,
           builder: () => PoppyDialog.destructive(
-                title: title,
-                message: message,
-                body: body,
-                confirmLabel: confirmLabel,
-                cancelLabel: cancelLabel,
-                titleIcon: icon,
-                barrierDismissible: dismissible,
-              ));
+            title: title,
+            message: message,
+            body: body,
+            confirmLabel: confirmLabel,
+            cancelLabel: cancelLabel,
+            titleIcon: icon,
+            barrierDismissible: dismissible,
+          ));
 
   /// Shows an informational dialog with a single button.
   static Future<bool?> showInfo(
-    BuildContext context, {
-    required String title,
-    String? message,
-    Widget? body,
-    String? confirmLabel = 'Done',
-    IconData? icon,
-    bool dismissible = true,
-  }) =>
+      BuildContext context, {
+        required String title,
+        String? message,
+        Widget? body,
+        String? confirmLabel = 'Done',
+        IconData? icon,
+        bool dismissible = true,
+      }) =>
       show<bool>(context,
           builder: () => PoppyDialog.info(
-                title: title,
-                message: message,
-                body: body,
-                confirmLabel: confirmLabel,
-                titleIcon: icon,
-                barrierDismissible: dismissible,
-              ));
+            title: title,
+            message: message,
+            body: body,
+            confirmLabel: confirmLabel,
+            titleIcon: icon,
+            barrierDismissible: dismissible,
+          ));
 
   /// Internal base show method.
   static Future<T?> show<T>(
-    BuildContext context, {
-    required Widget Function() builder,
-    bool? dismissible,
-  }) {
+      BuildContext context, {
+        required Widget Function() builder,
+        bool? dismissible,
+      }) {
     final widget = builder();
     final resolvedDismissible = dismissible ??
         (widget is PoppyDialog ? widget.barrierDismissible : true);
@@ -237,7 +243,7 @@ class PoppyDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment:
-              isCentered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+          isCentered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
           children: [
             if (message != null)
               Text(

@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Pin Pad Widget
-//  Location: lib/features/auth/presentation/widgets/pin_pad.dart
 // ─────────────────────────────────────────────────────────────
 
 class PinPad extends StatefulWidget {
@@ -140,7 +139,7 @@ class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
             children: [
               ...'123456789'.split('').map(
                     (d) => _DigitKey(digit: d, onTap: () => _onDigit(d)),
-                  ),
+              ),
               const SizedBox.shrink(),
               _DigitKey(digit: '0', onTap: () => _onDigit('0')),
               _DeleteKey(onTap: _onDelete),

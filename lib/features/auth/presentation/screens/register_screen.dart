@@ -6,7 +6,6 @@ import 'package:poppy/features/auth/presentation/widgets/password_rules_checker.
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Register Screen
-//  Location: lib/features/auth/presentation/screens/register_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 class RegisterScreen extends StatefulWidget {

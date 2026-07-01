@@ -2,7 +2,6 @@ import 'package:poppy/core/core.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Photo Model
-//  Location: lib/features/journal/data/models/photo.dart
 // ─────────────────────────────────────────────────────────────
 
 class Photo {

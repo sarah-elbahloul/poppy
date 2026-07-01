@@ -10,7 +10,6 @@ import 'package:uuid/uuid.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Entries Service
-//  Location: lib/features/journal/data/services/entries_service.dart
 // ─────────────────────────────────────────────────────────────
 
 class EntriesService {

@@ -5,7 +5,6 @@ import 'package:poppy/core/constants.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Local Database Service
-//  Location: lib/core/services/local_db_service.dart
 // ─────────────────────────────────────────────────────────────
 
 class SyncStatus {
@@ -94,7 +93,7 @@ class LocalDbService {
     if (oldVersion < 2) {
       try { await db.execute('ALTER TABLE entries ADD COLUMN ${DBColumn.isDeleted} INTEGER NOT NULL DEFAULT 0'); } catch (_) {}
       try { await db.execute('ALTER TABLE entries ADD COLUMN ${DBColumn.syncStatus} TEXT NOT NULL DEFAULT "${SyncStatus.synced}"'); } catch (_) {}
-      
+
       await db.execute('''
         CREATE TABLE IF NOT EXISTS photos (
           ${DBColumn.id}           TEXT    PRIMARY KEY,
@@ -144,10 +143,10 @@ class LocalDbService {
   }
 
   Future<List<Map<String, dynamic>>> getAllEntries(String userId) async {
-    return _database.query('entries', 
-      where: '${DBColumn.userId} = ? AND ${DBColumn.isDeleted} = 0', 
-      whereArgs: [userId], 
-      orderBy: '${DBColumn.entryDate} DESC, ${DBColumn.createdAt} DESC'
+    return _database.query('entries',
+        where: '${DBColumn.userId} = ? AND ${DBColumn.isDeleted} = 0',
+        whereArgs: [userId],
+        orderBy: '${DBColumn.entryDate} DESC, ${DBColumn.createdAt} DESC'
     );
   }
 
@@ -223,10 +222,10 @@ class LocalDbService {
   }
 
   Future<List<Map<String, dynamic>>> getPhotosForEntry(String entryId) async {
-    return _database.query('photos', 
-      where: '${DBColumn.entryId} = ? AND ${DBColumn.syncStatus} != ?', 
-      whereArgs: [entryId, SyncStatus.pendingDelete], 
-      orderBy: '${DBColumn.orderIndex} ASC'
+    return _database.query('photos',
+        where: '${DBColumn.entryId} = ? AND ${DBColumn.syncStatus} != ?',
+        whereArgs: [entryId, SyncStatus.pendingDelete],
+        orderBy: '${DBColumn.orderIndex} ASC'
     );
   }
 
@@ -261,8 +260,8 @@ class LocalDbService {
 
   Future<void> markPhotoSynced(String id, String storagePath) async {
     await _database.update('photos', {
-      DBColumn.syncStatus: SyncStatus.synced, 
-      DBColumn.uploaded: 1, 
+      DBColumn.syncStatus: SyncStatus.synced,
+      DBColumn.uploaded: 1,
       DBColumn.storagePath: storagePath
     }, where: '${DBColumn.id} = ?', whereArgs: [id]);
   }

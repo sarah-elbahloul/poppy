@@ -1,6 +1,5 @@
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Application Routes
-//  Location: lib/core/app_routes.dart
 // ─────────────────────────────────────────────────────────────
 
 /// Defines all route name constants used for navigation throughout the application.

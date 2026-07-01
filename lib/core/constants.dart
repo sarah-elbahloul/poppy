@@ -1,7 +1,12 @@
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Global Constants
-//  Location: lib/core/constants.dart
 // ─────────────────────────────────────────────────────────────
+//
+// Unlike core/style, this file is NOT meant to be portable as-is — it's
+// this app's specific branding, storage keys, and database schema. When
+// starting a new project from this codebase, treat it as a template: keep
+// the *shape* (grouped, private-constructor constant classes) and replace
+// the values for your own app, tables, and columns.
 
 /// Global naming and branding constants for the Poppy application.
 class AppConstants {
@@ -22,7 +27,7 @@ class StorageKeys {
   // Security & Authentication
   static const String pinHash = 'poppy_pin_hash';
   static const String pinEnabled = 'poppy_pin_enabled';
-  
+
   // Theme & Personalization
   static const String selectedTheme = 'poppy_theme';
   static const String selectedTitleFont = 'poppy_title_font';
@@ -69,7 +74,7 @@ class DBTable {
 }
 
 /// Supabase database column names.
-/// 
+///
 /// Used consistently across local SQLite and remote PostgreSQL schemas.
 class DBColumn {
   DBColumn._();
@@ -86,7 +91,7 @@ class DBColumn {
   static const String entryId = 'entry_id';
   static const String storagePath = 'storage_path';
   static const String orderIndex = 'order_index';
-  
+
   // Theme Settings
   static const String fontTitle = 'font_title';
   static const String fontBody = 'font_body';

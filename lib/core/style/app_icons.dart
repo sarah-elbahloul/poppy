@@ -3,11 +3,10 @@ import 'package:iconsax/iconsax.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Icon System
-//  Location: lib/core/style/app_icons.dart
 // ─────────────────────────────────────────────────────────────
 
 /// Centralized repository for all icons used in the application.
-/// 
+///
 /// Uses the Iconsax library for a consistent, modern aesthetic.
 class AppIcons {
   AppIcons._();

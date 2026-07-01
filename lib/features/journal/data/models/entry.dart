@@ -1,8 +1,8 @@
 import 'package:poppy/core/core.dart';
+import 'package:poppy/features/journal/data/models/entry_tag.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Entry Model
-//  Location: lib/features/journal/data/models/entry.dart
 // ─────────────────────────────────────────────────────────────
 
 class Entry {

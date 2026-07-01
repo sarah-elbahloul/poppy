@@ -1,4 +1,5 @@
 export 'data/models/profile.dart';
+export 'data/services/auth_errors.dart';
 export 'data/services/auth_service.dart';
 export 'data/services/encryption_service.dart';
 export 'data/services/key_service.dart';

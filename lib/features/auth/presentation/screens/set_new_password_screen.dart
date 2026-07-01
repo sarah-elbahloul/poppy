@@ -6,7 +6,6 @@ import 'package:poppy/features/auth/presentation/widgets/password_rules_checker.
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Set New Password Screen
-//  Location: lib/features/auth/presentation/screens/set_new_password_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 class SetNewPasswordScreen extends StatefulWidget {

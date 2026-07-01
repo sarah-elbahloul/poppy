@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Shadow Definitions
-//  Location: lib/core/style/app_shadows.dart
 // ─────────────────────────────────────────────────────────────
 
 /// Defines standard shadow tokens used to provide depth and hierarchy.

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:poppy/core/core.dart';
+import 'package:poppy/features/journal/data/models/entry_tag.dart';
 import 'package:poppy/features/auth/data/models/profile.dart';
 
 // ─────────────────────────────────────────────────────────────
@@ -113,7 +114,7 @@ class ThemeProvider extends ChangeNotifier {
   /// Only stores colors that differ from the default.
   final Map<String, Color> _colors = {};
 
-  PoppyFont _titleFont = PoppyFont.lora;
+  PoppyFont _titleFont = PoppyFont.literata;
   PoppyFont _bodyFont = PoppyFont.inter;
 
   List<TagColorData> _tagColors = EntryTags.defaults;

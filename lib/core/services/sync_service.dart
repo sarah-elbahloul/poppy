@@ -5,15 +5,20 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:poppy/core/constants.dart';
 import 'package:poppy/core/services/supabase_client.dart';
+// Pulls in Photo.buildStoragePath() purely for its file-naming convention.
+// This is the one spot core/services reaches into a feature model — sync
+// logic here is inherently shaped around this app's entries/photos schema,
+// so it isn't meant to be a drop-in-portable file like core/style is.
 import 'package:poppy/features/journal/data/models/photo.dart';
 import 'package:poppy/core/services/local_db_service.dart';
 import 'package:path/path.dart' as p;
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Sync Service
-//  Location: lib/core/services/sync_service.dart
 // ─────────────────────────────────────────────────────────────
 
+/// Pushes locally-queued entry/photo changes to Supabase and pulls down
+/// remote updates, reconciling them with the local SQLite cache.
 class SyncService {
   SyncService._();
   static final SyncService instance = SyncService._();
@@ -22,9 +27,9 @@ class SyncService {
   final _client = SupabaseConfig.client;
 
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
-  
+
   VoidCallback? onSyncComplete;
-  
+
   bool _isSyncing = false;
 
   void startListening() {

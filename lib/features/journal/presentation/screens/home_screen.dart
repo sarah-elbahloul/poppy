@@ -5,18 +5,17 @@ import 'package:flutter_bidi_text/bidi_text_field.dart';
 import 'package:intl/intl.dart';
 import 'package:poppy/features/auth/presentation/providers/auth_provider.dart';
 import 'package:poppy/features/journal/data/models/entry.dart';
+import 'package:poppy/features/journal/data/models/entry_tag.dart';
 import 'package:poppy/features/journal/presentation/providers/entries_provider.dart';
 import 'package:poppy/features/settings/presentation/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:poppy/core/core.dart';
-import 'package:poppy/core/widgets/widgets.dart';
 import 'package:poppy/features/settings/presentation/widgets/settings_drawer.dart';
 import 'package:poppy/features/journal/presentation/widgets/color_tag_selector.dart';
 import 'package:poppy/features/journal/presentation/widgets/entry_card.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Home Screen
-//  Location: lib/features/journal/presentation/screens/home_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 class HomeScreen extends StatefulWidget {

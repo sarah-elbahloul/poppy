@@ -6,7 +6,6 @@ import 'package:timezone/data/latest_all.dart' as tz;
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Notification Service
-//  Location: lib/core/services/notification_service.dart
 // ─────────────────────────────────────────────────────────────
 
 class NotificationService {

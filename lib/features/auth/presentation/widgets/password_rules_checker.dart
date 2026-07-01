@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Password Rules Checker
-//  Location: lib/features/auth/presentation/widgets/password_rules_checker.dart
 // ─────────────────────────────────────────────────────────────
 
 class PasswordRulesChecker extends StatefulWidget {
@@ -72,11 +71,11 @@ class _PasswordRulesCheckerState extends State<PasswordRulesChecker>
           ),
           const SizedBox(height: AppSpacing.sm),
           ..._rules.map((rule) => _RuleRow(
-                rule: rule,
-                password: _password,
-                fp: fp,
-                t: t,
-              )),
+            rule: rule,
+            password: _password,
+            fp: fp,
+            t: t,
+          )),
         ],
       ),
     );

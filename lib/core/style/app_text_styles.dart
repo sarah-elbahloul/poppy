@@ -4,7 +4,6 @@ import 'package:poppy/core/style/style.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Typography System
-//  Location: lib/core/style/app_text_styles.dart
 // ─────────────────────────────────────────────────────────────
 
 /// Centralized management for all typography used in the application.
@@ -43,18 +42,18 @@ class AppTextStyles {
 
   /// Large headline style, typically used for screen titles.
   static TextStyle headlineLarge(
-    Color color,
-    FontPairData fp, {
-    double scale = 1.0,
-  }) =>
+      Color color,
+      FontPairData fp, {
+        double scale = 1.0,
+      }) =>
       fp.titleFont.bold(color, size: 22 * scale, height: 1.3);
 
   /// Medium headline style for section headers.
   static TextStyle headlineMedium(
-    Color color,
-    FontPairData fp, {
-    double scale = 1.0,
-  }) =>
+      Color color,
+      FontPairData fp, {
+        double scale = 1.0,
+      }) =>
       fp.titleFont.style(
         color,
         size: 20 * scale,
@@ -72,10 +71,10 @@ class AppTextStyles {
 
   /// Large title style, often used in modals or prominent list items.
   static TextStyle titleLarge(
-    Color color,
-    FontPairData fp, {
-    double scale = 1.0,
-  }) =>
+      Color color,
+      FontPairData fp, {
+        double scale = 1.0,
+      }) =>
       fp.titleFont.bold(color, size: 17 * scale, height: 1.2);
 
   /// Medium title style for general UI elements.
@@ -84,10 +83,10 @@ class AppTextStyles {
 
   /// Small serif title style, primarily used for entry titles in lists.
   static TextStyle titleSmallSerif(
-    Color color,
-    FontPairData fp, {
-    double scale = 1.0,
-  }) =>
+      Color color,
+      FontPairData fp, {
+        double scale = 1.0,
+      }) =>
       fp.titleFont.bold(color, size: 14 * scale, height: 1.3);
 
   /// Small sans-serif title style for UI controls.
@@ -100,11 +99,11 @@ class AppTextStyles {
 
   /// Large body text style, optimized for long-form reading.
   static TextStyle bodyLarge(
-    Color color,
-    FontPairData fp, {
-    double scale = 1.0,
-    double height = 1.8,
-  }) =>
+      Color color,
+      FontPairData fp, {
+        double scale = 1.0,
+        double height = 1.8,
+      }) =>
       fp.bodyFont.style(color, size: 16 * scale, height: height);
 
   /// Standard body text style.

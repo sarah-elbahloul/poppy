@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Legal Screen
-//  Location: lib/features/settings/presentation/screens/legal_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 enum LegalDoc { privacy, terms, opensource }
@@ -106,7 +105,7 @@ class _PrivacyContent extends StatelessWidget {
             'or your entire account at any time through the app settings. '
             'Deletion is permanent and removes all associated cloud data.',
         ),
-        const _Section(title: 'Contact', body: 
+        const _Section(title: 'Contact', body:
         'For privacy concerns or data requests, contact us at sa.albahloul@gmail.com.',
         ),
       ],
@@ -265,7 +264,7 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title.toUpperCase(), 
+          Text(title.toUpperCase(),
             style: AppTextStyles.bodySmallSans(t.accent, fp).copyWith(
               letterSpacing: 1.2,
               fontWeight: FontWeight.bold,

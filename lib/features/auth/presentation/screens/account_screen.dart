@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:poppy/features/auth/presentation/widgets/password_rules_checker.dart';
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Account Screen
-//  Location: lib/features/auth/presentation/screens/account_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 class AccountScreen extends StatefulWidget {

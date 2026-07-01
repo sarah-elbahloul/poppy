@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:poppy/core/core.dart';
 import 'package:poppy/features/journal/data/models/entry.dart';
+import 'package:poppy/features/journal/data/models/entry_tag.dart';
 import 'package:poppy/features/journal/data/models/photo.dart';
 import 'package:poppy/features/journal/presentation/providers/entries_provider.dart';
 import 'package:poppy/features/journal/data/services/photos_service.dart';
@@ -17,7 +18,6 @@ import 'package:poppy/features/journal/presentation/widgets/color_tag_selector.d
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Write Screen
-//  Location: lib/features/journal/presentation/screens/write_screen.dart
 // ─────────────────────────────────────────────────────────────
 
 const int kWordLimit = 10000;

@@ -7,6 +7,7 @@ import 'package:poppy/core/core.dart';
 import 'package:poppy/features/auth/data/models/profile.dart';
 import 'package:poppy/features/auth/data/services/auth_service.dart';
 import 'package:poppy/features/auth/data/services/encryption_service.dart';
+import 'package:poppy/features/auth/data/services/auth_errors.dart';
 import 'package:poppy/features/auth/data/services/key_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -184,11 +185,11 @@ class AuthProvider extends ChangeNotifier {
   Future<void> syncPinState() async {
     if (_profile == null) await _refreshProfile();
     if (_profile == null) return;
-    
+
     final remotePin = _profile!.pinEnabled;
     final enabledStr = await _storage.read(key: StorageKeys.pinEnabled);
     final localPin = enabledStr == 'true';
-    
+
     if (remotePin != localPin) {
       await setPinEnabled(remotePin, syncToCloud: false);
     }
@@ -273,7 +274,7 @@ class AuthProvider extends ChangeNotifier {
       return true;
 
     } on AuthException catch (e) {
-      _errorMessage = AppErrors.signIn(e.message);
+      _errorMessage = AuthErrors.signIn(e.message);
       _encryptionReady = false;
       _safeNotify();
       return false;
@@ -311,7 +312,7 @@ class AuthProvider extends ChangeNotifier {
       );
       return true;
     } on AuthException catch (e) {
-      _errorMessage = AppErrors.signUp(e.message);
+      _errorMessage = AuthErrors.signUp(e.message);
       await _enc.clearKey();
       _safeNotify();
       return false;
@@ -340,7 +341,7 @@ class AuthProvider extends ChangeNotifier {
       );
       return true;
     } on AuthException catch (e) {
-      _errorMessage = AppErrors.resetPassword(e.message);
+      _errorMessage = AuthErrors.resetPassword(e.message);
       _safeNotify();
       return false;
     } catch (e) {
@@ -400,7 +401,7 @@ class AuthProvider extends ChangeNotifier {
       _safeNotify();
       return true;
     } on AuthException catch (e) {
-      _errorMessage = AppErrors.updatePassword(e.message);
+      _errorMessage = AuthErrors.updatePassword(e.message);
       _safeNotify();
       return false;
     } catch (e) {
@@ -448,7 +449,7 @@ class AuthProvider extends ChangeNotifier {
       );
       return true;
     } on AuthException catch (e) {
-      _errorMessage = AppErrors.updateEmail(e.message);
+      _errorMessage = AuthErrors.updateEmail(e.message);
       _safeNotify();
       return false;
     } catch (e) {
@@ -473,7 +474,7 @@ class AuthProvider extends ChangeNotifier {
         newPassword: newPassword,
       );
       if (!ok) {
-        _errorMessage = AppErrors.wrongCurrentPassword;
+        _errorMessage = AuthErrors.wrongCurrentPassword;
         _safeNotify();
         return false;
       }
@@ -483,7 +484,7 @@ class AuthProvider extends ChangeNotifier {
       _safeNotify();
       return true;
     } on AuthException catch (e) {
-      _errorMessage = AppErrors.updatePassword(e.message);
+      _errorMessage = AuthErrors.updatePassword(e.message);
       _safeNotify();
       return false;
     } catch (e) {
