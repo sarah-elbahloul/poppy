@@ -376,7 +376,7 @@ class _ProfileChip extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: t.accentLight),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.full), color: t.accentLight),
               child: Center(
                 child: Text(initial, style: AppTextStyles.titleLarge(t.accent, fp).copyWith(fontSize: 18)),
               ),

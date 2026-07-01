@@ -7,7 +7,10 @@ import 'package:provider/provider.dart';
 //  POPPY — Password Rules Checker
 // ─────────────────────────────────────────────────────────────
 
+/// A widget that displays a list of password requirements and 
+/// live-updates their status as the user types.
 class PasswordRulesChecker extends StatefulWidget {
+  /// The controller of the password text field to monitor.
   final TextEditingController controller;
 
   const PasswordRulesChecker({super.key, required this.controller});

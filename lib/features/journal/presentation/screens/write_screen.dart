@@ -482,8 +482,7 @@ class _WriteScreenState extends State<WriteScreen> {
                         borderSide: BorderSide.none,
                       ),
                       isDense: false,
-                      contentPadding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
                 ),
@@ -635,7 +634,6 @@ class _WriteScreenState extends State<WriteScreen> {
                                 AppTextStyles.bodyLarge(t.textTertiary, fp),
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.zero,
-
                               ),
                               keyboardType: TextInputType.multiline,
                               maxLines: null,
@@ -869,9 +867,9 @@ class _PhotoPendingThumb extends StatelessWidget {
             child: Container(
               width: AppSpacing.sm,
               height: AppSpacing.sm,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.error,
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(AppRadius.full),
               ),
             ),
           ),

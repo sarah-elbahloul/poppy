@@ -10,11 +10,25 @@ import 'package:provider/provider.dart';
 //  POPPY — Entry Card Widget
 // ─────────────────────────────────────────────────────────────
 
+/// A card widget that displays a summary of a journal [entry].
+///
+/// Features a color strip for the entry's tag, the date, title,
+/// and a preview of the content. It also shows the word count
+/// and synchronization status.
 class EntryCard extends StatelessWidget {
+  /// The journal entry to display.
   final Entry entry;
+
+  /// Callback when the card is tapped.
   final VoidCallback onTap;
+
+  /// Optional callback when the card is long-pressed.
   final VoidCallback? onLongPress;
+
+  /// Whether the card is in batch selection mode.
   final bool isBatchMode;
+
+  /// Whether the card is currently selected (used in batch mode).
   final bool isSelected;
 
   const EntryCard({
@@ -198,7 +212,7 @@ class _WordCountWithStatus extends StatelessWidget {
                 height: 6,
                 decoration: BoxDecoration(
                   color: dotColor,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
               ),
             ),

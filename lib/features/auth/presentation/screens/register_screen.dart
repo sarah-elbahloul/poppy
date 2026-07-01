@@ -223,7 +223,7 @@ class _ConfirmationScreen extends StatelessWidget {
               Container(
                 width: 72, height: 72,
                 decoration: BoxDecoration(
-                  color: t.accentLight, shape: BoxShape.circle,
+                  color: t.accentLight, borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
                 child: Icon(AppIcons.email,
                     size: AppIconSize.xl, color: t.accent),

@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:poppy/core/core.dart';
 import 'package:provider/provider.dart';
-
+import 'package:poppy/features/settings/presentation/providers/theme_provider.dart';
 // See the same note in dialogs.dart: this reaches into ThemeProvider
 // (a feature-level class) purely to render snackbar text in the user's
 // chosen font. Swap or stub this out if reusing the file elsewhere.
-import '../../features/settings/presentation/providers/theme_provider.dart';
 
 /// A centralized snackbar system for the Poppy app.
 ///
@@ -15,7 +14,7 @@ import '../../features/settings/presentation/providers/theme_provider.dart';
 class PoppySnackbar {
   PoppySnackbar._();
 
-  /// Shows a success snackbar.
+  /// Shows a success snackbar with an optional [title] and [action].
   static void success(
       BuildContext context,
       String message, {
@@ -33,7 +32,7 @@ class PoppySnackbar {
     );
   }
 
-  /// Shows an error snackbar.
+  /// Shows an error snackbar for failures and critical alerts.
   static void error(
       BuildContext context,
       String message, {
@@ -51,7 +50,7 @@ class PoppySnackbar {
     );
   }
 
-  /// Shows a warning snackbar.
+  /// Shows a warning snackbar for non-critical alerts or precautions.
   static void warning(
       BuildContext context,
       String message, {
@@ -69,7 +68,7 @@ class PoppySnackbar {
     );
   }
 
-  /// Shows an info snackbar.
+  /// Shows an informational snackbar.
   static void info(
       BuildContext context,
       String message, {

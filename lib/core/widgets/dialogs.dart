@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/style/style.dart';
 import 'package:provider/provider.dart';
+import 'package:poppy/features/settings/presentation/providers/theme_provider.dart';
 
 // Note on reuse: this file reads the user's selected font pair from
 // ThemeProvider (a feature-level class) so dialog text renders in the
@@ -9,7 +10,6 @@ import 'package:provider/provider.dart';
 // bring a class with a matching `currentFontPairData` getter, or simplify
 // the three `context.watch<ThemeProvider>()` calls below to a fixed
 // TextStyle.
-import '../../features/settings/presentation/providers/theme_provider.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Shared Dialogs
@@ -17,29 +17,58 @@ import '../../features/settings/presentation/providers/theme_provider.dart';
 
 /// Visual/semantic intent of a [PoppyDialog]'s primary action.
 enum PoppyDialogIntent {
+  /// Standard informational or confirmation action.
   standard,
+  /// Action that involves deletion or irreversible data loss.
   destructive,
+  /// Informational alert with a single dismissal button.
   info,
 }
 
 /// A single, consistent dialog shape used for every confirmation in Poppy.
 ///
-/// Reorganized for better UX/UI and ease of use.
 /// Supports standard patterns for confirmation, destructive actions, and informational alerts.
 class PoppyDialog extends StatelessWidget {
+  /// The title text of the dialog.
   final String title;
+
+  /// Optional icon displayed above the title.
   final IconData? titleIcon;
+
+  /// Main descriptive text for the dialog.
   final String? message;
+
+  /// Optional widget to display below the message.
   final Widget? body;
+
+  /// Text for the cancellation button.
   final dynamic cancelLabel;
+
+  /// Text for the primary action button.
   final dynamic confirmLabel;
+
+  /// Optional widget to replace the default text in the confirm button.
   final Widget? confirmContent;
+
+  /// Whether the primary action button is enabled.
   final bool confirmEnabled;
+
+  /// The semantic intent of the dialog.
   final PoppyDialogIntent intent;
+
+  /// Additional action widgets to display.
   final List<Widget> extraActions;
+
+  /// Callback when the primary action is triggered.
   final void Function(BuildContext context)? onConfirm;
+
+  /// Callback when the cancel action is triggered.
   final void Function(BuildContext context)? onCancel;
+
+  /// Whether the dialog can be dismissed by tapping outside.
   final bool barrierDismissible;
+
+  /// Whether to show the primary action button.
   final bool showPrimaryAction;
 
   const PoppyDialog({
@@ -60,6 +89,7 @@ class PoppyDialog extends StatelessWidget {
     this.barrierDismissible = true,
   });
 
+  /// Creates a standard confirmation dialog.
   const PoppyDialog.confirm({
     super.key,
     required this.title,
@@ -77,6 +107,7 @@ class PoppyDialog extends StatelessWidget {
     this.barrierDismissible = true,
   }) : intent = PoppyDialogIntent.standard;
 
+  /// Creates a destructive confirmation dialog (e.g., for deletion).
   const PoppyDialog.destructive({
     super.key,
     required this.title,
@@ -94,6 +125,7 @@ class PoppyDialog extends StatelessWidget {
     this.barrierDismissible = true,
   }) : intent = PoppyDialogIntent.destructive;
 
+  /// Creates an informational dialog with a single button.
   const PoppyDialog.info({
     super.key,
     required this.title,
@@ -306,10 +338,23 @@ class PoppyDialog extends StatelessWidget {
 //  Helper Widgets
 // ─────────────────────────────────────────────────────────────
 
-/// The small icon + tinted-box note used beneath a dialog's main body text.
+/// The visual tone of a [DialogInfoBanner].
+enum DialogBannerTone { 
+  /// Standard informational tone using the accent color.
+  info, 
+  /// Warning tone using the warning color.
+  warning 
+}
+
+/// A themed informational banner used within dialog bodies.
 class DialogInfoBanner extends StatelessWidget {
+  /// The icon to display on the left.
   final IconData icon;
+
+  /// The message text to display.
   final String text;
+
+  /// The visual tone of the banner.
   final DialogBannerTone tone;
 
   const DialogInfoBanner({
@@ -365,10 +410,9 @@ class DialogInfoBanner extends StatelessWidget {
   }
 }
 
-enum DialogBannerTone { info, warning }
-
 /// Standard body text styling for plain-text dialog content.
 class DialogBodyText extends StatelessWidget {
+  /// The text content to display.
   final String text;
 
   const DialogBodyText(this.text, {super.key});

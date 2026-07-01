@@ -49,6 +49,8 @@ class EncryptionService {
   // ─────────────────────────────────────────────────────────────
 
   /// Generates a new random 32-byte Data Key and persists it locally.
+  /// 
+  /// Returns the raw bytes of the generated key.
   Future<Uint8List> generateDataKey() async {
     final bytes = Uint8List(32);
     for (var i = 0; i < 32; i++) bytes[i] = _rng.nextInt(256);
@@ -61,6 +63,8 @@ class EncryptionService {
   }
 
   /// Loads the Data Key from secure storage into memory.
+  /// 
+  /// Returns `true` if a key was found and successfully loaded.
   Future<bool> loadCachedKey() async {
     try {
       final stored = await _storage.read(key: StorageKeys.dataKey);
@@ -119,9 +123,7 @@ class EncryptionService {
   /// Unwraps the Data Key using the user's [password].
   ///
   /// Reads the per-wrap salt from [wrapped]['s']. If absent (legacy key
-  /// wrapped before this fix), falls back to the original static salt so
-  /// existing accounts continue to work. The next explicit re-wrap (e.g.
-  /// password change) will migrate the key to a proper random salt.
+  /// wrapped before this fix), falls back to the original static salt.
   Future<Uint8List?> unwrapWithPassword(
       Map<String, dynamic> wrapped,
       String password,

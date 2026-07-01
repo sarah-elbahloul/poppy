@@ -21,6 +21,8 @@ import 'package:path/path.dart' as p;
 /// remote updates, reconciling them with the local SQLite cache.
 class SyncService {
   SyncService._();
+
+  /// Singleton instance of [SyncService].
   static final SyncService instance = SyncService._();
 
   final _local = LocalDbService.instance;
@@ -28,11 +30,13 @@ class SyncService {
 
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
 
+  /// Callback triggered when a sync operation finishes successfully.
   VoidCallback? onSyncComplete;
 
   bool _isSyncing = false;
   Future<void>? _runningSync;
 
+  /// Starts listening to network connectivity changes to trigger automatic syncs.
   void startListening() {
     _connectivitySub?.cancel();
     _connectivitySub = Connectivity().onConnectivityChanged.listen((results) {
@@ -40,11 +44,15 @@ class SyncService {
     });
   }
 
+  /// Stops listening to connectivity changes.
   void stopListening() {
     _connectivitySub?.cancel();
     _connectivitySub = null;
   }
 
+  /// Triggers an immediate synchronization process.
+  ///
+  /// If a sync is already in progress, it returns the existing future.
   Future<void> syncNow() {
     _runningSync ??= _performSync().whenComplete(() {
       _runningSync = null;

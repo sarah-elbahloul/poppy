@@ -32,6 +32,7 @@ class TagColorData {
   /// Alias for [id], used when mapping to a database column.
   String get dbValue => id;
 
+  /// Converts the [TagColorData] to a Map for storage.
   Map<String, dynamic> toMap() => {
     'id': id,
     'name': name,
@@ -39,6 +40,7 @@ class TagColorData {
     'isBuiltIn': isBuiltIn,
   };
 
+  /// Creates a [TagColorData] instance from a Map.
   factory TagColorData.fromMap(Map<String, dynamic> map) {
     return TagColorData(
       id: map['id'] as String,
@@ -48,6 +50,7 @@ class TagColorData {
     );
   }
 
+  /// Creates a copy of this [TagColorData] with updated fields.
   TagColorData copyWith({
     String? id,
     String? name,
@@ -66,7 +69,7 @@ class TagColorData {
   bool operator ==(Object other) =>
       identical(this, other) || (other is TagColorData && other.id == id);
 
-  /// Deep equality check for all fields (not just id)
+  /// Deep equality check for all fields (not just id).
   bool isSameAs(TagColorData other) =>
       id == other.id &&
           name == other.name &&
@@ -135,6 +138,7 @@ class EntryTags {
 class MonthColors {
   MonthColors._();
 
+  /// Map of month index (1-12) to its representative [Color].
   static const Map<int, Color> colors = {
     1: Color(0xFF90A4AE),
     2: Color(0xFFE57373),

@@ -131,7 +131,7 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
     final fp = context.read<ThemeProvider>().currentFontPairData;
     final onDark = _current.computeLuminance() < 0.35;
 
-    return Container(
+    return _KeyboardSafeSheet(
       decoration: BoxDecoration(
         color: t.surface,
         borderRadius: const BorderRadius.vertical(
@@ -140,12 +140,6 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
         border: Border(
           top: BorderSide(color: t.border, width: AppStroke.hairline),
         ),
-      ),
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom > 0 ? MediaQuery.of(context).viewInsets.bottom : AppSpacing.lg,
-        top: AppSpacing.sm,
-        left: AppSpacing.lg,
-        right: AppSpacing.lg,
       ),
       child: SafeArea(
         top: false,
@@ -200,7 +194,7 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(AppRadius.full),
                         color: _current,
                         border: Border.all(
                           color: _showWheel
@@ -298,7 +292,7 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
                     height: 32,
                     decoration: BoxDecoration(
                       color: _current,
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                       border: Border.all(
                         color: t.border,
                         width: AppStroke.hairline,
@@ -438,5 +432,43 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
       );
     }
     return Row(children: children);
+  }
+}
+
+/// Applies the sheet's background/border decoration and keyboard-aware
+/// bottom padding.
+///
+/// This is deliberately split out from [_ColorPickerSheetState.build] so
+/// the `MediaQuery` read for `viewInsets.bottom` lives in its own tiny
+/// [StatelessWidget]. While the keyboard opens or closes, `viewInsets`
+/// changes on *every animation frame* — if that read sat inside the main
+/// sheet's build method (as it did before), the whole sheet (≈90-swatch
+/// palette grid, the colour wheel's CustomPainters, etc.) would rebuild
+/// on every one of those frames, which is what caused the lag.
+///
+/// By isolating the dependency here, only this cheap wrapper rebuilds on
+/// each keyboard-animation frame. [child] is built once by the parent and
+/// reused as-is (same widget instance), so Flutter skips rebuilding it
+/// entirely while the keyboard animates.
+class _KeyboardSafeSheet extends StatelessWidget {
+  final BoxDecoration decoration;
+  final Widget child;
+
+  const _KeyboardSafeSheet({required this.decoration, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      decoration: decoration,
+      padding: EdgeInsets.only(
+        bottom: bottomInset > 0 ? bottomInset : AppSpacing.lg,
+        top: AppSpacing.sm,
+        left: AppSpacing.lg,
+        right: AppSpacing.lg,
+      ),
+      child: child,
+    );
   }
 }

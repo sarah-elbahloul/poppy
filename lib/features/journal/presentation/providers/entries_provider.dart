@@ -9,8 +9,22 @@ import 'package:poppy/features/journal/data/services/photos_service.dart';
 //  POPPY — Entries Provider
 // ─────────────────────────────────────────────────────────────
 
-enum EntriesStatus { initial, loading, loaded, error }
+/// Represents the possible states of the entries fetching process.
+enum EntriesStatus { 
+  /// The initial state before any fetching starts.
+  initial, 
+  /// The state when entries are being fetched.
+  loading, 
+  /// The state when entries have been successfully loaded.
+  loaded, 
+  /// The state when an error occurred during fetching.
+  error 
+}
 
+/// Provider managing the state and business logic for journal entries.
+///
+/// Handles fetching, filtering, creating, updating, and deleting entries,
+/// and manages their synchronization state.
 class EntriesProvider extends ChangeNotifier {
   final _entriesService = EntriesService();
   final _photosService = PhotosService();
@@ -26,8 +40,13 @@ class EntriesProvider extends ChangeNotifier {
   DateTime? _fromDate;
   DateTime? _toDate;
 
+  /// Returns the full list of journal entries.
   List<Entry> get entries => _entries;
 
+  /// Returns a filtered and sorted list of entries based on current filter criteria.
+  ///
+  /// Filters by title/content [query], [colorTag], [fromDate], and [toDate].
+  /// Entries are sorted by date in descending order.
   List<Entry> get filteredEntries {
     return _entries.where((e) {
       final matchesQuery = _query == null ||
@@ -50,11 +69,19 @@ class EntriesProvider extends ChangeNotifier {
       ..sort((a, b) => b.entryDate.compareTo(a.entryDate));
   }
 
+  /// The current status of the entries provider.
   EntriesStatus get status => _status;
+
+  /// The most recent error message, if any.
   String? get errorMessage => _errorMessage;
+
+  /// Whether entries are currently being loaded.
   bool get isLoading => _status == EntriesStatus.loading;
+
+  /// Whether a synchronization operation is currently in progress.
   bool get isSyncing => _isSyncing;
 
+  /// Sets the filtering criteria for the entries list.
   void setFilters({
     String? query,
     String? colorTag,
@@ -68,6 +95,7 @@ class EntriesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clears all active filters.
   void clearFilters() {
     _query = null;
     _colorTag = null;
@@ -76,6 +104,7 @@ class EntriesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Fetches entries from the local database and initiates a remote sync.
   Future<void> fetchEntries() async {
     _status = EntriesStatus.loading;
     notifyListeners();
@@ -108,10 +137,14 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
+  /// Creates a new journal entry.
+  ///
+  /// Returns the created [Entry] or null if the operation failed.
   Future<Entry?> createEntry(Entry entry) async {
     try {
       final created = await _entriesService.create(entry);
 
+      // Ensure that if it was created with empty title/content, we keep the original intent
       final needsPatch = (created.title.isEmpty && entry.title.isNotEmpty) ||
           (created.content.isEmpty && entry.content.isNotEmpty);
 
@@ -129,6 +162,9 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
+  /// Updates an existing journal entry.
+  ///
+  /// Returns the updated [Entry] or null if the operation failed.
   Future<Entry?> updateEntry(Entry entry) async {
     try {
       final saved = await _entriesService.update(entry);
@@ -149,6 +185,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
+  /// Updates multiple entries at once.
   Future<bool> updateEntries(List<Entry> updatedEntries) async {
     try {
       final results = await Future.wait(
@@ -170,6 +207,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
+  /// Deletes a single entry by its [entryId].
   Future<bool> deleteEntry(String entryId) async {
     try {
       _entries.removeWhere((e) => e.id == entryId);
@@ -189,6 +227,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
+  /// Deletes multiple entries specified by [entryIds].
   Future<bool> deleteEntries(List<String> entryIds) async {
     try {
       _entries.removeWhere((e) => entryIds.contains(e.id));
@@ -207,6 +246,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
+  /// Updates all entries that were using [oldTag] to use [newTag].
   Future<void> propagateTagEdit(TagColorData oldTag, TagColorData newTag) async {
     final affected = _entries.where((e) => e.colorTag.id == oldTag.id).toList();
     if (affected.isEmpty) return;
@@ -234,6 +274,7 @@ class EntriesProvider extends ChangeNotifier {
     _sync.syncNow();
   }
 
+  /// Updates all entries that were using [deletedTag] to use [fallbackTag].
   Future<void> propagateTagDeletion(TagColorData deletedTag, TagColorData fallbackTag) async {
     final affected = _entries.where((e) => e.colorTag.id == deletedTag.id).toList();
     if (affected.isEmpty) return;
@@ -261,6 +302,7 @@ class EntriesProvider extends ChangeNotifier {
     _sync.syncNow();
   }
 
+  /// Returns an entry by its [id], or null if not found.
   Entry? getById(String id) {
     try {
       return _entries.firstWhere((e) => e.id == id);
@@ -269,6 +311,7 @@ class EntriesProvider extends ChangeNotifier {
     }
   }
 
+  /// Clears all local state and filters.
   void clear() {
     _sync.onSyncComplete = null;
     _entries = [];
@@ -278,6 +321,7 @@ class EntriesProvider extends ChangeNotifier {
     clearFilters();
   }
 
+  /// Clears the current error message.
   void clearError() {
     _errorMessage = null;
     notifyListeners();

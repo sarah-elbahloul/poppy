@@ -642,7 +642,7 @@ class _TagSwatch extends StatelessWidget {
           width: ringSize,
           height: ringSize,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(AppRadius.full),
             border: Border.all(
               color: isSelected ? t.accent : Colors.transparent,
               width: AppSpacing.xxs,
@@ -653,7 +653,7 @@ class _TagSwatch extends StatelessWidget {
           width: _size,
           height: _size,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(AppRadius.full),
             color: color,
             border: Border.all(color: t.border, width: AppStroke.hairline),
           ),

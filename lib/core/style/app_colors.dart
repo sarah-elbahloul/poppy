@@ -19,7 +19,7 @@ class AppColors {
   static const background = Color(0xFFFFFBFB);
   static const textPrimary = Color(0xFF2B0E0E);
   static const textSecondary = Color(0xFF5C4444);
-  static const textTertiary = Color(0xFFAA8888);
+  static const textTertiary = Color(0xFF9F5A5A);
   static const border = Color(0xFFEDD8D8);
 
   // ─────────────────────────────────────────────────────────────
@@ -91,9 +91,3 @@ class AppColors {
     Color(0xFF5C3D20), Color(0xFF3E2010), Color(0xFF1E0F06),
   ];
 }
-
-// Note: journal-specific color concepts (entry tags, month colors) used to
-// live in this file. They've moved to
-// `features/journal/data/models/entry_tag.dart` since they're domain data,
-// not reusable design tokens — see that file for `TagColorData`,
-// `EntryTags`, and `MonthColors`.

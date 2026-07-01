@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 //  POPPY — Shadow Definitions
 // ─────────────────────────────────────────────────────────────
 
-/// Defines standard shadow tokens used to provide depth and hierarchy.
+/// Defines standard shadow tokens used to provide depth and hierarchy in the UI.
 class AppShadows {
   AppShadows._();
 
@@ -17,7 +17,7 @@ class AppShadows {
     ),
   ];
 
-  /// More pronounced shadow for Floating Action Buttons.
+  /// More pronounced shadow for Floating Action Buttons (FABs).
   static List<BoxShadow> fab = [
     BoxShadow(
       color: Colors.black.withValues(alpha: 0.12),
@@ -26,7 +26,7 @@ class AppShadows {
     ),
   ];
 
-  /// Glow effect for highlighted color indicators.
+  /// Glow effect for highlighted color indicators, using the provided [color].
   static List<BoxShadow> colorDotGlow(Color color) => [
     BoxShadow(
       color: color.withValues(alpha: 0.9),
@@ -35,7 +35,7 @@ class AppShadows {
     ),
   ];
 
-  /// Shadow for bottom sheets and overlay panels.
+  /// Shadow for bottom sheets and overlay panels that appear from the bottom.
   static List<BoxShadow> sheet = [
     BoxShadow(
       color: Colors.black.withValues(alpha: 0.08),
@@ -44,5 +44,6 @@ class AppShadows {
     ),
   ];
 
+  /// An empty list of shadows representing no shadow.
   static const List<BoxShadow> none = [];
 }

@@ -11,12 +11,20 @@ import 'package:uuid/uuid.dart';
 //  POPPY — Photos Service
 // ─────────────────────────────────────────────────────────────
 
+/// Service for handling photo-related operations.
+///
+/// Includes picking images from the gallery/camera, compressing them,
+/// and saving them to the local database for eventual synchronization.
 class PhotosService {
   final _local = LocalDbService.instance;
   final _sync = SyncService.instance;
   final _picker = ImagePicker();
   final _uuid = const Uuid();
 
+  /// Prompts the user to pick a photo from the camera or gallery.
+  ///
+  /// Returns a [File] if a photo was selected, otherwise null.
+  /// Note: Not supported on Web.
   Future<File?> pickPhoto({bool fromCamera = false}) async {
     if (kIsWeb) return null;
     final xFile = await _picker.pickImage(
@@ -26,6 +34,7 @@ class PhotosService {
     return xFile != null ? File(xFile.path) : null;
   }
 
+  /// Compresses a file to reduce its size before storage or upload.
   Future<File?> _compressFile(File file) async {
     final outPath = '${file.path}_compressed.jpg';
     final result = await FlutterImageCompress.compressAndGetFile(
@@ -38,6 +47,9 @@ class PhotosService {
     return result != null ? File(result.path) : file;
   }
 
+  /// Uploads an [XFile] and saves it as a [Photo] associated with an entry.
+  ///
+  /// This is a convenience wrapper around [savePhoto].
   Future<Photo> uploadXFile({
     required dynamic xFile,
     required Uint8List? bytes,
@@ -48,6 +60,10 @@ class PhotosService {
     return savePhoto(file: file, entryId: entryId);
   }
 
+  /// Saves a [File] as a [Photo] in the local database.
+  ///
+  /// Compresses the image and associates it with the specified [entryId].
+  /// Triggers a background sync.
   Future<Photo> savePhoto({
     required File file,
     required String entryId,
@@ -72,6 +88,9 @@ class PhotosService {
     return Photo.fromMap(photoMap);
   }
 
+  /// Fetches all photos associated with a specific [entryId].
+  ///
+  /// For uploaded photos, it generates signed URLs for remote access.
   Future<List<Photo>> fetchForEntry(String entryId) async {
     final rows = await _local.getPhotosForEntry(entryId);
     final photos = rows.map((m) => Photo.fromMap(m)).toList();
@@ -94,12 +113,16 @@ class PhotosService {
     );
   }
 
+  /// Deletes a photo given either a [Photo] object or a photo ID string.
+  ///
+  /// Marks the photo as deleted locally and triggers a background sync.
   Future<void> delete(dynamic photoOrId) async {
     final id = photoOrId is Photo ? photoOrId.id : photoOrId as String;
     await _local.markPhotoDeleted(id);
     _sync.syncNow();
   }
 
+  /// Deletes all photos associated with a specific [entryId].
   Future<void> deleteAllForEntry(String entryId) async {
     final photos = await _local.getPhotosForEntry(entryId);
     for (final row in photos) {

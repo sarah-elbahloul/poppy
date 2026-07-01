@@ -12,18 +12,27 @@ import 'package:uuid/uuid.dart';
 //  POPPY — Entries Service
 // ─────────────────────────────────────────────────────────────
 
+/// Service responsible for managing journal entries.
+///
+/// Handles CRUD operations, encryption/decryption, and local database interactions.
 class EntriesService {
   final _enc = EncryptionService.instance;
   final _local = LocalDbService.instance;
   final _sync = SyncService.instance;
   final _uuid = const Uuid();
 
+  /// Fetches all journal entries for the current user.
+  ///
+  /// Decrypts the entries before returning them.
   Future<List<Entry>> fetchAll() async {
     final userId = SupabaseConfig.userId;
     final rows = await _local.getAllEntries(userId);
     return _decryptList(rows);
   }
 
+  /// Searches for entries based on various filters.
+  ///
+  /// Filters include text [query], [colorTag], [fromDate], and [toDate].
   Future<List<Entry>> search({
     String? query,
     String? colorTag,
@@ -54,6 +63,10 @@ class EntriesService {
     return entries;
   }
 
+  /// Creates a new journal entry.
+  ///
+  /// Encrypts the title and content before saving to the local database.
+  /// Assigns a unique ID and timestamps if not already present.
   Future<Entry> create(Entry entry) async {
     final userId = SupabaseConfig.userId;
     final encrypted = await _buildEncryptedMap(entry);
@@ -83,6 +96,9 @@ class EntriesService {
     );
   }
 
+  /// Updates an existing journal entry.
+  ///
+  /// Encrypts updated content and updates the local database.
   Future<Entry> update(Entry entry) async {
     final encrypted = await _buildEncryptedMap(entry);
     final now = DateTime.now().toUtc().toIso8601String();
@@ -108,11 +124,17 @@ class EntriesService {
     );
   }
 
+  /// Deletes an entry by its [entryId].
+  ///
+  /// Marks the entry as deleted locally and triggers a background sync.
   Future<void> delete(String entryId) async {
     await _local.markEntryDeleted(entryId);
     unawaited(_sync.syncNow());
   }
 
+  /// Deletes multiple entries specified by [entryIds].
+  ///
+  /// Marks the entries as deleted locally and triggers a background sync.
   Future<void> deleteBatch(List<String> entryIds) async {
     await _local.markEntriesDeleted(entryIds);
     unawaited(_sync.syncNow());

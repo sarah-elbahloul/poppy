@@ -4,17 +4,36 @@ import 'package:poppy/core/core.dart';
 //  POPPY — Photo Model
 // ─────────────────────────────────────────────────────────────
 
+/// Represents a photo associated with a journal entry.
 class Photo {
+  /// Unique identifier for the photo.
   final String id;
+
+  /// The ID of the journal entry this photo belongs to.
   final String entryId;
+
+  /// The ID of the user who owns this photo.
   final String userId;
+
+  /// The path where the photo is stored in remote storage.
   final String? storagePath;
+
+  /// The local file system path where the photo is stored.
   final String? localPath;
+
+  /// Whether the photo has been successfully uploaded to remote storage.
   final bool uploaded;
+
+  /// The date and time when the photo was created.
   final DateTime createdAt;
+
+  /// The current synchronization status of the photo.
   final String syncStatus;
+
+  /// A temporary signed URL for accessing the photo from remote storage.
   final String? signedUrl;
 
+  /// Creates a [Photo] instance.
   const Photo({
     required this.id,
     required this.entryId,
@@ -27,6 +46,7 @@ class Photo {
     this.signedUrl,
   });
 
+  /// Creates a [Photo] instance from a Map (usually from a database row).
   factory Photo.fromMap(Map<String, dynamic> map) {
     return Photo(
       id: map[DBColumn.id] as String,
@@ -40,6 +60,7 @@ class Photo {
     );
   }
 
+  /// Converts the [Photo] instance to a Map for database storage.
   Map<String, dynamic> toMap() {
     return {
       DBColumn.id: id,
@@ -53,6 +74,9 @@ class Photo {
     };
   }
 
+  /// Builds a storage path string for a photo.
+  ///
+  /// Format: `userId/entryId/filename`
   static String buildStoragePath({
     required String userId,
     required String entryId,
@@ -61,11 +85,13 @@ class Photo {
     return '$userId/$entryId/$filename';
   }
 
+  /// Generates a unique filename for a photo based on the current timestamp.
   static String generateFilename() {
     final ts = DateTime.now().millisecondsSinceEpoch;
     return 'photo_$ts.jpg';
   }
 
+  /// Creates a copy of this [Photo] with updated fields.
   Photo copyWith({
     String? id,
     String? entryId,

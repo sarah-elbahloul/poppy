@@ -114,7 +114,7 @@ class _PinPadState extends State<PinPad> with SingleTickerProviderStateMixin {
                 height: AppComponentSize.pinDot,
                 margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(AppRadius.full),
                   color: filled ? t.accent : AppColors.transparent,
                   border: Border.all(
                     color: filled ? t.accent : t.border,
@@ -192,7 +192,7 @@ class _DigitKey extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Container(
         decoration: BoxDecoration(
-          shape: BoxShape.circle,
+          borderRadius: BorderRadius.circular(AppRadius.full),
           color: t.surface,
           border: Border.all(color: t.border, width: AppStroke.hairline),
         ),
@@ -216,7 +216,7 @@ class _DeleteKey extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        decoration: const BoxDecoration(shape: BoxShape.circle),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.full)),
         child: Center(
           child: Icon(AppIcons.backspace, size: AppIconSize.sm, color: t.textTertiary),
         ),

@@ -10,29 +10,58 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Represents the user's profile, including account details and 
 /// theme preferences that are synced across devices.
 class Profile {
+  /// Unique identifier for the user.
   final String id;
+
+  /// User's email address.
   final String email;
+
+  /// The name displayed in the UI for the user.
   final String displayName;
 
-  // Fonts
+  /// The font family used for titles and headings.
   final PoppyFont fontTitle;
+
+  /// The font family used for body text.
   final PoppyFont fontBody;
 
-  // Theme Colors (stored as ARGB32 integers in DB, same as tag colours)
+  /// Primary accent color for the UI.
   final Color colorAccent;
+
+  /// A lighter version of the accent color.
   final Color colorAccentLight;
+
+  /// A muted version of the accent color.
   final Color colorAccentMuted;
+
+  /// Color used for card surfaces and overlays.
   final Color colorSurface;
+
+  /// Main background color of the application.
   final Color colorBackground;
+
+  /// Primary text color for high emphasis content.
   final Color colorTextPrimary;
+
+  /// Secondary text color for medium emphasis content.
   final Color colorTextSecondary;
+
+  /// Tertiary text color for low emphasis or disabled content.
   final Color colorTextTertiary;
+
+  /// Color used for dividers and borders.
   final Color colorBorder;
 
+  /// List of custom tags defined by the user.
   final List<TagColorData> tags;
+
+  /// Whether PIN protection is enabled for this account.
   final bool pinEnabled;
+
+  /// The date and time when the profile was created.
   final DateTime? createdAt;
 
+  /// Creates a [Profile] instance.
   Profile({
     required this.id,
     required this.email,
@@ -53,6 +82,7 @@ class Profile {
     this.createdAt,
   });
 
+  /// Creates a copy of this [Profile] with updated fields.
   Profile copyWith({
     String? id,
     String? email,
@@ -93,7 +123,7 @@ class Profile {
     );
   }
 
-  /// Parse font enum from string
+  /// Parse font enum from string.
   static PoppyFont _parseFont(String? name, PoppyFont fallback) {
     if (name == null) return fallback;
     return PoppyFont.values.firstWhere(
@@ -102,7 +132,7 @@ class Profile {
     );
   }
 
-  /// Parse colours from a JSON map — values are ARGB32 integers (same as tags)
+  /// Parse colours from a JSON map — values are ARGB32 integers.
   static Map<String, Color> _parseThemeColors(Map<String, dynamic>? json) {
     if (json == null || json.isEmpty) return {};
 
@@ -123,7 +153,7 @@ class Profile {
     return colors;
   }
 
-  /// Convert colours to a JSON map — values are ARGB32 integers (same as tags)
+  /// Convert colours to a JSON map — values are ARGB32 integers.
   static Map<String, int> _themeColorsToJson({
     required Color colorAccent,
     required Color colorAccentLight,
@@ -148,6 +178,7 @@ class Profile {
     };
   }
 
+  /// Creates a [Profile] instance from a Map and a Supabase [User].
   factory Profile.fromMap(Map<String, dynamic> map, User user) {
     // Parse tags
     final tagsRaw = map[DBColumn.tags];
@@ -207,6 +238,7 @@ class Profile {
     );
   }
 
+  /// Converts the [Profile] instance to a Map for database storage.
   Map<String, dynamic> toMap() {
     return {
       DBColumn.id: id,

@@ -5,12 +5,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 //  POPPY — Supabase Configuration
 // ─────────────────────────────────────────────────────────────
 
+/// Configuration and access point for Supabase services.
+///
+/// Handles initialization and provides easy access to the [SupabaseClient],
+/// current user information, and storage utilities.
 class SupabaseConfig {
   SupabaseConfig._();
 
   static const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const _supabaseKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 
+  /// Initializes the Supabase client with environment variables.
+  ///
+  /// Throws an assertion error if credentials are missing.
   static Future<void> init() async {
     assert(
     _supabaseUrl.isNotEmpty && _supabaseKey.isNotEmpty,
@@ -31,11 +38,21 @@ class SupabaseConfig {
     );
   }
 
+  /// Returns the global [SupabaseClient] instance.
   static SupabaseClient get client => Supabase.instance.client;
+
+  /// Returns the currently authenticated [User], if any.
   static User? get currentUser => client.auth.currentUser;
+
+  /// Returns the ID of the currently authenticated user, or an empty string.
   static String get userId => currentUser?.id ?? '';
+
+  /// Returns a stream of authentication state changes.
   static Stream<AuthState> get authStateStream => client.auth.onAuthStateChange;
 
+  /// Generates a temporary signed URL for a file in a storage [bucket].
+  ///
+  /// The URL is valid for [expiresIn] seconds (default is 1 hour).
   static Future<String> getSignedUrl(
       String bucket,
       String path, {
