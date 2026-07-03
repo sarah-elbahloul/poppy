@@ -106,7 +106,7 @@ class _PrivacyContent extends StatelessWidget {
             'Deletion is permanent and removes all associated cloud data.',
         ),
         const _Section(title: 'Contact', body:
-        'For privacy concerns or data requests, contact us at sa.albahloul@gmail.com.',
+        'For privacy concerns or data requests, contact us at privacy@sarahelbahloul.dev.',
         ),
       ],
     );

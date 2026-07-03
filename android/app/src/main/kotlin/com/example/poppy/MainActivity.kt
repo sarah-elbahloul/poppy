@@ -1,4 +1,4 @@
-package com.example.poppy
+package dev.sarahelbahloul.poppy
 
 import io.flutter.embedding.android.FlutterActivity
 

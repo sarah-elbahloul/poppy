@@ -9,7 +9,13 @@
 
 Do this first because every account you create downstream (Supabase, Google Play, App Store Connect) needs a professional email, and the emails you put inside the app need to actually work before you submit for review.
 
-**Cost for this phase: ~$37 one-time ($12/year domain + $25 Google Play). Everything else is free.**
+**Cost for this phase: ~$35 one-time (~$10/year domain + $25 Google Play). Everything else is free.**
+
+> **Important note on Resend vs. Cloudflare Email Routing — these do different jobs, and you need both:**
+> - **Cloudflare Email Routing** = receiving. It catches mail sent *to* `hello@yourdomain.com` / `privacy@yourdomain.com` and forwards it to your Gmail. This is for users emailing *you* via the `mailto:` links in `settings_screen.dart` and `legal_screen.dart`.
+> - **Resend** = sending, and it's **required, not optional**. Supabase Auth's built-in email sender (used for signup confirmation, password reset, magic links) is capped at **2 emails per hour** and is explicitly documented as a non-production, best-effort service. You will hit that limit during your own testing almost immediately — one signup plus one password-reset test can use it up. Configuring a custom SMTP provider (Resend, in this guide) raises that to 30/hour by default and is what Supabase itself recommends before going anywhere near real users.
+>
+> So: do 1.3–1.4 (verify the domain in Resend) **and** the new step below that wires Resend into Supabase's Auth SMTP settings — that's the part that actually raises the limit. Verifying the domain alone doesn't do anything until it's connected.
 
 ### What email addresses you will end up with
 
@@ -17,108 +23,111 @@ Do this first because every account you create downstream (Supabase, Google Play
 |---|---|---|
 | `hello@sarahelbahloul.dev` | General contact / support / feedback | `settings_screen.dart` line 431 — the "Send feedback" button |
 | `privacy@sarahelbahloul.dev` | Privacy concerns and GDPR data requests | `legal_screen.dart` line 115 — Privacy Policy contact |
-| Your personal Gmail | Developer accounts only | Supabase, Google Play — never shown inside the app |
+| Your personal Gmail | Developer accounts only (receives forwarded mail) | Supabase, Google Play — never shown inside the app |
 
 > The in-app support emails and your developer account email are kept separate on purpose. Developer account email is tied to billing and legal agreements. Support emails are public-facing and can change.
 
 ---
 
-### 1.1 — Buy the domain on Namecheap
+### 1.1 — Buy the domain on Cloudflare Registrar
 
-1. Go to [namecheap.com](https://namecheap.com)
-2. Search `sarahelbahloul.dev` in the search bar
-3. If available, add to cart — should show ~$12–14 for the first year
-4. At checkout:
-    - Create a Namecheap account using your personal Gmail
-    - Turn **off** auto-renew during checkout (you can enable it later — just avoid a surprise charge)
-    - Turn **off** every upsell (hosting, SSL, privacy protection — you don't need any of them)
-5. Pay and complete the purchase
+Cloudflare sells domains at wholesale cost with zero markup.
 
-> After purchase go to **Dashboard → Domain List → Manage** next to `sarahelbahloul.dev`. Keep this tab open — you'll return to it in step 1.3.
+1. Go to [dash.cloudflare.com](https://dash.cloudflare.com) and create an account (use your personal Gmail).
+2. On the sidebar, click **"Domain Registration"** → **"Register Domains"**.
+3. Search `sarahelbahloul.dev`.
+4. Add to cart and checkout. It should be around $10-$12 for the first year.
+5. **Turn off auto-renew** during checkout if you want to avoid surprise charges (you can re-enable later).
+6. Pay and complete.
 
----
-
-### 1.2 — Create your Zoho Mail account
-
-Zoho Mail's free plan gives you up to 5 custom domain email addresses. You will never log into Zoho to check mail — it forwards everything to your Gmail automatically.
-
-1. Go to [zoho.com/mail](https://zoho.com/mail)
-2. Click **"Sign Up For Free"**
-3. Scroll past the paid plans and choose the **Forever Free** plan
-4. When asked for your domain, choose **"Add an existing domain"** and enter `sarahelbahloul.dev`
-5. Create a Zoho account — use your personal Gmail as the recovery email
-6. When Zoho asks you to verify domain ownership — **stop here and go to step 1.3 before continuing**
+> After purchase, click on the domain name in your Cloudflare dashboard to go to the **Overview** page. Keep this tab open.
 
 ---
 
-### 1.3 — Verify your domain in Zoho via Namecheap DNS
+### 1.2 — Set up Email Receiving (Cloudflare Email Routing)
 
-Zoho will show you a TXT record to prove you own the domain. It looks like this:
+This free Cloudflare feature catches emails sent to `@sarahelbahloul.dev` and forwards them to your Gmail.
 
-```
-Type:  TXT
-Host:  @
-Value: zoho-verification=zb12345678.zmverify.zoho.com
-```
+1. In your Cloudflare domain dashboard, click **"Email"** → **"Email Routing"** in the sidebar.
+2. Click **"Enable Email Routing"**.
+3. Cloudflare will ask you to add some MX and TXT records. **Click "Add records automatically"** — Cloudflare handles this for you instantly.
+4. Go to the **"Routing rules"** tab.
+5. Add named rules first — these are the addresses that actually matter:
+    - Click **"Create rule"**.
+    - Name: "Support"
+    - Match: `hello@sarahelbahloul.dev`
+    - Action: Forward to `your-personal-gmail@gmail.com`
+    - Repeat for `privacy@sarahelbahloul.dev`.
+6. *(Optional)* Under **"Catch-all address"**, you can also select **"Forward to"** and enter your Gmail, so typos like `hellos@...` still reach you.
+   > **Heads up:** a catch-all forwards *everything* sent to the domain — including spam bots probing common prefixes (`admin@`, `info@`, `contact@`, etc.). Once the domain has aged a bit this can get noisy in your Gmail. If you'd rather keep things clean, skip the catch-all and rely on the two named rules above; anything not matching them will just bounce, which is fine.
+7. Click **"Save"**.
 
-The exact value will be different for your account — copy it from Zoho's screen.
-
-To add it to Namecheap:
-
-1. Go back to your Namecheap tab → **Domain List → Manage → Advanced DNS**
-2. Click **"Add New Record"**
-3. Set:
-    - Type: **TXT Record**
-    - Host: **@**
-    - Value: the full string Zoho gave you
-    - TTL: **Automatic**
-4. Click the green checkmark to save
-5. Go back to Zoho and click **"Verify"**
-
-> DNS propagation on Namecheap usually takes 2–10 minutes. If Zoho says it cannot verify yet, wait 5 minutes and try again. Don't wait more than 30 minutes — if it's still failing, double-check that the TXT record was saved in Namecheap with no extra spaces in the value.
+> **Wait 10 minutes** for the routing to propagate globally.
 
 ---
 
-### 1.4 — Create your two email mailboxes in Zoho
+### 1.3 — Set up Email Sending (Resend) — required for Auth to work past testing
 
-Once the domain is verified, Zoho walks you through creating the first mailbox:
+Supabase's built-in email sender is capped at 2 emails/hour and is not meant for production. Verifying your domain in Resend is step one of removing that cap (step two is wiring it into Supabase — see 1.4a below).
 
-1. Create `hello@sarahelbahloul.dev` — your in-app support and feedback address
-2. After that's done, go to **Settings → Email Addresses → Add Email Address** and create `privacy@sarahelbahloul.dev`
-
-Both addresses now exist. Set up forwarding so you never have to check Zoho:
-
-1. In Zoho → **Settings → Mail Accounts → hello@sarahelbahloul.dev → Filters & Forwarding**
-2. Add your personal Gmail as the forwarding address
-3. Repeat the same for `privacy@sarahelbahloul.dev`
-
-Any email sent to either address will now land in your Gmail inbox automatically.
+1. Go to [resend.com](https://resend.com) and sign up using your personal Gmail.
+2. Go to **Domains** → **"Add Domain"**.
+3. Enter `sarahelbahloul.dev` and click **"Add"**.
+4. Resend will display a list of DNS records you need to add (usually 1 TXT record for domain verification, and 3-4 CNAME records for DMARC/DKIM). **Keep this tab open.**
 
 ---
 
-### 1.5 — Add Zoho's MX records to Namecheap
+### 1.4 — Add Resend DNS Records to Cloudflare
 
-MX records tell the internet that emails for `sarahelbahloul.dev` should be delivered to Zoho's servers. Zoho shows you the exact records to add — they will look like this:
+Resend has an official **Domain Connect** integration for Cloudflare, which is easier and less error-prone than adding records by hand.
 
-```
-Type: MX    Host: @    Value: mx.zoho.com     Priority: 10
-Type: MX    Host: @    Value: mx2.zoho.com    Priority: 20
-Type: MX    Host: @    Value: mx3.zoho.com    Priority: 50
-```
+1. On the Resend "Add Domain" screen (or the domain's detail page), look for **"Sign in to your domain host to authorize DNS changes"** / **Auto Configure** — use it.
+2. You'll be redirected to a Cloudflare login/authorization screen. Sign in and approve access (scoped to DNS changes on that domain only).
+3. Resend will automatically add the required records to Cloudflare — the TXT verification record and the DKIM CNAME(s) — including setting the correct proxy status (DNS-only) on the CNAMEs, which is the one thing that's easy to get wrong doing this manually.
+4. Back in Resend, click **"Verify DNS Records"**. It may take a few minutes up to a few hours to turn green.
+5. Double-check in Cloudflare → **DNS → Records** that the new CNAME records show the **grey cloud (DNS only)**, not orange (proxied) — auto-configure sets this correctly, but it's worth a quick visual confirmation since a proxied CNAME breaks DKIM signing.
 
-Back in Namecheap → **Advanced DNS**:
+<details>
+<summary>If auto-configure isn't available or fails, add the records manually instead</summary>
 
-1. Check if there are any existing MX records — Namecheap sometimes adds a default one. If there are any, delete them first.
-2. Add each of the three MX records Zoho gives you, one by one, saving each with the green checkmark
-3. Wait 10 minutes
+1. Go back to your Cloudflare domain tab → **"DNS"** → **"Records"**.
+2. For each record shown in the Resend dashboard:
+    - Click **"Add record"**.
+    - **Type:** Match what Resend says (usually TXT or CNAME).
+    - **Name:** Match what Resend says (e.g., `resend._domainkey`).
+    - **Value:** Match what Resend says (the long string).
+    - **Proxy status:** For CNAME records specifically, click the orange cloud icon to turn it **Grey (DNS only)**. Resend handles its own routing, and Cloudflare proxying can break DKIM signatures.
+    - Click **"Save"**.
+3. Repeat for all records Resend listed.
 
-To confirm it worked: send a test email from your personal Gmail to `hello@sarahelbahloul.dev`. It should arrive back in your Gmail inbox within a couple of minutes via the forwarding you set up. If it bounces, go back to Namecheap Advanced DNS and check the MX records for typos.
+</details>
 
 ---
 
-### 1.6 — Update the two placeholder emails in Poppy
+### 1.4a — Connect Resend to Supabase Auth (the step that actually raises the rate limit)
 
-Now that the addresses are real and working, update the code:
+Domain verification in Resend alone does nothing for your app — Supabase still uses its own 2/hour sender until you point it at Resend explicitly.
+
+1. In Resend, go to **API Keys → Create API Key**. Give it Sending access, scoped to your verified domain if offered. Copy the key (starts with `re_`) — you won't see it again.
+2. In your Supabase project dashboard, go to **Project Settings → Authentication → SMTP Settings** (some dashboard versions show this as **Authentication → Emails → SMTP Provider**).
+3. Toggle **Enable Custom SMTP** on.
+4. Fill in Resend's SMTP credentials:
+    - **Host:** `smtp.resend.com`
+    - **Port:** `465` (SSL) or `587` (TLS) — either works
+    - **Username:** `resend`
+    - **Password:** the API key you just created (`re_...`)
+    - **Sender email:** something on your verified domain, e.g. `hello@sarahelbahloul.dev` or `auth@sarahelbahloul.dev`
+    - **Sender name:** `Poppy`
+5. Save. Supabase will send a test email — confirm it arrives.
+6. Go to **Authentication → Rate Limits** and confirm/raise the email rate limit (defaults to 30/hour once custom SMTP is active — plenty for a portfolio project, no need to raise further).
+
+> **Why this matters for the app specifically:** Poppy's sign-up, password reset, and email-change flows all go through Supabase Auth's built-in mailer — the guide doesn't have you write any custom email-sending code, so this dashboard step is the *only* place the fix happens. Skipping it means you'll hit "email rate limit exceeded" errors the moment you test sign-up more than twice in an hour, which will look like a broken app during your own QA and potentially during App Store / Play Store review testing too.
+
+---
+
+### 1.5 — Update the two placeholder emails in Poppy
+
+Now that the addresses are real and forwarding works, update the code:
 
 **File 1:** `lib/screens/settings/settings_screen.dart`, line 431
 
@@ -142,7 +151,7 @@ const email = 'hello@sarahelbahloul.dev';
 
 ---
 
-### 1.7 — Create your Google Play Console account
+### 1.6 — Create your Google Play Console account
 
 1. Go to [play.google.com/console](https://play.google.com/console)
 2. Sign in with your **personal Gmail** — this must be the Google account you want permanently attached to your developer account and billing. You cannot change it later.
@@ -158,14 +167,19 @@ The account is usually active within a few hours, sometimes immediately after pa
 
 ---
 
-### 1.8 — Confirm everything before moving to Phase 2
+### 1.7 — Confirm everything before moving to Phase 2
 
 Run through this checklist. Do not start Phase 2 until all boxes are checked:
 
-- [ ] `sarahelbahloul.dev` shows as active in your Namecheap dashboard
-- [ ] Zoho shows `hello@sarahelbahloul.dev` and `privacy@sarahelbahloul.dev` as active mailboxes
-- [ ] Test email sent to `hello@sarahelbahloul.dev` arrived in your Gmail ✓
+- [ ] `sarahelbahloul.dev` shows as active in your Cloudflare dashboard
+- [ ] Cloudflare Email Routing is enabled with named rules for `hello@` and `privacy@` (catch-all optional — see note in 1.2)
+- [ ] Resend domain status shows **"Verified"**
+- [ ] Custom SMTP (Resend) is enabled in Supabase → Authentication → SMTP Settings, and the test email arrived
+- [ ] Test email sent to `hello@sarahelbahloul.dev` arrived in your Gmail (via Cloudflare Routing) ✓
 - [ ] Test email sent to `privacy@sarahelbahloul.dev` arrived in your Gmail ✓
+- [ ] Signed up two test accounts back-to-back without hitting a Supabase email rate-limit error ✓
+
+> **Note:** API abuse protection (CAPTCHA, rate limits, RLS audit, storage limits) is covered in Phase 2.7 — do that before you consider the app publicly ready, even though it's technically a Phase 2 item.
 - [ ] `settings_screen.dart` line 431 updated to `hello@sarahelbahloul.dev`
 - [ ] `legal_screen.dart` line 115 updated to `privacy@sarahelbahloul.dev`
 - [ ] Google Play Console account is active (not pending review)
@@ -355,7 +369,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 Future<void> main() async {
   await SentryFlutter.init(
-    (options) {
+        (options) {
       options.dsn = 'https://your-dsn@sentry.io/your-project-id';
       options.tracesSampleRate = 0.2; // capture 20% of transactions
       options.environment = kDebugMode ? 'debug' : 'production';
@@ -394,28 +408,69 @@ options.dsn = const String.fromEnvironment('SENTRY_DSN');
 
 ---
 
-## Phase 3 — Fix All Placeholder Content
+### 2.7 — Protect Against API Abuse and Unexpected Billing
+
+Two separate risks once the app is public: bots hammering your Supabase project (burning your Resend email quota, filling your database with junk accounts), and surprise charges if usage spikes. Here's how to close both off — none of this requires paying for anything.
+
+**Why this is lower-risk than it sounds:** on the Free plan, Supabase cannot bill you at all — exceeding a quota (egress, storage, etc.) just pauses that resource until your billing cycle resets, never charges your card. Resend's free plan (100 emails/day, 3,000/month) works the same way: sending pauses at the cap, and it will not charge you unless you add a card and manually enable "Transactional Overages" in settings — leave that off. So the real risk isn't your bill, it's bots burning your email quota and locking real users out of sign-up/reset flows, or filling your database with junk rows. The steps below stop that.
+
+**Step 1 — Add CAPTCHA to Supabase Auth (the highest-impact fix)**
+
+Supabase Auth supports Cloudflare Turnstile natively for sign-up, sign-in, and password reset — and you already have a Cloudflare account from Phase 1.
+
+1. In your Cloudflare dashboard → **Turnstile** → **Add a site**. Give it a name, add your domain, and choose the **Managed** challenge type (invisible to most real users).
+2. Copy the **Site Key** and **Secret Key** Cloudflare gives you.
+3. In Supabase → **Authentication → Attack Protection** (some dashboard versions show this under **Settings → Auth**), toggle **Enable CAPTCHA protection**, choose **Turnstile** as the provider, and paste the **Secret Key**. Save.
+4. On the client side, Turnstile is a *web* widget — Supabase's official examples assume a browser frontend. Since Poppy is a Flutter app, you'll need to render the Turnstile challenge inside a `WebView` and pass the resulting token into `captchaToken` on `signUp`, `signInWithPassword`, and `resetPasswordForEmail` calls in `auth_provider.dart`. There are a couple of community Flutter packages that wrap this (search pub.dev for "turnstile" — check current download counts/maintenance before picking one, since this ecosystem moves fast). This is the one piece of this section that's a real code change rather than a dashboard toggle, so budget some extra time for it.
+
+> If the WebView integration feels like too much for a first release, at minimum do Steps 2–4 below — they meaningfully reduce risk on their own, just without blocking bots at the front door.
+
+**Step 2 — Tune Supabase Auth rate limits**
+
+In Supabase → **Authentication → Rate Limits**, review the defaults (sign-ups/hour, OTP requests/hour, etc.) and lower them if a solo-portfolio app doesn't need the default headroom. This is a pure dashboard change, no code required.
+
+**Step 3 — Audit Row Level Security (RLS) on every table**
+
+Confirm RLS is **enabled** on every table in `public` (not just `user_keys`) and that every policy scopes reads/writes to `auth.uid() = user_id` (or equivalent) rather than allowing any authenticated — or worse, anonymous — user to touch another user's rows. Run this in the Supabase SQL editor to check for any table without RLS enabled:
+
+```sql
+select tablename, rowsecurity
+from pg_tables
+where schemaname = 'public';
+```
+
+Any row showing `rowsecurity = false` is a table an attacker could read or write without restriction. This matters more than the CAPTCHA step for stopping actual data exposure — CAPTCHA stops bots from creating accounts, RLS stops anyone (bot or not) from touching data they shouldn't.
+
+**Step 4 — Constrain the storage bucket**
+
+In Supabase → **Storage → entry-photos → Configuration**, set a **file size limit** (e.g. 10MB) and restrict **allowed MIME types** to `image/jpeg`, `image/png`, `image/webp`. Without this, a malicious or misbehaving client could upload arbitrarily large or arbitrary-type files, driving up your storage and egress usage.
+
+**Step 5 — Never expose the service_role key**
+
+Confirm `SUPABASE_ANON_KEY` (not the `service_role` key) is the only Supabase key referenced anywhere in the Flutter app or committed to git. The anon key is safe to ship client-side because RLS is what actually restricts it (Step 3) — the service_role key bypasses RLS entirely and must never leave your server/CI secrets.
+
+**Step 6 — Stay on free tiers, and if you ever upgrade, leave Spend Cap on**
+
+For a solo portfolio project, staying on Supabase's Free plan and Resend's Free plan is itself a cost-control strategy — neither can charge you unexpectedly. If you later upgrade Supabase to Pro (e.g., to avoid the 7-day inactivity pause), leave **Spend Cap** enabled (it's on by default) — it blocks/restricts usage past your quota instead of billing you for it. Only disable it if you deliberately want to pay for scale.
+
+---
 
 ### 3.1 — Replace placeholder emails in the code
+
+*(Note: You already did this in Phase 1.5, but double-check it's correct).*
 
 **File 1:** `lib/screens/settings/settings_screen.dart`, line 431
 
 ```dart
-// Change this:
-const email = 'hello@poppy.app'; // todo: change this to actual email
-
-// To this (use whichever address you decided on in Phase 1):
-const email = 'hello@yourdomain.com';
+// Ensure it says:
+const email = 'hello@sarahelbahloul.dev';
 ```
 
 **File 2:** `lib/screens/settings/legal_screen.dart`, line 115
 
 ```dart
-// Change this:
-'For privacy concerns or data requests, contact us at privacy@poppydiary.app.'
-
-// To this:
-'For privacy concerns or data requests, contact us at privacy@yourdomain.com.'
+// Ensure it says:
+'For privacy concerns or data requests, contact us at privacy@sarahelbahloul.dev.'
 ```
 
 ---
@@ -518,7 +573,7 @@ These four tests directly demonstrate the security properties of the encryption 
 
 ## Phase 4 — Change Bundle IDs (Required for Store Submission)
 
-Both platforms currently use `com.example.poppy` which is the Flutter default. Google Play and the App Store both reject submissions with `com.example` in the ID.
+Both platforms currently use `dev.sarahelbahloul.poppy` which is the Flutter default. Google Play and the App Store both reject submissions with `com.example` in the ID.
 
 Choose your bundle ID now and use it consistently everywhere. The convention is `com.yourname.appname` or `dev.yourname.appname`. For example: `com.sarahelbahloul.poppy`.
 
@@ -528,8 +583,8 @@ Choose your bundle ID now and use it consistently everywhere. The convention is 
 
 ```kotlin
 // Change both of these:
-namespace = "com.example.poppy"
-applicationId = "com.example.poppy"
+namespace = "dev.sarahelbahloul.poppy"
+applicationId = "dev.sarahelbahloul.poppy"
 
 // To:
 namespace = "com.sarahelbahloul.poppy"
@@ -558,7 +613,7 @@ Open Xcode (you need a Mac for this step):
 1. Open `ios/Runner.xcworkspace` in Xcode.
 2. Click on "Runner" in the project navigator → select the "Runner" target.
 3. Under the "General" tab, find "Bundle Identifier".
-4. Change `com.example.poppy` to `com.sarahelbahloul.poppy`.
+4. Change `dev.sarahelbahloul.poppy` to `com.sarahelbahloul.poppy`.
 5. Xcode will update `project.pbxproj` automatically. Do not edit it by hand.
 
 This also fixes the test target identifiers automatically.
@@ -1033,11 +1088,12 @@ Log into [appstoreconnect.apple.com](https://appstoreconnect.apple.com):
 |---|---|
 | `lib/services/encryption_service.dart` | Fix static PBKDF2 salt + raise iterations to 600k (2.1), recovery salt (2.2), compute() isolate |
 | `lib/services/key_service.dart` | Store and pass salts alongside wrapped keys (2.1–2.2) |
-| `lib/providers/auth_provider.dart` | Pass salts through sign-up and sign-in flows (2.1–2.2) |
+| `lib/providers/auth_provider.dart` | Pass salts through sign-up and sign-in flows (2.1–2.2); pass `captchaToken` on signUp/signInWithPassword/resetPasswordForEmail (2.7) |
 | `lib/main.dart` | Wrap main() in SentryFlutter.init (2.6) |
+| `pubspec.yaml` | Add `sentry_flutter`, `integration_test` (2.6, 7.6), a Turnstile WebView wrapper package (2.7) |
 | `ios/Runner/Info.plist` | Camera/photo permissions (2.3), orientation (2.4), URL scheme (2.5), encryption declaration (8.4) |
-| `lib/screens/settings/settings_screen.dart` | Replace `hello@poppy.app` with real email (3.1) |
-| `lib/screens/settings/legal_screen.dart` | Replace `privacy@poppydiary.app`, update dates (3.1, 3.2) |
+| `lib/screens/settings/settings_screen.dart` | Replace `hello@poppy.app` with `hello@sarahelbahloul.dev` (1.5) |
+| `lib/screens/settings/legal_screen.dart` | Replace `privacy@poppydiary.app` with `privacy@sarahelbahloul.dev`, update dates (1.5, 3.2) |
 | `lib/screens/settings/about_screen.dart` | Update copyright year (3.3) |
 | `test/widget_test.dart` | Replace broken default test with real EncryptionService unit tests (3.4) |
 | `android/app/build.gradle.kts` | Change bundle ID, add proper release signing (4.1, 5.1) |
@@ -1045,8 +1101,17 @@ Log into [appstoreconnect.apple.com](https://appstoreconnect.apple.com):
 | `android/key.properties` | Create with keystore details — **do not commit** (5.1) |
 | `ios/Runner.xcworkspace` | Change bundle ID in Xcode (4.2), set up signing (5.2) |
 | `supabase/migrations/` | Add `password_salt` and `recovery_salt` columns (2.1) |
-| `pubspec.yaml` | Add `sentry_flutter`, `integration_test` (2.6, 7.6) |
 | `integration_test/app_test.dart` | Create integration tests (7.6) |
 | `.github/workflows/ci.yml` | Create CI workflow with analyze, unit tests, integration tests (7.5) |
 | `docs/privacy.md` | Create for GitHub Pages hosted privacy policy (8.3) |
 | `README.md` | Screenshots, technical decisions, security model (7.3, 7.4) |
+
+---
+
+## Changelog (this revision)
+
+- **Phase 1.2:** Reordered to set up named routing rules (`hello@`, `privacy@`) as the primary mechanism; catch-all is now explicitly optional, with a note that it can attract spam once the domain ages.
+- **Phase 1.3–1.4:** Corrected from a previous draft that mismarked Resend as optional. It's required: Supabase's built-in email sender is capped at **2 emails/hour** and is documented as non-production/best-effort, so you'll hit it almost immediately during normal signup/reset testing.
+- **New 1.4a:** Added the missing step to actually connect Resend to Supabase (Project Settings → Authentication → SMTP Settings). Domain verification in Resend alone doesn't change anything until this step is done — this was missing from every prior version of the guide.
+- **Phase 1.7 checklist:** Updated to require Resend verification, confirm custom SMTP is active in Supabase, and added a check for signing up two test accounts back-to-back without a rate-limit error.
+- **New Phase 2.7:** Added API abuse / billing-safety steps — Turnstile CAPTCHA on Supabase Auth, Auth rate-limit tuning, an RLS audit query, storage bucket file-size/MIME-type limits, confirming only the anon key ships client-side, and staying on free tiers (or Spend Cap on) as the actual cost-control mechanism, since both Supabase and Resend free plans restrict usage rather than bill for it.

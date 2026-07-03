@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.poppy"
+    namespace = "dev.sarahelbahloul.poppy"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.poppy"
+        applicationId = "dev.sarahelbahloul.poppy"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
