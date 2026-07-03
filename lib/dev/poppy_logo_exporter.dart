@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'dart:html' as html;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/material.dart';
+import 'package:poppy/core/core.dart';
 import 'package:poppy/core/widgets/poppy_logo.dart';
 
 /// A utility screen used to export the [PoppyLogo] as a high-resolution PNG.
@@ -25,7 +26,7 @@ class _PoppyLogoExporterState extends State<PoppyLogoExporter> {
     as RenderRepaintBoundary;
 
     final ui.Image image = await boundary.toImage(
-      pixelRatio: 2,
+      pixelRatio: 2.2,
     );
 
     final byteData = await image.toByteData(
@@ -59,9 +60,10 @@ class _PoppyLogoExporterState extends State<PoppyLogoExporter> {
               width: 1024,
               height: 1024,
               color: Colors.transparent,
-              padding: const EdgeInsets.all(100),
+              padding: const EdgeInsets.all(0),
               child: const PoppyLogo(
                 size: 1024,
+                color: AppColors.accent,
                 background: Colors.transparent,
               ),
             ),

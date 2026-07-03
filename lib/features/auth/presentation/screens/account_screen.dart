@@ -28,14 +28,11 @@ class _AccountScreenState extends State<AccountScreen> {
   bool _obscureCurrent  = true;
   bool _obscureNew      = true;
   bool _obscureConfirm  = true;
-  bool _newPassFocused  = false;
 
   @override
   void initState() {
     super.initState();
-    _newPassFocus.addListener(() {
-      setState(() => _newPassFocused = _newPassFocus.hasFocus);
-    });
+    _newPassController.addListener(() => setState(() {}));
   }
 
   @override

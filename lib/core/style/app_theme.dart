@@ -6,7 +6,7 @@ import 'package:poppy/core/core.dart';
 // ─────────────────────────────────────────────────────────────
 
 /// Supported application theme identifiers.
-enum PoppyTheme { poppy, iris, lily, marigold, lavender }
+enum PoppyTheme { poppy }
 
 /// Encapsulates the color scheme and Material [ThemeData] generation for the application.
 ///

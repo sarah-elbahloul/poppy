@@ -26,10 +26,10 @@ flutter_launcher_icons:
   # ── iOS ────────────────────────────────────────────────────
   ios: true
   # Background colour baked into every iOS icon size.
-  # Matches AppColors.accentLight (#FDF0F0 — warm cream).
+  # Matches AppColors.accentLight (#FBEAEA — warm cream).
   # The mark sits centred on this, no padding needed since
   # the mark geometry already has internal breathing room.
-  background_color_ios: "#FDF0F0"
+  background_color_ios: "#FBEAEA"
 
   # ── Android ────────────────────────────────────────────────
   android: true
@@ -39,7 +39,7 @@ flutter_launcher_icons:
   # The OS applies its own shape (circle, squircle, etc.)
   # per launcher — we don't enforce a shape.
   adaptive_icon_foreground: "assets/images/app_icon.png"
-  adaptive_icon_background: "#FDF0F0"
+  adaptive_icon_background: "#FBEAEA"
 
   # Legacy icon (Android < 8.0):
   # Falls back to the flat image_path above with the bg baked in.
