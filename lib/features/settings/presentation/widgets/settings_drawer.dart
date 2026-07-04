@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
 import 'package:poppy/features/auth/presentation/providers/auth_provider.dart';
+import 'package:poppy/features/journal/data/models/entry.dart';
 import 'package:poppy/features/journal/presentation/providers/entries_provider.dart';
 import 'package:poppy/features/settings/presentation/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
@@ -40,6 +41,7 @@ class SettingsDrawer extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // ── User Header ──
             Padding(
               padding: const EdgeInsets.all(AppSpacing.lg),
               child: Row(
@@ -81,10 +83,14 @@ class SettingsDrawer extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: AppSpacing.md),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Divider(),
             ),
+            const SizedBox(height: AppSpacing.sm),
+
+            // ── Drawer Body ──
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(
@@ -92,13 +98,10 @@ class SettingsDrawer extends StatelessWidget {
                   horizontal: AppSpacing.md,
                 ),
                 children: [
-                  _NewEntryButton(
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.of(context).pushNamed(AppRoutes.write);
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
+                  // ── Subtle Inline Sync Status ──
+                  const _SyncStatusRow(),
+                  const SizedBox(height: AppSpacing.md),
+
                   const _DrawerSectionHeader(label: 'Quick Access'),
                   _DrawerItem(
                     icon: AppIcons.tag,
@@ -132,6 +135,8 @@ class SettingsDrawer extends StatelessWidget {
                 ],
               ),
             ),
+
+            // ── Footer ──
             Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
               child: Column(
@@ -174,39 +179,57 @@ class SettingsDrawer extends StatelessWidget {
   }
 }
 
-class _NewEntryButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _NewEntryButton({required this.onTap});
+// ─────────────────────────────────────────────────────────────
+//  Subtle Sync Status Row (Non-Card)
+// ─────────────────────────────────────────────────────────────
+
+class _SyncStatusRow extends StatelessWidget {
+  const _SyncStatusRow();
 
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
     final fp = context.watch<ThemeProvider>().currentFontPairData;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: t.accentLight,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: t.accent.withValues(alpha: 0.1)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(AppIcons.add, color: t.accent, size: AppIconSize.sm),
-            const SizedBox(width: AppSpacing.md),
-            Text(
-              'Write new entry',
-              style: AppTextStyles.titleSmallSans(t.accent, fp).copyWith(fontWeight: FontWeight.w600),
+    final entries = context.watch<EntriesProvider>().entries;
+
+    final pendingCount = entries.where((e) =>
+    e.syncStatus == SyncStatus.pendingCreate ||
+        e.syncStatus == SyncStatus.pendingUpdate).length;
+
+    final isSynced = pendingCount == 0;
+
+    // Color shifts based on state, but no background container
+    final Color statusColor = isSynced ? AppColors.success : AppColors.warning;
+    final String statusText = isSynced ? 'All synced' : '$pendingCount pending';
+
+    // Note: Swap AppIcons.error for a sync-specific icon if you have one (e.g., AppIcons.sync)
+    final IconData statusIcon = isSynced ? AppIcons.checkCircle : AppIcons.retry;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+      child: Row(
+        children: [
+          Icon(statusIcon, size: AppIconSize.sm, color: statusColor),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              'Sync Status',
+              style: AppTextStyles.titleSmallSans(t.textPrimary, fp),
             ),
-          ],
-        ),
+          ),
+          Text(
+            statusText,
+            style: AppTextStyles.labelLargeSans(statusColor, fp),
+          ),
+        ],
       ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+//  Shared Drawer Components
+// ─────────────────────────────────────────────────────────────
 
 class _DrawerItem extends StatelessWidget {
   final IconData icon;

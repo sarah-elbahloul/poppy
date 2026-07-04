@@ -140,18 +140,18 @@ class MonthColors {
 
   /// Map of month index (1-12) to its representative [Color].
   static const Map<int, Color> colors = {
-    1: Color(0xFF90A4AE),
-    2: Color(0xFFE57373),
-    3: Color(0xFF81C784),
-    4: Color(0xFF64B5F6),
-    5: Color(0xFFFFD54F),
-    6: Color(0xFFBA68C8),
-    7: Color(0xFFFF8A65),
-    8: Color(0xFFFFB74D),
-    9: Color(0xFFA1887F),
-    10: Color(0xFFFF7043),
-    11: Color(0xFF7986CB),
-    12: Color(0xFF4DB6AC),
+    1: Color(0xFF546E7A),  // Jan — cold, icy (Stone, deepened)
+    2: Color(0xFF8E24AA),  // Feb — late winter / Valentine's (Lavender, deepened)
+    3: Color(0xFF689F38),  // Mar — early spring shoots (Lily, deepened)
+    4: Color(0xFF5C6BC0),  // Apr — April showers (Iris)
+    5: Color(0xFFC94040),  // May — peak poppy/lily bloom (Poppy accent)
+    6: Color(0xFFFFB300),  // Jun — early summer sun (Marigold)
+    7: Color(0xFFF4511E),  // Jul — peak summer heat
+    8: Color(0xFFFF8F00),  // Aug — late-summer golden hour (Marigold, deepened)
+    9: Color(0xFFD84315),  // Sep — harvest / early autumn
+    10: Color(0xFFBF360C), // Oct — classic autumn foliage
+    11: Color(0xFF6D4C41), // Nov — bare branches, earthy (Stone, warmed)
+    12: Color(0xFF3949AB), // Dec — cold winter nights (Iris, deepened)
   };
 
   /// Returns the accent color for the given [month] (1–12), or grey if out

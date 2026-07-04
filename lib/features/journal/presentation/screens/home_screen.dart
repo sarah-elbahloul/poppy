@@ -266,10 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: t.background,
         drawer: const SettingsDrawer(),
         appBar: _isBatchMode ? _batchAppBar(t) : _normalAppBar(t),
-        body: RefreshIndicator(
-          onRefresh: () async => await _entriesProvider.fetchEntries(),
-          child: _body(t, entries),
-        ),
+        body: _body(t, entries),
         floatingActionButton: _isBatchMode
             ? null
             : FloatingActionButton(
@@ -431,13 +428,16 @@ class _HomeScreenState extends State<HomeScreen> {
               thickness: AppStroke.hairline,
               color: t.border),
           Expanded(
-            child: ListView.separated(
-              itemCount: 8,
-              separatorBuilder: (_, __) => Divider(
-                  height: AppStroke.hairline,
-                  thickness: AppStroke.hairline,
-                  color: t.border),
-              itemBuilder: (_, __) => _SkeletonCard(),
+            child: RefreshIndicator(
+              onRefresh: () async => await _entriesProvider.fetchEntries(),
+              child: ListView.separated(
+                itemCount: 8,
+                separatorBuilder: (_, __) => Divider(
+                    height: AppStroke.hairline,
+                    thickness: AppStroke.hairline,
+                    color: t.border),
+                itemBuilder: (_, __) => _SkeletonCard(),
+              ),
             ),
           ),
         ],
@@ -465,12 +465,15 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (_entriesProvider.entries.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          SizedBox(height: MediaQuery.heightOf(context) / 4),
-          _EmptyState(),
-        ],
+      return RefreshIndicator(
+        onRefresh: () async => await _entriesProvider.fetchEntries(),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.heightOf(context) / 4),
+            _EmptyState(),
+          ],
+        ),
       );
     }
 
@@ -646,47 +649,59 @@ class _HomeScreenState extends State<HomeScreen> {
             color: t.border),
         if (displayedEntries.isNotEmpty) ...[
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.only(bottom: 100),
-              itemCount: displayedEntries.length,
-              separatorBuilder: (_, __) => Divider(
-                  height: AppStroke.hairline,
-                  thickness: AppStroke.hairline,
-                  color: t.border),
-              itemBuilder: (context, i) {
-                final entry = displayedEntries[i];
-                final isSelected = _selectedIds.contains(entry.id);
-                return Column(
-                  children: [
-                    Stack(
-                      children: [
-                        if (isSelected)
-                          Positioned.fill(
-                              child: Container(color: t.accentLight)),
-                        EntryCard(
-                          entry: entry,
-                          onTap: () => _onEntryTap(entry),
-                          onLongPress: () => _onEntryLongPress(entry),
-                          isBatchMode: _isBatchMode,
-                          isSelected: isSelected,
-                        ),
-                      ],
-                    ),
-                    if (i == displayedEntries.length - 1) ...[
-                      Divider(
-                          height: AppStroke.hairline,
-                          thickness: AppStroke.hairline,
-                          color: t.border)
-                    ]
-                  ],
-                );
-              },
+            child: RefreshIndicator(
+              onRefresh: () async => await _entriesProvider.fetchEntries(),
+              child: ListView.separated(
+                padding: const EdgeInsets.only(bottom: 100),
+                itemCount: displayedEntries.length,
+                separatorBuilder: (_, __) => Divider(
+                    height: AppStroke.hairline,
+                    thickness: AppStroke.hairline,
+                    color: t.border),
+                itemBuilder: (context, i) {
+                  final entry = displayedEntries[i];
+                  final isSelected = _selectedIds.contains(entry.id);
+                  return Column(
+                    children: [
+                      Stack(
+                        children: [
+                          if (isSelected)
+                            Positioned.fill(child: Container(color: t.accentLight)),
+                          EntryCard(
+                            entry: entry,
+                            onTap: () => _onEntryTap(entry),
+                            onLongPress: () => _onEntryLongPress(entry),
+                            isBatchMode: _isBatchMode,
+                            isSelected: isSelected,
+                          ),
+                        ],
+                      ),
+                      if (i == displayedEntries.length - 1) ...[
+                        Divider(
+                            height: AppStroke.hairline,
+                            thickness: AppStroke.hairline,
+                            color: t.border)
+                      ]
+                    ],
+                  );
+                },
+              ),
             ),
           )
         ] else ...[
           Expanded(
-            child: _EmptySearchState(),
-          ),
+              child: RefreshIndicator(
+            onRefresh: () async => await _entriesProvider.fetchEntries(),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _EmptySearchState(),
+                ),
+              ],
+            ),
+          )),
         ],
       ],
     );
@@ -833,34 +848,75 @@ class _SkeletonFilterItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: AppComponentSize.filterBarHeight,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      padding: EdgeInsets.symmetric(
+        horizontal: isColor ? AppSpacing.sm : AppSpacing.md,
+      ),
       decoration: BoxDecoration(
-          color: t.surface,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: t.border, width: AppStroke.thin)),
+        color: t.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: t.border, width: AppStroke.thin),
+      ),
       child: Row(
         children: [
           Container(
-              width: 18,
-              height: 18,
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              color: t.border,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          SizedBox(width: isColor ? AppSpacing.xs : AppSpacing.sm),
+          if (!isColor) ...[
+            Container(
+              height: 10,
+              width: 80,
               decoration: BoxDecoration(
-                  color: t.border, borderRadius: BorderRadius.circular(4))),
-          const SizedBox(width: AppSpacing.sm),
-          if (!isColor)
+                color: t.border,
+                borderRadius: BorderRadius.circular(AppRadius.xs),
+              ),
+            ),
+            const Spacer(),
             Container(
-                height: 10,
-                width: 80,
-                decoration: BoxDecoration(
-                    color: t.border,
-                    borderRadius: BorderRadius.circular(AppRadius.xs))),
-          if (isColor) Expanded(child: Container()),
-          if (!isColor) const Spacer(),
-          if (!isColor)
-            Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                    color: t.border, borderRadius: BorderRadius.circular(3))),
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: t.border,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ],
+          if (isColor)
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                child: Row(
+                  children: List.generate(4, (i) {
+                    final isLast = i == 3;
+                    return Row(
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(
+                            left: AppSpacing.xs,
+                            right: AppSpacing.xs,
+                            top: AppSpacing.xxs,
+                            bottom: AppSpacing.xxs,
+                          ),
+                          width: AppComponentSize.colorDotPicker,
+                          height: AppComponentSize.colorDotPicker,
+                          decoration: BoxDecoration(
+                            color: t.border,
+                            borderRadius: BorderRadius.circular(AppRadius.full),
+                          ),
+                        ),
+                        if (isLast) const SizedBox(width: AppSpacing.sm),
+                      ],
+                    );
+                  }),
+                ),
+              ),
+            ),
         ],
       ),
     );
