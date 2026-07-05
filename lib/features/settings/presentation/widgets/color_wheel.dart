@@ -176,7 +176,7 @@ class _ColorWheelState extends State<ColorWheel> {
                 width: innerR * 2,
                 height: innerR * 2,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.08),
@@ -186,7 +186,7 @@ class _ColorWheelState extends State<ColorWheel> {
                   ],
                 ),
                 child: ClipOval(
-                  clipBehavior: Clip.antiAlias,
+                  clipBehavior: Clip.antiAliasWithSaveLayer,
                   child: CustomPaint(
                     painter: _SatLightPainter(hue: _hue),
                   ),
@@ -241,7 +241,7 @@ class _Indicator extends StatelessWidget {
         width: AppSpacing.xl,
         height: AppSpacing.xl,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.full),
+          shape: BoxShape.circle,
           color: color,
           border: Border.all(color: Colors.white, width: 3.5),
           boxShadow: [
@@ -281,7 +281,8 @@ class _HueRingPainter extends CustomPainter {
       ).createShader(Rect.fromCircle(center: center, radius: radius))
       ..style = PaintingStyle.stroke
       ..strokeWidth = ringWidth
-      ..strokeCap = StrokeCap.butt;
+      ..strokeCap = StrokeCap.butt
+      ..isAntiAlias = true;
 
     canvas.drawCircle(center, radius - ringWidth / 2, paint);
   }

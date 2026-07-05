@@ -212,7 +212,7 @@ class _WordCountWithStatus extends StatelessWidget {
                 height: 6,
                 decoration: BoxDecoration(
                   color: dotColor,
-                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  shape: BoxShape.circle,
                 ),
               ),
             ),
@@ -242,7 +242,7 @@ class _BatchCheckbox extends StatelessWidget {
       width: AppIconSize.sm,
       height: AppIconSize.sm,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(50),
+        shape: BoxShape.circle,
         color: isSelected ? accent : Colors.transparent,
         border: Border.all(
           color: isSelected ? accent : border,

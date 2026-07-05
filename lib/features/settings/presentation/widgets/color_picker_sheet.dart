@@ -154,7 +154,7 @@ class _ColorPickerSheetState extends State<ColorPickerSheet> {
                   height: AppComponentSize.sheetHandleHeight,
                   decoration: BoxDecoration(
                     color: t.border,
-                    borderRadius: BorderRadius.circular(AppRadius.full),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                   ),
                 ),
               ),

@@ -248,7 +248,7 @@ class SettingsScreen extends StatelessWidget {
         onTap: () {
           Clipboard.setData(const ClipboardData(text: email));
           Navigator.pop(context);
-          PoppySnackbar.info(context, 'Email address copied.');
+          PoppySnackbar.success(context, 'Email address copied.');
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),

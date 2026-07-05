@@ -212,7 +212,7 @@ class _OpenSourceContent extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: t.accentMuted,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(AppSpacing.xxs),
                 ),
               ),
               const SizedBox(width: AppSpacing.md),

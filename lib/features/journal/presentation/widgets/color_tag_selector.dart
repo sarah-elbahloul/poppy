@@ -91,7 +91,7 @@ class ColorTagSelector extends StatelessWidget {
             },
           ),
           if (colorData == EntryTags.all.last)...[
-            SizedBox(width: AppSpacing.sm)
+            const SizedBox(width: AppSpacing.sm)
           ]
         ],
       );
@@ -146,7 +146,6 @@ class _ColorTagOption extends StatelessWidget {
   });
 
   @override
-  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
@@ -180,6 +179,7 @@ class _ColorTagOption extends StatelessWidget {
             width: isSelected? AppStroke.thin : 0,
           ),
         ),
+        clipBehavior: Clip.antiAlias,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -188,7 +188,7 @@ class _ColorTagOption extends StatelessWidget {
               height: AppComponentSize.colorDotPicker,
               decoration: BoxDecoration(
                 color: colorData.color,
-                borderRadius: BorderRadius.circular(AppRadius.full),
+                shape: BoxShape.circle,
               ),
             ),
             if (isSelected && showLabelOnSelect) ...[
@@ -204,5 +204,4 @@ class _ColorTagOption extends StatelessWidget {
       ),
     );
   }
-
 }

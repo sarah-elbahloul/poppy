@@ -268,7 +268,7 @@ class PoppyDialog extends StatelessWidget {
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
                 color: confirmColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppRadius.full),
+                shape: BoxShape.circle,
               ),
               child: Icon(titleIcon, color: confirmColor, size: AppIconSize.md),
             ),

@@ -869,7 +869,7 @@ class _PhotoPendingThumb extends StatelessWidget {
               height: AppSpacing.sm,
               decoration: BoxDecoration(
                 color: AppColors.error,
-                borderRadius: BorderRadius.circular(AppRadius.full),
+                shape: BoxShape.circle,
               ),
             ),
           ),
@@ -959,7 +959,7 @@ class _DeletePhotoButton extends StatelessWidget {
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             color: t.accentMuted.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(AppRadius.full),
+            shape: BoxShape.circle,
           ),
           child: Icon(
             AppIcons.close,
