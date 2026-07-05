@@ -327,6 +327,40 @@ class LocalDbService {
     await _database.delete('photos', where: '${DBColumn.id} = ?', whereArgs: [id]);
   }
 
+  /// Reconciles local photos for an entry with data from the server.
+  Future<void> refreshPhotosForEntry(List<Map<String, dynamic>> serverRows) async {
+    final batch = _database.batch();
+    for (final row in serverRows) {
+      final id = row[DBColumn.id] as String;
+      final local = await getPhotoById(id);
+
+      if (local != null) {
+        final status = local[DBColumn.syncStatus] as String;
+        // Never overwrite local pending changes.
+        if (status != SyncStatus.synced) {
+          continue;
+        }
+      }
+
+      batch.insert(
+        'photos',
+        {
+          DBColumn.id: id,
+          DBColumn.entryId: row[DBColumn.entryId],
+          DBColumn.userId: row[DBColumn.userId],
+          DBColumn.storagePath: row[DBColumn.storagePath],
+          DBColumn.localPath: local?[DBColumn.localPath],
+          DBColumn.orderIndex: row[DBColumn.orderIndex] ?? 0,
+          DBColumn.uploaded: 1,
+          DBColumn.createdAt: row[DBColumn.createdAt],
+          DBColumn.syncStatus: SyncStatus.synced,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await batch.commit(noResult: true);
+  }
+
   /// Reconciles local entries with data fetched from the server.
   Future<void> refreshFromServer(
       String userId,

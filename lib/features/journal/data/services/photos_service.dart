@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:poppy/core/core.dart';
@@ -90,11 +90,31 @@ class PhotosService {
 
   /// Fetches all photos associated with a specific [entryId].
   ///
-  /// For uploaded photos, it generates signed URLs for remote access.
+  /// Reconciles with the server to support cross-device scenarios where photos
+  /// might have been uploaded from another device. For uploaded photos,
+  /// generates signed URLs for remote access.
   Future<List<Photo>> fetchForEntry(String entryId) async {
+    // 1. Reconcile with server to handle photos uploaded from other devices.
+    try {
+      final response = await SupabaseConfig.client
+          .from(DBTable.photos)
+          .select()
+          .eq(DBColumn.entryId, entryId);
+
+      if (response != null) {
+        await _local.refreshPhotosForEntry(
+          List<Map<String, dynamic>>.from(response as List),
+        );
+      }
+    } catch (e) {
+      debugPrint('PhotosService: Failed to refresh photos from server: $e');
+    }
+
+    // 2. Fetch from local database (now updated with any server changes).
     final rows = await _local.getPhotosForEntry(entryId);
     final photos = rows.map((m) => Photo.fromMap(m)).toList();
 
+    // 3. Generate signed URLs for remote access.
     return await Future.wait(
       photos.map((photo) async {
         if (photo.uploaded && photo.storagePath != null) {
