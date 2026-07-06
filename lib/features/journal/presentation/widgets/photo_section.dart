@@ -255,7 +255,7 @@ class _PhotoSavedThumb extends StatelessWidget {
               color: t.accentLight,
               shape: RoundedRectangleBorder(
                 borderRadius: const BorderRadius.all(Radius.circular(AppRadius.sm)),
-                side: BorderSide(color: t.accent, width: AppStroke.thin),
+                side: BorderSide(color: t.accentMuted.withValues(alpha: 0.9), width: AppStroke.thin),
               ),
               clipBehavior: Clip.antiAlias,
               child: InkWell(

@@ -15,6 +15,7 @@ import 'package:poppy/features/settings/presentation/providers/theme_provider.da
 import 'package:provider/provider.dart';
 import 'package:poppy/features/journal/presentation/widgets/color_tag_selector.dart';
 import 'package:poppy/features/journal/presentation/widgets/photo_section.dart';
+import 'package:poppy/features/journal/presentation/utils/smart_list_formatter.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Write Screen
@@ -659,6 +660,7 @@ class _WriteScreenState extends State<WriteScreen> {
                               textAlignVertical: TextAlignVertical.top,
                               textAlign: TextAlign.start,
                               inputFormatters: [
+                                SmartListFormatter(),
                                 WordLimitFormatter(
                                   kWordLimit,
                                   onBlocked: _maybeShowLimitSnackBar,

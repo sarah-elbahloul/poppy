@@ -567,6 +567,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.poppyTheme;
     final Widget iconWidget = isLoading
         ? const SizedBox(
             width: 16,
@@ -583,7 +584,7 @@ class _ActionButton extends StatelessWidget {
           );
 
     return Material(
-      color: Colors.white12,
+      color: t.background.withValues(alpha: 0.3),
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
