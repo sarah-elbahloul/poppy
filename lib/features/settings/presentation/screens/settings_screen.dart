@@ -88,14 +88,14 @@ class SettingsScreen extends StatelessWidget {
           const _SectionLabel('Data'),
           _Card(children: [
             _SettingsRow(
-              icon: AppIcons.export_,
+              icon: AppIcons.export,
               label: 'Export diary',
               value: 'Download a backup',
               onTap: () => _onExport(context),
             ),
             _RowLine(),
             _SettingsRow(
-              icon: AppIcons.import_,
+              icon: AppIcons.import,
               label: 'Import diary',
               value: 'Restore from a file',
               onTap: () => _onImport(context),
@@ -301,7 +301,7 @@ class SettingsScreen extends StatelessWidget {
         message: 'This permanently deletes your Poppy account and every diary entry you have written. It cannot be undone.',
         body: entries.isNotEmpty
             ? DialogInfoBanner(
-          icon: AppIcons.export_,
+          icon: AppIcons.export,
           text: 'You have ${entries.length} ${entries.length == 1 ? 'entry' : 'entries'}. Export a backup before you go.',
         )
             : null,
@@ -476,7 +476,7 @@ class _ExportChoiceDialogState extends State<_ExportChoiceDialog> {
           ),
           const SizedBox(height: AppSpacing.sm),
           _ExportOptionTile(
-            icon: AppIcons.export_,
+            icon: AppIcons.export,
             title: 'Plain text',
             desc: 'Readable by anyone who opens the file.',
             color: AppColors.error,
@@ -569,7 +569,7 @@ class _ImportConfirmDialogState extends State<_ImportConfirmDialog> {
           children: [
             Row(
               children: [
-                Icon(AppIcons.import_, size: AppIconSize.xs, color: t.accent),
+                Icon(AppIcons.import, size: AppIconSize.xs, color: t.accent),
                 const SizedBox(width: AppSpacing.sm),
                 Text('${preview.entryCount} $entryWord found',
                     style: AppTextStyles.titleSmallSans(t.textPrimary, fp)),

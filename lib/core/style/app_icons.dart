@@ -107,9 +107,9 @@ class AppIcons {
   /// Privacy and security settings icon.
   static const IconData security      = Iconsax.lock_1;
   /// Data export icon.
-  static const IconData export_       = Iconsax.export;
+  static const IconData export       = Iconsax.export;
   /// Data import icon.
-  static const IconData import_       = Iconsax.import;
+  static const IconData import       = Iconsax.import;
   /// Information or about icon.
   static const IconData info          = Iconsax.info_circle;
   /// Warning or alert icon.
