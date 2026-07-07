@@ -111,9 +111,13 @@ class _ColorWheelState extends State<ColorWheel> {
       final px = clampedDist * math.cos(angle);
       final py = clampedDist * math.sin(angle);
 
+      final l = 1.0 - (py / innerR + 1) / 2;
+      final maxX = math.sqrt(math.max(0, innerR * innerR - py * py));
+      final s = (maxX == 0) ? 0.5 : (px / maxX + 1) / 2;
+
       setState(() {
-        _saturation = ((px / innerR) + 1) / 2;
-        _lightness = 1.0 - ((py / innerR) + 1) / 2;
+        _saturation = s.clamp(0.0, 1.0);
+        _lightness = l.clamp(0.0, 1.0);
       });
     }
 
@@ -135,17 +139,11 @@ class _ColorWheelState extends State<ColorWheel> {
       center + hueRadius * math.sin(hueRad),
     );
 
-    // Calculate raw position in the square HSL space
-    var slDx = (_saturation * 2 - 1) * innerR;
-    var slDy = ((1 - _lightness) * 2 - 1) * innerR;
-
-    // Clamp to the circular boundary
-    final slDist = math.sqrt(slDx * slDx + slDy * slDy);
-    if (slDist > innerR) {
-      final scale = innerR / slDist;
-      slDx *= scale;
-      slDy *= scale;
-    }
+    // Calculate position in the circular HSL space.
+    // Lightness is vertical, Saturation is horizontal (stretched to fill the circle width).
+    final slDy = (1.0 - 2.0 * _lightness) * innerR;
+    final maxX = math.sqrt(math.max(0, innerR * innerR - slDy * slDy));
+    final slDx = (2.0 * _saturation - 1.0) * maxX;
 
     final satLightDotPos = Offset(center + slDx, center + slDy);
 
@@ -303,13 +301,31 @@ class _SatLightPainter extends CustomPainter {
     final List<Offset> positions = [];
     final List<Color> colors = [];
 
-    // Build the grid of vertices for the gradient.
+    final centerX = size.width / 2;
+    final centerY = size.height / 2;
+    final radius = size.width / 2;
+
+    // Build the grid of vertices for the gradient, mapping them to the circle.
     for (int j = 0; j <= divisions; j++) {
       final double l = 1.0 - j / divisions;
       final double y = size.height * j / divisions;
+      final double py = y - centerY;
+      
+      // Calculate the width of the circle at this vertical position.
+      final double maxX = math.sqrt(math.max(0, radius * radius - py * py));
+
       for (int i = 0; i <= divisions; i++) {
-        final double s = i / divisions;
         final double x = size.width * i / divisions;
+        final double px = x - centerX;
+
+        // Map horizontal position to saturation, stretching it to fit maxX.
+        double s;
+        if (maxX == 0) {
+          s = 0.5; // At the poles, saturation is irrelevant.
+        } else {
+          s = (px / maxX + 1) / 2;
+        }
+        s = s.clamp(0.0, 1.0);
 
         positions.add(Offset(x, y));
         colors.add(HSLColor.fromAHSL(1.0, hue, s, l).toColor());

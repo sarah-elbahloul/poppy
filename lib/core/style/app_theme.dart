@@ -159,6 +159,85 @@ class PoppyThemeData {
           height: 1.5,
         ),
       ),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: surface,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: BorderSide(color: border, width: AppStroke.hairline),
+        ),
+        headerBackgroundColor: accent,
+        headerForegroundColor: AppColors.white,
+        headerHeadlineStyle: fontPair.titleFont.bold(
+          AppColors.white,
+          size: 26,
+          height: 1.1,
+        ),
+        headerHelpStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
+        ),
+        weekdayStyle: TextStyle(
+          color: textTertiary,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        dayStyle: const TextStyle(fontSize: 14),
+        dayForegroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return AppColors.white;
+          if (states.contains(WidgetState.disabled)) {
+            return textTertiary.withValues(alpha: 0.4);
+          }
+          return textPrimary;
+        }),
+        dayBackgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return accent;
+          return Colors.transparent;
+        }),
+        dayOverlayColor: WidgetStateProperty.all(accent.withValues(alpha: 0.08)),
+        dayShape: const WidgetStatePropertyAll(CircleBorder()),
+        todayForegroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return AppColors.white;
+          return accent;
+        }),
+        todayBackgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return accent;
+          return Colors.transparent;
+        }),
+        todayBorder: BorderSide(color: accent, width: 1.2),
+        yearStyle: const TextStyle(fontSize: 14),
+        yearForegroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return AppColors.white;
+          return textPrimary;
+        }),
+        yearBackgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return accent;
+          return Colors.transparent;
+        }),
+        yearOverlayColor: WidgetStateProperty.all(accent.withValues(alpha: 0.08)),
+        yearShape: const WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(AppRadius.sm))),
+        ),
+        dividerColor: border,
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: background,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            borderSide: BorderSide(color: border, width: AppStroke.hairline),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            borderSide: BorderSide(color: accent, width: AppStroke.thin),
+          ),
+        ),
+        cancelButtonStyle: TextButton.styleFrom(foregroundColor: textSecondary),
+        confirmButtonStyle: TextButton.styleFrom(foregroundColor: accent),
+        rangePickerHeaderBackgroundColor: accent,
+        rangePickerHeaderForegroundColor: AppColors.white,
+      ),
       extensions: [
         PoppyThemeExtension(
           accent: accent,

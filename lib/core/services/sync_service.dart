@@ -70,12 +70,13 @@ class SyncService {
     _isSyncing = true;
 
     try {
-      final justSyncedEntryIds = await _processQueue(userId);
+      // 1. Pull changes from server first to reconcile state.
+      // This ensures that if another device deleted an entry while this one was offline, 
+      // we remove it locally before trying to push any pending local edits for it.
+      await _refreshFromServer(userId);
 
-      await _refreshFromServer(
-        userId,
-        excludeIds: justSyncedEntryIds,
-      );
+      // 2. Push local changes from the queue.
+      await _processQueue(userId);
 
       onSyncComplete?.call();
     } catch (e) {
@@ -138,7 +139,25 @@ class SyncService {
       DBColumn.updatedAt: row[DBColumn.updatedAt],
     };
 
-    await _client.from(DBTable.entries).upsert(payload);
+    if (op == SyncOp.update) {
+      // Use update instead of upsert for edits. If the record was deleted from the 
+      // server by another device, update will affect 0 rows, and we can clean up locally.
+      final response = await _client
+          .from(DBTable.entries)
+          .update(payload)
+          .eq(DBColumn.id, id)
+          .select(DBColumn.id);
+      
+      if ((response as List).isEmpty) {
+        // Entry was likely deleted from server elsewhere.
+        await _local.hardDeleteEntry(id);
+        return;
+      }
+    } else {
+      // For creation, upsert is appropriate.
+      await _client.from(DBTable.entries).upsert(payload);
+    }
+    
     await _local.markEntrySynced(id);
   }
 

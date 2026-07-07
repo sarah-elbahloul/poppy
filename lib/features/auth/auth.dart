@@ -10,3 +10,4 @@ export 'presentation/screens/register_screen.dart';
 export 'presentation/screens/set_new_password_screen.dart';
 export 'presentation/screens/lock_screen.dart';
 export 'presentation/screens/account_screen.dart';
+export 'presentation/screens/security_screen.dart';

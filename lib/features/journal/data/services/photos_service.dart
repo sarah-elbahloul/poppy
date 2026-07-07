@@ -101,11 +101,11 @@ class PhotosService {
           .select()
           .eq(DBColumn.entryId, entryId);
 
-      if (response != null) {
-        await _local.refreshPhotosForEntry(
-          List<Map<String, dynamic>>.from(response as List),
-        );
-      }
+      // response is usually a List<Map<String, dynamic>>
+      await _local.refreshPhotosForEntry(
+        entryId,
+        List<Map<String, dynamic>>.from(response as List),
+      );
     } catch (e) {
       debugPrint('PhotosService: Failed to refresh photos from server: $e');
     }

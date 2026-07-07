@@ -15,7 +15,8 @@ import 'package:poppy/features/settings/presentation/providers/theme_provider.da
 import 'package:provider/provider.dart';
 import 'package:poppy/features/journal/presentation/widgets/color_tag_selector.dart';
 import 'package:poppy/features/journal/presentation/widgets/photo_section.dart';
-import 'package:poppy/features/journal/presentation/utils/smart_list_formatter.dart';
+import 'package:poppy/features/journal/presentation/utils/markdown_list_formatter.dart';
+import 'package:poppy/features/journal/presentation/utils/markdown_editing_controller.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Write Screen
@@ -34,7 +35,8 @@ class WriteScreen extends StatefulWidget {
 
 class _WriteScreenState extends State<WriteScreen> {
   final _titleController = TextEditingController();
-  final _contentController = TextEditingController();
+  final _contentController = MarkdownEditingController();
+  final _contentFocusNode = FocusNode();
   final _photosService = PhotosService();
   final _picker = ImagePicker();
 
@@ -93,6 +95,7 @@ class _WriteScreenState extends State<WriteScreen> {
   void dispose() {
     _titleController.dispose();
     _contentController.dispose();
+    _contentFocusNode.dispose();
     super.dispose();
   }
 
@@ -210,25 +213,11 @@ class _WriteScreenState extends State<WriteScreen> {
   }
 
   Future<void> _pickDate() async {
-    final t = context.poppyTheme;
     final picked = await showDatePicker(
       context: context,
       initialDate: _entryDate,
       firstDate: DateTime(1900),
       lastDate: DateTime(2100),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: ColorScheme.light(
-            primary: t.accent,
-            onPrimary: t.surface,
-            onSurface: t.textPrimary,
-          ),
-          textButtonTheme: TextButtonThemeData(
-            style: TextButton.styleFrom(foregroundColor: t.accent),
-          ),
-        ),
-        child: child!,
-      ),
     );
     if (picked != null) {
       setState(() => _entryDate = picked);
@@ -267,7 +256,7 @@ class _WriteScreenState extends State<WriteScreen> {
 
       final int remaining = 10 - _totalPhotos;
       final int countToTake =
-          pickedFiles.length > remaining ? remaining : pickedFiles.length;
+      pickedFiles.length > remaining ? remaining : pickedFiles.length;
       final List<XFile> toProcess = pickedFiles.take(countToTake).toList();
 
       final List<PendingPhoto> newPhotos = [];
@@ -324,7 +313,7 @@ class _WriteScreenState extends State<WriteScreen> {
             ListTile(
               leading: Icon(AppIcons.camera, color: t.accent),
               title:
-                  Text('Take a photo', style: TextStyle(color: t.textPrimary)),
+              Text('Take a photo', style: TextStyle(color: t.textPrimary)),
               onTap: () => Navigator.pop(context, 'camera'),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -366,7 +355,7 @@ class _WriteScreenState extends State<WriteScreen> {
     if (mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil(
         AppRoutes.home,
-        (route) => false,
+            (route) => false,
       );
     }
   }
@@ -386,10 +375,90 @@ class _WriteScreenState extends State<WriteScreen> {
     );
   }
 
+  /// Lets tapping a checkbox glyph toggle it, instead of requiring the
+  /// person to retype `[x]`. [TextField.onTap] fires after the framework
+  /// has already moved the caret to the tapped character, so by the time
+  /// this runs `_contentController.selection` already tells us exactly
+  /// where on the line the tap landed.
+  void _handleChecklistTap() {
+    final selection = _contentController.selection;
+    if (!selection.isValid || !selection.isCollapsed) return;
+
+    final text = _contentController.text;
+    final offset = selection.baseOffset;
+    final lineStart =
+    offset <= 0 ? 0 : (text.lastIndexOf('\n', offset - 1) + 1);
+    final nlIdx = text.indexOf('\n', lineStart);
+    final lineEnd = nlIdx == -1 ? text.length : nlIdx;
+    final line = text.substring(lineStart, lineEnd);
+
+    final match = MarkdownListFormatter.lineMarkerRegex.firstMatch(line);
+    if (match == null) return;
+
+    final marker = match.group(2)!;
+    final isCheckbox = marker == MarkdownListFormatter.checkboxEmptyMarker ||
+        marker == MarkdownListFormatter.checkboxDoneMarker;
+    if (!isCheckbox) return;
+
+    // Treat the whole indent + glyph + trailing space as the tap target —
+    // the checkbox is the first thing on the line anyway, so being a little
+    // generous about where exactly the tap landed just makes it easier to
+    // hit on a small screen.
+    final indentLen = match.group(1)!.length;
+    final glyphOffset = lineStart + indentLen;
+    final tapZoneEnd = glyphOffset + marker.length;
+    if (offset < lineStart || offset > tapZoneEnd) return;
+
+    final isChecked = marker == MarkdownListFormatter.checkboxDoneMarker;
+    final newMarker = isChecked
+        ? MarkdownListFormatter.checkboxEmptyMarker
+        : MarkdownListFormatter.checkboxDoneMarker;
+
+    final newText = text.replaceRange(
+      glyphOffset,
+      glyphOffset + marker.length,
+      newMarker,
+    );
+    _contentController.value = _contentController.value.copyWith(
+      text: newText,
+      selection: TextSelection.collapsed(offset: offset),
+    );
+  }
+
+  /// Intercepts Tab/Shift+Tab on the content field to nest/un-nest the
+  /// current list item instead of letting Tab move focus to the next
+  /// widget (its default behavior).
+  KeyEventResult _handleContentKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (event.logicalKey != LogicalKeyboardKey.tab) {
+      return KeyEventResult.ignored;
+    }
+
+    final outdent = HardwareKeyboard.instance.isShiftPressed;
+    final result = MarkdownListFormatter.applyIndentShift(
+      _contentController.text,
+      _contentController.selection,
+      outdent: outdent,
+    );
+    if (result == null) return KeyEventResult.ignored;
+
+    _contentController.value = result;
+    return KeyEventResult.handled;
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
     final fp = context.watch<ThemeProvider>().currentFontPairData;
+
+    _contentController.updateStyleContext(
+      baseStyle: AppTextStyles.bodyLarge(t.textPrimary, fp),
+      fontPair: fp,
+      accentColor: t.accent,
+      mutedColor: t.textTertiary,
+    );
 
     return PopScope(
       canPop: false,
@@ -427,12 +496,12 @@ class _WriteScreenState extends State<WriteScreen> {
             },
             icon: _isSaving
                 ? SizedBox(
-                    height: AppIconSize.sm,
-                    width: AppIconSize.sm,
-                    child: CircularProgressIndicator(
-                        color: t.surface, strokeWidth: AppStroke.thin))
+                height: AppIconSize.sm,
+                width: AppIconSize.sm,
+                child: CircularProgressIndicator(
+                    color: t.surface, strokeWidth: AppStroke.thin))
                 : Icon(AppIcons.back,
-                    color: t.background, size: AppIconSize.sm),
+                color: t.background, size: AppIconSize.sm),
           ),
           title: Row(
             mainAxisSize: MainAxisSize.max,
@@ -445,7 +514,7 @@ class _WriteScreenState extends State<WriteScreen> {
                   height: AppComponentSize.inputHeight,
                   width: AppComponentSize.inputHeight,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                   decoration: BoxDecoration(
                     color: t.surface,
                     borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -591,8 +660,8 @@ class _WriteScreenState extends State<WriteScreen> {
                                     final color = over
                                         ? AppColors.error
                                         : near
-                                            ? AppColors.warning
-                                            : t.textTertiary;
+                                        ? AppColors.warning
+                                        : t.textTertiary;
 
                                     return Row(
                                       children: [
@@ -600,8 +669,8 @@ class _WriteScreenState extends State<WriteScreen> {
                                           child: Text(
                                             '$count / $kWordLimit words',
                                             style:
-                                                AppTextStyles.labelLargeSerif(
-                                                    color, fp),
+                                            AppTextStyles.labelLargeSerif(
+                                                color, fp),
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
@@ -643,29 +712,34 @@ class _WriteScreenState extends State<WriteScreen> {
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.sm,
                             ),
-                            child: BidiTextField(
-                              controller: _contentController,
-                              autofocus: _isEditing ? false : true,
-                              style: AppTextStyles.bodyLarge(t.textPrimary, fp),
-                              decoration: InputDecoration(
-                                hintText: 'Write anything…',
-                                hintStyle:
-                                    AppTextStyles.bodyLarge(t.textTertiary, fp),
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                              keyboardType: TextInputType.multiline,
-                              maxLines: null,
-                              expands: true,
-                              textAlignVertical: TextAlignVertical.top,
-                              textAlign: TextAlign.start,
-                              inputFormatters: [
-                                SmartListFormatter(),
-                                WordLimitFormatter(
-                                  kWordLimit,
-                                  onBlocked: _maybeShowLimitSnackBar,
+                            child: Focus(
+                              onKeyEvent: _handleContentKeyEvent,
+                              child: BidiTextField(
+                                controller: _contentController,
+                                focusNode: _contentFocusNode,
+                                autofocus: _isEditing ? false : true,
+                                style: AppTextStyles.bodyLarge(t.textPrimary, fp),
+                                decoration: InputDecoration(
+                                  hintText: 'Write anything…',
+                                  hintStyle: AppTextStyles.bodyLarge(
+                                      t.textTertiary, fp),
+                                  border: InputBorder.none,
+                                  contentPadding: EdgeInsets.zero,
                                 ),
-                              ],
+                                keyboardType: TextInputType.multiline,
+                                maxLines: null,
+                                expands: true,
+                                textAlignVertical: TextAlignVertical.top,
+                                textAlign: TextAlign.start,
+                                onTap: _handleChecklistTap,
+                                inputFormatters: [
+                                  MarkdownListFormatter(),
+                                  WordLimitFormatter(
+                                    kWordLimit,
+                                    onBlocked: _maybeShowLimitSnackBar,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -675,7 +749,7 @@ class _WriteScreenState extends State<WriteScreen> {
                           isExpanded: _photosExpanded,
                           totalCount: _totalPhotos,
                           onToggle: () => setState(
-                              () => _photosExpanded = !_photosExpanded),
+                                  () => _photosExpanded = !_photosExpanded),
                           onAdd: _onAddPhoto,
                           onDeleteSaved: _onDeleteSavedPhoto,
                           onDeletePending: _onDeletePendingPhoto,
@@ -698,15 +772,15 @@ class WordLimitFormatter extends TextInputFormatter {
   final VoidCallback? onBlocked;
 
   WordLimitFormatter(
-    this.maxWords, {
-    this.onBlocked,
-  });
+      this.maxWords, {
+        this.onBlocked,
+      });
 
   @override
   TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
+      TextEditingValue oldValue,
+      TextEditingValue newValue,
+      ) {
     final newCount = Entry.countWords(newValue.text);
     final oldCount = Entry.countWords(oldValue.text);
 

@@ -33,6 +33,7 @@ class _AccountScreenState extends State<AccountScreen> {
   void initState() {
     super.initState();
     _newPassController.addListener(() => setState(() {}));
+    context.read<AuthProvider>().refreshUser();
   }
 
   @override

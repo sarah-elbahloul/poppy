@@ -328,8 +328,28 @@ class LocalDbService {
   }
 
   /// Reconciles local photos for an entry with data from the server.
-  Future<void> refreshPhotosForEntry(List<Map<String, dynamic>> serverRows) async {
+  Future<void> refreshPhotosForEntry(String entryId, List<Map<String, dynamic>> serverRows) async {
     final batch = _database.batch();
+
+    // 1. Handle Deletions: If a photo is missing from server but exists locally 
+    // for this entry (and wasn't just created), remove it.
+    final serverIds = serverRows.map((r) => r[DBColumn.id] as String).toSet();
+    final localPhotos = await _database.query(
+      'photos',
+      columns: [DBColumn.id, DBColumn.syncStatus],
+      where: '${DBColumn.entryId} = ? AND ${DBColumn.syncStatus} != ?',
+      whereArgs: [entryId, SyncStatus.pendingCreate],
+    );
+
+    for (final local in localPhotos) {
+      final id = local[DBColumn.id] as String;
+      if (!serverIds.contains(id)) {
+        batch.delete('photos', where: '${DBColumn.id} = ?', whereArgs: [id]);
+        batch.delete('sync_queue', where: 'entity_id = ? AND entity_type = ?', whereArgs: [id, 'photo']);
+      }
+    }
+
+    // 2. Handle Updates/Inserts
     for (final row in serverRows) {
       final id = row[DBColumn.id] as String;
       final local = await getPhotoById(id);
@@ -369,6 +389,34 @@ class LocalDbService {
       }) async {
     final batch = _database.batch();
 
+    // 1. Handle Deletions: If an entry is missing from the server but exists
+    // locally as 'synced' or 'pendingUpdate', it means it was deleted
+    // elsewhere. We should remove it locally to avoid "reappearing" bugs.
+    final serverIds = serverRows.map((r) => r[DBColumn.id] as String).toSet();
+    final localEntries = await _database.query(
+      'entries',
+      columns: [DBColumn.id, DBColumn.syncStatus],
+      where: '${DBColumn.userId} = ? AND ${DBColumn.syncStatus} != ?',
+      whereArgs: [userId, SyncStatus.pendingCreate],
+    );
+
+    for (final local in localEntries) {
+      final id = local[DBColumn.id] as String;
+      if (!serverIds.contains(id)) {
+        batch.delete('entries', where: '${DBColumn.id} = ?', whereArgs: [id]);
+        batch.delete('sync_queue', where: 'entity_id = ? AND entity_type = ?', whereArgs: [id, 'entry']);
+
+        // Associated photos should also be cleaned up
+        batch.delete('photos', where: '${DBColumn.entryId} = ?', whereArgs: [id]);
+        batch.delete(
+          'sync_queue',
+          where: 'entity_type = ? AND entity_id IN (SELECT ${DBColumn.id} FROM photos WHERE ${DBColumn.entryId} = ?)',
+          whereArgs: ['photo', id],
+        );
+      }
+    }
+
+    // 2. Handle Updates/Inserts
     for (final row in serverRows) {
       final id = row[DBColumn.id] as String;
 

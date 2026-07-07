@@ -23,7 +23,7 @@ enum AuthStatus {
   restoringKey,
 }
 
-class AuthProvider extends ChangeNotifier {
+class AuthProvider extends ChangeNotifier with WidgetsBindingObserver {
   final _storage = const FlutterSecureStorage();
   final _enc = EncryptionService.instance;
   final _keyService = KeyService();
@@ -59,6 +59,58 @@ class AuthProvider extends ChangeNotifier {
 
   AuthProvider() {
     _init();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Supabase's `onAuthStateChange` stream only fires for auth actions this
+  /// client actually performs (sign-in, sign-out, a call to `updateUser`,
+  /// opening a deep link, ...). It does *not* notice when an email change
+  /// is confirmed somewhere outside this running session — e.g. the person
+  /// taps the confirmation link on their phone's mail app, which opens a
+  /// browser (or a second device entirely) rather than this app instance.
+  /// So the client just sits there with the old, cached email until
+  /// something explicitly asks Supabase "what's my user record right now?".
+  ///
+  /// We ask that question in two places: whenever the app comes back to
+  /// the foreground ([didChangeAppLifecycleState]), and whenever a screen
+  /// that displays the email is opened (Account/Settings call this from
+  /// `initState`). Between those two triggers, the UI should never be far
+  /// behind reality.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && isAuthenticated) {
+      refreshUser();
+    }
+  }
+
+  /// Re-fetches the current user from Supabase (a real network call, not
+  /// just the locally cached session) and updates [user]/[profile] if
+  /// anything changed. Safe to call opportunistically — errors (e.g. no
+  /// connectivity) are swallowed since this is a background refresh, not a
+  /// user-initiated action that needs its own error UI.
+  Future<void> refreshUser() async {
+    if (!isAuthenticated) return;
+    try {
+      final response = await SupabaseConfig.client.auth.getUser();
+      final updated = response.user;
+      if (updated == null) return;
+
+      final changed = updated.email != _user?.email ||
+          updated.updatedAt != _user?.updatedAt;
+      _user = updated;
+      if (changed) {
+        await _refreshProfile();
+        _safeNotify();
+      }
+    } catch (e) {
+      debugPrint('User refresh failed: $e');
+    }
   }
 
   Future<void> _init() async {
