@@ -21,8 +21,8 @@ Do this first because every account you create downstream (Supabase, Google Play
 
 | Address | Purpose | Where it appears |
 |---|---|---|
-| `hello@sarahelbahloul.dev` | General contact / support / feedback | `settings_screen.dart` line 431 — the "Send feedback" button |
-| `privacy@sarahelbahloul.dev` | Privacy concerns and GDPR data requests | `legal_screen.dart` line 115 — Privacy Policy contact |
+| `hello@sarahelbahloul.dev` | General contact / support / feedback | `settings_screen.dart` line 238 — the "Send feedback" button |
+| `privacy@sarahelbahloul.dev` | Privacy concerns and GDPR data requests | `legal_screen.dart` line 109 — Privacy Policy contact |
 | Your personal Gmail | Developer accounts only (receives forwarded mail) | Supabase, Google Play — never shown inside the app |
 
 > The in-app support emails and your developer account email are kept separate on purpose. Developer account email is tied to billing and legal agreements. Support emails are public-facing and can change.
@@ -127,27 +127,7 @@ Domain verification in Resend alone does nothing for your app — Supabase still
 
 ### 1.5 — Update the two placeholder emails in Poppy
 
-Now that the addresses are real and forwarding works, update the code:
-
-**File 1:** `lib/screens/settings/settings_screen.dart`, line 431
-
-```dart
-// Change:
-const email = 'hello@poppy.app'; // todo: change this to actual email
-
-// To:
-const email = 'hello@sarahelbahloul.dev';
-```
-
-**File 2:** `lib/screens/settings/legal_screen.dart`, line 115
-
-```dart
-// Change:
-'For privacy concerns or data requests, contact us at privacy@poppydiary.app.'
-
-// To:
-'For privacy concerns or data requests, contact us at privacy@sarahelbahloul.dev.'
-```
+Checked the actual code: the original `hello@poppy.app` / `privacy@poppydiary.app` placeholders are already gone, so there's nothing to do at this exact point in the guide. They were changed to your personal Gmail instead of the domain addresses you're setting up here, though — that's a Phase 3 item now (see **3.1**) since it made more sense to handle it alongside the other placeholder-content cleanup. Skip ahead there once you've finished Phase 1.
 
 ---
 
@@ -180,8 +160,7 @@ Run through this checklist. Do not start Phase 2 until all boxes are checked:
 - [ ] Signed up two test accounts back-to-back without hitting a Supabase email rate-limit error ✓
 
 > **Note:** API abuse protection (CAPTCHA, rate limits, RLS audit, storage limits) is covered in Phase 2.7 — do that before you consider the app publicly ready, even though it's technically a Phase 2 item.
-- [ ] `settings_screen.dart` line 431 updated to `hello@sarahelbahloul.dev`
-- [ ] `legal_screen.dart` line 115 updated to `privacy@sarahelbahloul.dev`
+- [ ] `settings_screen.dart` line 238 and `legal_screen.dart` line 109 updated to the real addresses — done in Phase 3.1, not here (see note in 1.5)
 - [ ] Google Play Console account is active (not pending review)
 
 ---
@@ -190,96 +169,25 @@ Run through this checklist. Do not start Phase 2 until all boxes are checked:
 
 These must be resolved before the app can be submitted. Do them in this order.
 
-### 2.1 — Fix the PBKDF2 salt (security bug)
+### 2.1 & 2.2 — PBKDF2 salt + recovery key salt — ✅ already done, and better than the original plan
 
-**File:** `lib/services/encryption_service.dart`
+**File:** `lib/features/auth/data/services/encryption_service.dart`
 
-**The problem:** Every user's password-derived wrapping key is generated with the same static salt `'poppy-diary-salt-v1'`. PBKDF2 salts must be unique per user to be effective. As it stands, two users with the same password produce the same wrapping key, and a single precomputed table can attack all users simultaneously.
+Checked against the actual code — this is fully implemented, and the design is better than what was originally planned here, so both steps are removed. What's actually there:
 
-**The fix:** Generate a random 16-byte salt at registration, store it in the `user_keys` table alongside the wrapped key, and use it during derivation. Also increase the iteration count — 100,000 was the OWASP minimum circa 2021; the current recommendation for HMAC-SHA256 is 600,000.
+- Every `wrapWithPassword` / `wrapWithUid` call generates a fresh random 16-byte salt and embeds it directly in the wrapped-key JSON blob (as the `s` field), alongside the ciphertext/nonce/MAC. **This means no separate `password_salt` / `recovery_salt` columns are needed on `user_keys`** — the salt travels with the key it belongs to instead of living in a parallel column that has to be kept in sync. Simpler and just as secure.
+- PBKDF2-HMAC-SHA256 at 600,000 iterations — matches the current OWASP recommendation exactly.
+- Key derivation runs inside `Isolate.run()` — functionally the same fix as the `compute()` isolate this guide originally called for (keeps 600k rounds off the UI thread).
+- `unwrapWithPassword` / `unwrapWithUid` fall back to the original static salt (`'poppy-diary-salt-v1'` / `'poppy-recovery-pepper-v1'`) when a blob has no `s` field — meaning **any pre-fix test accounts still unwrap correctly**, no need to delete and re-register them like the original guide suggested.
+- `KeyService` and `AuthProvider` already pass the salted, wrapped blobs straight through — no extra wiring needed on top.
 
-**Step 1** — Add salt columns to your Supabase `user_keys` table. Run this in the Supabase SQL editor:
-
-```sql
-alter table public.user_keys
-  add column if not exists password_salt text;
-
-alter table public.user_keys
-  add column if not exists recovery_salt text;
-```
-
-**Step 2** — Update `_deriveKeyFromPassword` in `encryption_service.dart` to accept a salt parameter and use 600,000 iterations:
-
-```dart
-Future<SecretKey> _deriveKeyFromPassword(String password, Uint8List salt) async {
-  final pbkdf2 = Pbkdf2(
-    macAlgorithm: Hmac.sha256(),
-    iterations: 600000,  // updated from 100,000 — current OWASP recommendation
-    bits: 256,
-  );
-  return pbkdf2.deriveKey(
-    secretKey: SecretKey(utf8.encode(password)),
-    nonce: salt,  // per-user random salt, not a hardcoded string
-  );
-}
-```
-
-> **Performance note:** 600,000 PBKDF2 rounds on a budget Android device can take 1–2 seconds and will freeze the UI if run on the main thread. Wrap all calls to `_deriveKeyFromPassword` inside a `compute()` isolate:
-> ```dart
-> final wrappingKey = await compute(_deriveKeyIsolate, (password, salt));
-> ```
-> where `_deriveKeyIsolate` is a top-level (not instance) function that calls `_deriveKeyFromPassword`. This moves the work off the UI thread entirely.
-
-**Step 3** — Update `wrapWithPassword` to generate and return the salt, and `unwrapWithPassword` to accept it:
-
-```dart
-// Returns both the wrapped key map AND the salt used
-Future<({Map<String, String> wrapped, String saltB64})> wrapWithPassword(
-  Uint8List dataKeyBytes,
-  String password,
-) async {
-  // _rng is already Random.secure() in your code — no change needed there
-  final salt = Uint8List(16);
-  for (var i = 0; i < 16; i++) salt[i] = _rng.nextInt(256);
-  final wrappingKey = await compute(_deriveKeyIsolate, (password, salt));
-  final wrapped = await _wrap(dataKeyBytes, wrappingKey);
-  return (wrapped: wrapped, saltB64: base64Encode(salt));
-}
-
-Future<Uint8List?> unwrapWithPassword(
-  Map<String, dynamic> wrapped,
-  String password,
-  String saltB64,  // new parameter
-) async {
-  final salt = base64Decode(saltB64);
-  final wrappingKey = await compute(_deriveKeyIsolate, (password, salt));
-  return _unwrap(wrapped, wrappingKey);
-}
-```
-
-**Step 4** — Update `KeyService` and `AuthProvider` to save and load the salt alongside the wrapped key wherever `wrapWithPassword` / `unwrapWithPassword` is called. The salt is not secret — store it in plain text in the `password_salt` column next to the wrapped key blob.
-
-> **Note for existing test accounts:** Once you make this change, any account created with the old static salt cannot unwrap its key. Before launch this doesn't matter (no real users yet), but delete any test accounts from Supabase Auth and re-register after deploying the migration.
-
----
-
-### 2.2 — Document (and partially improve) the recovery key
-
-**File:** `lib/services/encryption_service.dart`, method `_deriveKeyFromUid`
-
-**The problem:** The recovery wrapping key is derived from the user's Supabase UID plus a hardcoded pepper visible in your public source code. UIDs are not secret. Adding a per-user `recovery_salt` (as in 2.1) meaningfully improves this — without it, a single precomputed table covers all users. With unique per-user salts, each user requires independent cracking. It does not make the recovery path fully zero-knowledge (a compromised backend with source code access could still derive recovery keys), but it is a real, not cosmetic, improvement.
-
-**The fix:** Apply the same salt approach as Step 2–4 above but for `wrapWithUid` / `unwrapWithUid`. Use the `recovery_salt` column added in 2.1.
-
-Apply the same `compute()` isolate pattern for `_deriveKeyFromUid` as well.
-
-**What to document in your README** (see Phase 7.4 for the full security model section):
-
-The recovery path is a deliberate convenience trade-off. A fully zero-knowledge recovery requires either user-supplied recovery codes (like Bitwarden's emergency sheet) or server-side hardware security modules (like Proton's approach). Neither is practical for a solo portfolio project. Documenting this honestly signals engineering maturity — it shows you understand the threat model rather than overselling the security guarantees.
+Nothing to do here. If you add more wrap/unwrap call sites later, just keep using `wrapWithPassword` / `wrapWithUid` as-is — the salting is automatic.
 
 ---
 
 ### 2.3 — Add missing iOS permission strings
+
+Confirmed still needed — none of the three keys below are present in `Info.plist`.
 
 **File:** `ios/Runner/Info.plist`
 
@@ -301,6 +209,8 @@ Add these three keys inside the `<dict>` in `Info.plist`:
 ---
 
 ### 2.4 — Fix the iOS orientation conflict
+
+Confirmed still needed — `main.dart` locks to portrait via `SystemChrome.setPreferredOrientations`, but `Info.plist` still declares landscape support, unchanged from the original.
 
 **File:** `ios/Runner/Info.plist`
 
@@ -324,6 +234,8 @@ Find the `UISupportedInterfaceOrientations` key in `Info.plist` and change it to
 ---
 
 ### 2.5 — Register the Supabase deep link scheme in iOS
+
+Confirmed: Android's `AndroidManifest.xml` already has the `io.supabase.poppy://login-callback/` intent filter correctly registered (lines 60–79). iOS is still missing the equivalent `CFBundleURLTypes` block in `Info.plist`.
 
 **File:** `ios/Runner/Info.plist`
 
@@ -349,6 +261,8 @@ Add this block inside the root `<dict>` in `Info.plist`:
 
 ### 2.6 — Add crash reporting with Sentry
 
+Confirmed still needed — no `sentry_flutter` in `pubspec.yaml`, and `main()` isn't wrapped in `SentryFlutter.init`.
+
 Missing from the original guide. Even for a personal project, crash reporting gives you stack traces for startup crashes and device-specific issues that are invisible during local testing. It also looks professional to employers who read the repo.
 
 **Why Sentry over Firebase Crashlytics:** Sentry is open source, GDPR-compliant by default, works without a `google-services.json`, doesn't add a Google dependency to a privacy-focused app, and the free tier covers personal projects comfortably.
@@ -369,7 +283,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 Future<void> main() async {
   await SentryFlutter.init(
-        (options) {
+    (options) {
       options.dsn = 'https://your-dsn@sentry.io/your-project-id';
       options.tracesSampleRate = 0.2; // capture 20% of transactions
       options.environment = kDebugMode ? 'debug' : 'production';
@@ -429,9 +343,26 @@ Supabase Auth supports Cloudflare Turnstile natively for sign-up, sign-in, and p
 
 In Supabase → **Authentication → Rate Limits**, review the defaults (sign-ups/hour, OTP requests/hour, etc.) and lower them if a solo-portfolio app doesn't need the default headroom. This is a pure dashboard change, no code required.
 
-**Step 3 — Audit Row Level Security (RLS) on every table**
+**Step 3 — Row Level Security (RLS) — ✅ already done**
 
-Confirm RLS is **enabled** on every table in `public` (not just `user_keys`) and that every policy scopes reads/writes to `auth.uid() = user_id` (or equivalent) rather than allowing any authenticated — or worse, anonymous — user to touch another user's rows. Run this in the Supabase SQL editor to check for any table without RLS enabled:
+Checked `supabase/migrations/03_policies.sql`: RLS is enabled on all four tables (`profiles`, `entries`, `photos`, `user_keys`) and every policy correctly scopes to `auth.uid() = user_id` (or `= id` for profiles), including the storage policies on the `entry-photos` bucket, which check that the folder path matches the authenticated user's ID. Nothing to fix here.
+
+One small optional hardening item worth knowing about while you're in this file: `update_data_key()` in `04_functions_triggers.sql` is a `security definer` function but doesn't `set search_path = public` the way `handle_new_user()` and `delete_user_account()` do in the same file. It's a minor schema-injection risk in theory, not something that's currently exploitable given how the function is written, but it's a one-line fix if you want to be thorough:
+
+```sql
+create or replace function public.update_data_key(
+  new_wrapped_key          jsonb,
+  new_recovery_wrapped_key jsonb default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public  -- add this line
+as $$
+...
+```
+
+If you ever add new tables later, re-run this check to confirm RLS is on for them too:
 
 ```sql
 select tablename, rowsecurity
@@ -439,15 +370,15 @@ from pg_tables
 where schemaname = 'public';
 ```
 
-Any row showing `rowsecurity = false` is a table an attacker could read or write without restriction. This matters more than the CAPTCHA step for stopping actual data exposure — CAPTCHA stops bots from creating accounts, RLS stops anyone (bot or not) from touching data they shouldn't.
+Any row showing `rowsecurity = false` is a table an attacker could read or write without restriction.
 
 **Step 4 — Constrain the storage bucket**
 
-In Supabase → **Storage → entry-photos → Configuration**, set a **file size limit** (e.g. 10MB) and restrict **allowed MIME types** to `image/jpeg`, `image/png`, `image/webp`. Without this, a malicious or misbehaving client could upload arbitrarily large or arbitrary-type files, driving up your storage and egress usage.
+Can't verify this one from the exported code — bucket configuration lives in the Supabase dashboard, not in a migration file. In Supabase → **Storage → entry-photos → Configuration**, set a **file size limit** (e.g. 10MB) and restrict **allowed MIME types** to `image/jpeg`, `image/png`, `image/webp`. Without this, a malicious or misbehaving client could upload arbitrarily large or arbitrary-type files, driving up your storage and egress usage. Worth a 30-second check even if you think you already set it.
 
-**Step 5 — Never expose the service_role key**
+**Step 5 — service_role key exposure — ✅ already safe**
 
-Confirm `SUPABASE_ANON_KEY` (not the `service_role` key) is the only Supabase key referenced anywhere in the Flutter app or committed to git. The anon key is safe to ship client-side because RLS is what actually restricts it (Step 3) — the service_role key bypasses RLS entirely and must never leave your server/CI secrets.
+Checked `lib/core/services/supabase_client.dart`: only `SUPABASE_ANON_KEY` (via `--dart-define`) is used to initialize the client. No `service_role` key anywhere in the app. Nothing to fix here.
 
 **Step 6 — Stay on free tiers, and if you ever upgrade, leave Spend Cap on**
 
@@ -455,31 +386,37 @@ For a solo portfolio project, staying on Supabase's Free plan and Resend's Free 
 
 ---
 
-### 3.1 — Replace placeholder emails in the code
+### 3.1 — Fix the support/privacy emails (currently your personal Gmail, not the professional addresses from Phase 1)
 
-*(Note: You already did this in Phase 1.5, but double-check it's correct).*
+**Status check:** these were already edited from the original `poppy.app` placeholders — but to your personal Gmail (`sa.albahloul@gmail.com`) rather than the `hello@`/`privacy@sarahelbahloul.dev` addresses you set up in Phase 1. That defeats the point of Phase 1 (keeping a public-facing support channel separate from your personal inbox, and being able to change it later without a store update). Worth fixing before submission.
 
-**File 1:** `lib/screens/settings/settings_screen.dart`, line 431
+**File 1:** `lib/features/settings/presentation/screens/settings_screen.dart`, line 238
 
 ```dart
-// Ensure it says:
+// Change:
+const email = 'sa.albahloul@gmail.com';
+
+// To:
 const email = 'hello@sarahelbahloul.dev';
 ```
 
-**File 2:** `lib/screens/settings/legal_screen.dart`, line 115
+**File 2:** `lib/features/settings/presentation/screens/legal_screen.dart`, line 109
 
 ```dart
-// Ensure it says:
-'For privacy concerns or data requests, contact us at privacy@sarahelbahloul.dev.'
+// Change:
+'For privacy concerns or data requests, contact us at sa.albahloul@gmail.com.',
+
+// To:
+'For privacy concerns or data requests, contact us at privacy@sarahelbahloul.dev.',
 ```
 
 ---
 
 ### 3.2 — Update the privacy policy and terms dates
 
-**File:** `lib/screens/settings/legal_screen.dart`
+**File:** `lib/features/settings/presentation/screens/legal_screen.dart`
 
-There are two "Last updated: January 2025" strings (lines 74 and 135). App store reviewers check these against the current date.
+Still needed — there are two `'Last updated: January 2025'` strings, at **lines 68 and 127**.
 
 ```dart
 // Change both instances to the actual current date before submission, e.g.:
@@ -490,7 +427,9 @@ Text('Last updated: June 2026', ...)
 
 ### 3.3 — Update the copyright year in About screen
 
-**File:** `lib/screens/settings/about_screen.dart`, line 160
+**File:** `lib/features/settings/presentation/screens/about_screen.dart`, line 154
+
+Still needed.
 
 ```dart
 // Change:
@@ -506,14 +445,14 @@ Text('Last updated: June 2026', ...)
 
 **File:** `test/widget_test.dart`
 
-The default Flutter counter test is still in there and fails on `flutter test`. Do not replace it with a placeholder `expect(true, isTrue)` — employers immediately recognize fake tests and it signals the opposite of what you want.
+Still needed — confirmed it's still the default Flutter counter test (`Counter increments smoke test`), which will fail `flutter test` outright since `PoppyApp` doesn't contain a counter. Do not replace it with a placeholder `expect(true, isTrue)` — employers immediately recognize fake tests and it signals the opposite of what you want.
 
-`EncryptionService` is pure Dart with no Flutter dependencies, which makes it the easiest and highest-signal thing to unit test. Replace the entire file with:
+`EncryptionService` is pure Dart with no Flutter dependencies, which makes it the easiest and highest-signal thing to unit test. Its actual API (checked against the real file) matches what's below exactly — just note the real import path, which is nested under `features/auth/data/services/`, not `services/`. Replace the entire file with:
 
 ```dart
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:poppy/services/encryption_service.dart';
+import 'package:poppy/features/auth/data/services/encryption_service.dart';
 
 void main() {
   group('EncryptionService', () {
@@ -573,9 +512,9 @@ These four tests directly demonstrate the security properties of the encryption 
 
 ## Phase 4 — Change Bundle IDs (Required for Store Submission)
 
-Both platforms currently use `dev.sarahelbahloul.poppy` which is the Flutter default. Google Play and the App Store both reject submissions with `com.example` in the ID.
+Confirmed still needed — `com.example.poppy` is used on both platforms (`android/app/build.gradle.kts`, `MainActivity.kt`'s path/package, and every `PRODUCT_BUNDLE_IDENTIFIER` entry in `ios/Runner.xcodeproj/project.pbxproj`). Google Play and the App Store both reject submissions with `com.example` in the ID.
 
-Choose your bundle ID now and use it consistently everywhere. The convention is `com.yourname.appname` or `dev.yourname.appname`. For example: `com.sarahelbahloul.poppy`.
+Using **`dev.sarahelbahloul.poppy`** — since you already own the `sarahelbahloul.dev` domain, this makes the bundle ID the exact reverse-DNS of your real domain, which is a nice bit of polish for a portfolio project. Use it consistently everywhere below.
 
 ### 4.1 — Android bundle ID
 
@@ -583,26 +522,26 @@ Choose your bundle ID now and use it consistently everywhere. The convention is 
 
 ```kotlin
 // Change both of these:
-namespace = "dev.sarahelbahloul.poppy"
-applicationId = "dev.sarahelbahloul.poppy"
+namespace = "com.example.poppy"
+applicationId = "com.example.poppy"
 
 // To:
-namespace = "com.sarahelbahloul.poppy"
-applicationId = "com.sarahelbahloul.poppy"
+namespace = "dev.sarahelbahloul.poppy"
+applicationId = "dev.sarahelbahloul.poppy"
 ```
 
 **File:** `android/app/src/main/kotlin/com/example/poppy/MainActivity.kt`
 
 The file is at the wrong path. You need to:
-1. Create the directory `android/app/src/main/kotlin/com/sarahelbahloul/poppy/`
+1. Create the directory `android/app/src/main/kotlin/dev/sarahelbahloul/poppy/`
 2. Move `MainActivity.kt` there
 3. Update the `package` declaration at the top of the file:
 
 ```kotlin
-package com.sarahelbahloul.poppy
+package dev.sarahelbahloul.poppy
 ```
 
-The Supabase deep link scheme in `AndroidManifest.xml` uses `io.supabase.poppy` — that is independent of the package name and does not need to change.
+The Supabase deep link scheme in `AndroidManifest.xml` (confirmed present at lines 60–79) uses `io.supabase.poppy` — that is independent of the package name and does not need to change.
 
 ---
 
@@ -613,16 +552,18 @@ Open Xcode (you need a Mac for this step):
 1. Open `ios/Runner.xcworkspace` in Xcode.
 2. Click on "Runner" in the project navigator → select the "Runner" target.
 3. Under the "General" tab, find "Bundle Identifier".
-4. Change `dev.sarahelbahloul.poppy` to `com.sarahelbahloul.poppy`.
+4. Change `com.example.poppy` to `dev.sarahelbahloul.poppy`.
 5. Xcode will update `project.pbxproj` automatically. Do not edit it by hand.
 
-This also fixes the test target identifiers automatically.
+This also fixes the test target identifiers automatically (confirmed multiple `PRODUCT_BUNDLE_IDENTIFIER = com.example.poppy` / `com.example.poppy.RunnerTests` entries in `project.pbxproj` that all need this change — Xcode handles all of them from the one field).
 
 ---
 
 ## Phase 5 — Set Up Release Signing
 
 ### 5.1 — Android signing keystore
+
+Confirmed still needed — `android/key.properties` doesn't exist yet, and `build.gradle.kts` still signs release builds with `signingConfigs.getByName("debug")`.
 
 **This is critical.** The keystore you use for your first Play Store upload is permanent — you cannot change it later without losing all existing users' ability to update the app.
 
@@ -735,78 +676,62 @@ You set up iOS signing inside Xcode after creating your Apple Developer account.
 
 ### 7.1 — Remove files that should not be in source control
 
-The following should not be committed. Check your git history and remove them if they were ever committed:
-
-- `android/.gradle/` — Gradle build cache, ~30MB, no business being in git
-- `.idea/` — IDE-specific files, different on every developer's machine
-- `android/local.properties` — contains your local SDK path (already in `.gitignore` ✓)
-- `.env` — already in `.gitignore` ✓, but verify it was never accidentally committed:
+Can't verify this one from the exported code — a zip export doesn't include `.git` history, only the current file tree. Run this yourself locally to check whether any of these were ever committed in the past, even if they're gitignored now:
 
 ```bash
 git log --all --full-history -- .env
 git log --all --full-history -- "android/.gradle"
+git log --all --full-history -- ".idea"
 ```
 
-If they appear in history, remove them with:
+If any of them show commits, remove them from history with:
 
 ```bash
 git filter-branch --force --index-filter \
-  "git rm -r --cached --ignore-unmatch android/.gradle .idea" \
+  "git rm -r --cached --ignore-unmatch android/.gradle .idea .env" \
   --prune-empty --tag-name-filter cat -- --all
 ```
 
-Then add them explicitly to `.gitignore` if not already there.
-
 ---
 
-### 7.2 — Add missing `.gitignore` entries
+### 7.2 — `.gitignore` entries — ✅ already done
 
-Open `.gitignore` and confirm these lines exist (add if missing):
-
-```
-# IDE
-.idea/
-*.iml
-
-# Android build cache
-android/.gradle/
-android/build/
-```
+Checked the actual `.gitignore` — it's already more thorough than this step asks for. It has dedicated, well-organized sections for secrets (`.env`, `secrets.dart`, `lib/dev/`), Android signing (`android/key.properties`, `*.jks`, `*.keystore`), machine-local config (`android/local.properties`), Android build artifacts (`android/.gradle/`, `android/build/`, `*.apk`, `*.aab`), iOS build artifacts, and IDE files (`.idea/`, `*.iml`, `.vscode/`). Nothing to add here.
 
 ---
 
 ### 7.3 — Update the README screenshots
 
-The README currently has `> Add screenshots here once the app is running.` — this is the first thing anyone visiting the repo sees.
-
-1. Run the app on a real device.
-2. Take screenshots of: home screen (with a few entries), write screen, appearance screen (showing a theme switch), lock screen.
-3. Add a `screenshots/` folder to the repo and include them.
-4. Replace the placeholder in `README.md`:
+Still needed, but the actual placeholder text and table are different from what this guide originally assumed. The real README (line 22) says:
 
 ```markdown
-## Screenshots
+> These placeholders are gonna be replaced with actual screenshots.
 
-| Home | Write | Themes | Lock |
-|------|-------|--------|------|
-| ![home](screenshots/home.png) | ![write](screenshots/write.png) | ![themes](screenshots/themes.png) | ![lock](screenshots/lock.png) |
+| Login | Home | Journal |
+|------|------|------|
+| ![](screenshots/login.png) | ![](screenshots/home.png) | ![](screenshots/journal.png) |
+
+| Editor | Appearance | Security |
+|------|------|------|
+| ![](screenshots/editor.png) | ![](screenshots/settings.png) | ![](screenshots/security.png) |
 ```
+
+So the plan is the same, just six screenshots instead of four, matching filenames already referenced in the table:
+
+1. Run the app on a real device.
+2. Take screenshots matching each existing placeholder: login screen, home screen (with a few entries), journal/entry view, editor (write) screen, appearance/settings screen (showing a theme switch), and the security/lock screen.
+3. Add a `screenshots/` folder to the repo with files named exactly `login.png`, `home.png`, `journal.png`, `editor.png`, `settings.png`, `security.png` — matching what the table already references, so you don't also need to edit the table markup itself.
+4. Also replace the `> These placeholders are gonna be replaced with actual screenshots.` line and the `> A short demonstration GIF will be added here.` line further down once you have a demo GIF.
 
 ---
 
-### 7.4 — Add technical decisions and security model to the README
+### 7.4 — Expand the README's technical decisions and security sections
 
-This section has more CV impact than any number of extra features. Employers and engineering managers read this to see if you understand the choices you made. Add two sections below the tech stack table:
+This section has more CV impact than any number of extra features. Good news: the README already has the skeleton for this — an **"⚙️ Engineering Highlights"** section with a **"Key Engineering Decisions"** bullet list, and a separate **"🔒 Security"** section — but both are currently short bullet lists without the "why" reasoning that actually demonstrates understanding to an employer. Expand them in place rather than adding two new sections.
+
+**In "Key Engineering Decisions"**, turn the existing bullets into short paragraphs with reasoning, e.g.:
 
 ```markdown
-## Why these technical choices?
-
-**AES-256-GCM with a per-user data key** — Symmetric encryption is fast enough
-for diary content. The key-wrapping architecture (data key wrapped by a
-password-derived key) means the raw data key never touches the server in
-plaintext, and changing a password requires only re-wrapping the data key
-rather than re-encrypting all content.
-
 **Offline-first with a sync queue** — SQLite is the source of truth. Every
 create/update/delete writes locally first and enqueues a sync operation.
 When connectivity returns, the queue drains against Supabase. This means
@@ -815,13 +740,16 @@ zero data loss on flaky connections and instant UI response.
 **Provider over Riverpod/BLoC** — Poppy has three providers and a clear
 unidirectional data flow. Provider fits this scale without the boilerplate
 overhead of Riverpod or the verbosity of BLoC.
+```
 
-## Security model and known trade-offs
+**In the "🔒 Security" section**, add the trade-offs the current bullet list doesn't mention — this is the part that actually shows engineering maturity rather than just listing algorithms:
 
+```markdown
 **What is zero-knowledge:** The password-wrapping path is zero-knowledge.
 The server stores only the wrapped (encrypted) data key, derived using
-PBKDF2 with 600,000 iterations and a unique per-user salt. The server
-never sees the plaintext data key or a means to derive it from what is stored.
+PBKDF2 with 600,000 iterations and a fresh per-wrap random salt embedded
+in the key blob itself. The server never sees the plaintext data key or a
+means to derive it from what is stored.
 
 **What is not zero-knowledge:** The recovery path derives a second wrapping
 key from the user's account UID. This is a deliberate convenience trade-off:
@@ -838,6 +766,8 @@ titles and content are encrypted.
 ---
 
 ### 7.5 — Add a GitHub Actions CI workflow
+
+Confirmed still needed — no `.github/` directory exists in the repo yet.
 
 Create `.github/workflows/ci.yml`:
 
@@ -871,6 +801,8 @@ Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` to your GitHub repo's Settings → Se
 ---
 
 ### 7.6 — Add integration tests
+
+Confirmed still needed — no `integration_test/` directory, and `integration_test` isn't listed as a dev dependency in `pubspec.yaml` yet.
 
 Create the directory `integration_test/` in the project root and add `app_test.dart`:
 
@@ -921,7 +853,9 @@ Add `Key` values to your important widgets (write FAB, email field, title field)
 
 ## Phase 8 — Copyright, Legal, and Public GitHub Considerations
 
-### 8.1 — What the MIT license on your repo means
+### 8.1 — What the MIT license on your repo means — ✅ already in place
+
+Checked `LICENSE`: it's already MIT, with `Copyright (c) 2026 Sarah Elbahloul` — correct year, correct name, nothing to change. The rest of this section is just background on what that means, kept for reference:
 
 Your `LICENSE` file says MIT, which means:
 
@@ -946,6 +880,8 @@ If you wanted to prevent others from publishing the same app to the stores, you 
 
 ### 8.3 — What the stores actually require for legal compliance
 
+Confirmed still needed — no `docs/` folder exists in the repo yet.
+
 Neither Google Play nor the App Store require you to have a registered business, trademark, or domain name to publish. What they do require:
 
 **Google Play:**
@@ -967,6 +903,8 @@ Neither Google Play nor the App Store require you to have a registered business,
 ---
 
 ### 8.4 — Export compliance (iOS)
+
+Confirmed still needed — `ITSAppUsesNonExemptEncryption` is not present in `Info.plist`.
 
 When submitting to the App Store, you will be asked: "Does your app use encryption?" — Yes, it does (AES-256-GCM). Answer:
 
@@ -1047,7 +985,7 @@ Log into [play.google.com/console](https://play.google.com/console):
 
 Log into [appstoreconnect.apple.com](https://appstoreconnect.apple.com):
 
-1. Create a new iOS app → enter bundle ID `com.sarahelbahloul.poppy`, name "Poppy".
+1. Create a new iOS app → enter bundle ID `dev.sarahelbahloul.poppy`, name "Poppy".
 2. Fill in the listing:
     - **Name:** Poppy
     - **Subtitle** (30 chars): *Your private, encrypted diary*
@@ -1082,29 +1020,29 @@ Log into [appstoreconnect.apple.com](https://appstoreconnect.apple.com):
 
 ---
 
-## Quick Reference: Files Changed in This Guide
+## Quick Reference: Files Still Needing Changes
+
+Updated to reflect what's actually still outstanding after auditing the real codebase — 2.1, 2.2, 7.1 (gitignore part), 7.2, and 8.1 are done and removed from this table; RLS and service_role checks (part of 2.7) are also done and removed.
 
 | File | What changes |
 |---|---|
-| `lib/services/encryption_service.dart` | Fix static PBKDF2 salt + raise iterations to 600k (2.1), recovery salt (2.2), compute() isolate |
-| `lib/services/key_service.dart` | Store and pass salts alongside wrapped keys (2.1–2.2) |
-| `lib/providers/auth_provider.dart` | Pass salts through sign-up and sign-in flows (2.1–2.2); pass `captchaToken` on signUp/signInWithPassword/resetPasswordForEmail (2.7) |
 | `lib/main.dart` | Wrap main() in SentryFlutter.init (2.6) |
 | `pubspec.yaml` | Add `sentry_flutter`, `integration_test` (2.6, 7.6), a Turnstile WebView wrapper package (2.7) |
 | `ios/Runner/Info.plist` | Camera/photo permissions (2.3), orientation (2.4), URL scheme (2.5), encryption declaration (8.4) |
-| `lib/screens/settings/settings_screen.dart` | Replace `hello@poppy.app` with `hello@sarahelbahloul.dev` (1.5) |
-| `lib/screens/settings/legal_screen.dart` | Replace `privacy@poppydiary.app` with `privacy@sarahelbahloul.dev`, update dates (1.5, 3.2) |
-| `lib/screens/settings/about_screen.dart` | Update copyright year (3.3) |
-| `test/widget_test.dart` | Replace broken default test with real EncryptionService unit tests (3.4) |
-| `android/app/build.gradle.kts` | Change bundle ID, add proper release signing (4.1, 5.1) |
-| `android/app/src/main/kotlin/` | Move MainActivity.kt to new package path (4.1) |
+| `lib/features/auth/presentation/providers/auth_provider.dart` | Pass `captchaToken` on signUp/signInWithPassword/resetPasswordForEmail (2.7) |
+| `lib/features/settings/presentation/screens/settings_screen.dart` | Line 238 — replace `sa.albahloul@gmail.com` with `hello@sarahelbahloul.dev` (3.1) |
+| `lib/features/settings/presentation/screens/legal_screen.dart` | Line 109 — replace `sa.albahloul@gmail.com` with `privacy@sarahelbahloul.dev`; lines 68 & 127 — update "Last updated" dates (3.1, 3.2) |
+| `lib/features/settings/presentation/screens/about_screen.dart` | Line 154 — update copyright year to 2026 (3.3) |
+| `test/widget_test.dart` | Replace broken default counter test with real EncryptionService unit tests, corrected import path (3.4) |
+| `android/app/build.gradle.kts` | Change bundle ID to `dev.sarahelbahloul.poppy`, add proper release signing (4.1, 5.1) |
+| `android/app/src/main/kotlin/` | Move `MainActivity.kt` from `com/example/poppy/` to `dev/sarahelbahloul/poppy/` (4.1) |
 | `android/key.properties` | Create with keystore details — **do not commit** (5.1) |
-| `ios/Runner.xcworkspace` | Change bundle ID in Xcode (4.2), set up signing (5.2) |
-| `supabase/migrations/` | Add `password_salt` and `recovery_salt` columns (2.1) |
+| `ios/Runner.xcworkspace` | Change bundle ID to `dev.sarahelbahloul.poppy` in Xcode (4.2), set up signing (5.2) |
+| `supabase/migrations/04_functions_triggers.sql` | Optional: add `set search_path = public` to `update_data_key()` (2.7) |
 | `integration_test/app_test.dart` | Create integration tests (7.6) |
 | `.github/workflows/ci.yml` | Create CI workflow with analyze, unit tests, integration tests (7.5) |
 | `docs/privacy.md` | Create for GitHub Pages hosted privacy policy (8.3) |
-| `README.md` | Screenshots, technical decisions, security model (7.3, 7.4) |
+| `README.md` | Screenshots matching existing table filenames (7.3), expand existing "Key Engineering Decisions" and "Security" sections in place (7.4) |
 
 ---
 
@@ -1115,3 +1053,10 @@ Log into [appstoreconnect.apple.com](https://appstoreconnect.apple.com):
 - **New 1.4a:** Added the missing step to actually connect Resend to Supabase (Project Settings → Authentication → SMTP Settings). Domain verification in Resend alone doesn't change anything until this step is done — this was missing from every prior version of the guide.
 - **Phase 1.7 checklist:** Updated to require Resend verification, confirm custom SMTP is active in Supabase, and added a check for signing up two test accounts back-to-back without a rate-limit error.
 - **New Phase 2.7:** Added API abuse / billing-safety steps — Turnstile CAPTCHA on Supabase Auth, Auth rate-limit tuning, an RLS audit query, storage bucket file-size/MIME-type limits, confirming only the anon key ships client-side, and staying on free tiers (or Spend Cap on) as the actual cost-control mechanism, since both Supabase and Resend free plans restrict usage rather than bill for it.
+- **Full audit against the actual project code (this revision):** Every step from Phase 2 onward was checked against the real repo, not assumed. Result:
+    - **Removed / marked done:** 2.1 + 2.2 (PBKDF2 salting) — implemented, and better than the original spec (salt embedded in the wrapped-key JSON blob itself, no separate Supabase columns needed, backward-compatible fallback for pre-fix accounts). 2.7's RLS audit — all four tables and the storage bucket already have correct `auth.uid()`-scoped policies. 2.7's service_role key check — only the anon key is used, confirmed in `supabase_client.dart`. 7.2 (`.gitignore` entries) — already more thorough than requested. 8.1 (MIT license) — already correctly in place with 2026 copyright.
+    - **Corrected paths/line numbers:** the actual project uses a feature-based folder structure (`lib/features/settings/presentation/screens/...`, `lib/features/auth/data/services/...`), not the flat `lib/screens/...` / `lib/services/...` paths this guide originally assumed. All file paths and line numbers in Phases 3 and 3.4's test import were updated to match.
+    - **Corrected content:** Phase 3.1 — the placeholder emails were already changed, but to your personal Gmail rather than the professional Phase 1 addresses, so the step was rewritten to reflect the actual current value and fix it properly. Phase 7.3 — the README already has a different (larger) screenshot table than originally assumed; instructions now match the real filenames. Phase 7.4 — the README already has skeleton "Engineering Highlights" and "Security" sections; instructions now say to expand them in place rather than add duplicate new sections.
+    - **Bonus catch:** `update_data_key()` in `04_functions_triggers.sql` is missing `set search_path = public`, which its sibling `security definer` functions in the same file have. Added as an optional one-line hardening note in 2.7.
+    - **Confirmed still outstanding, unchanged in substance:** 2.3–2.6 (iOS permissions, orientation, deep link scheme, Sentry), 2.7's CAPTCHA/rate-limit/storage-limit steps, 3.2–3.4, all of Phase 4 and 5, 7.1 (git history — can't verify from a zip export, run locally), 7.5, 7.6, 8.3, 8.4.
+    - **Bundle ID:** updated throughout to `dev.sarahelbahloul.poppy` per your domain ownership, replacing the earlier placeholder `com.sarahelbahloul.poppy`.
