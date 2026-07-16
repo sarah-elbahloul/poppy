@@ -61,6 +61,18 @@ class AppIcons {
   /// Color palette or theme icon.
   static const IconData color      = Iconsax.colorfilter;
 
+  // ─── Formatting ───
+  /// Bullet list icon.
+  static const IconData listBullet   = Iconsax.textalign_left;
+  /// Numbered list icon.
+  static const IconData listNumber   = Iconsax.format_circle;
+  /// Checklist icon.
+  static const IconData checklist    = Iconsax.tick_square;
+  /// Indent icon.
+  static const IconData indent       = Iconsax.textalign_right;
+  /// Outdent icon.
+  static const IconData outdent      = Iconsax.textalign_left;
+
   // ─── Photos ───
   /// Generic photo or gallery icon.
   static const IconData photo       = Iconsax.gallery;

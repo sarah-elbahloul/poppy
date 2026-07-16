@@ -2,25 +2,23 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
-	    <key>CFBundleURLTypes</key>
-        <array>
-            <dict>
-                <key>CFBundleTypeRole</key>
-                <string>Editor</string>
-                <key>CFBundleURLSchemes</key>
-                <array>
-                    <string>io.supabase.poppy</string>
-                </array>
-            </dict>
-        </array>
-	    <key>NSCameraUsageDescription</key>
-        <string>Poppy uses your camera so you can attach photos to your diary entries.</string>
-
-        <key>NSPhotoLibraryUsageDescription</key>
-        <string>Poppy accesses your photo library so you can attach images to your diary entries.</string>
-
-        <key>NSPhotoLibraryAddUsageDescription</key>
-        <string>Poppy saves photos to your library when you export an entry.</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>io.supabase.poppy</string>
+				</array>
+			</dict>
+		</array>
+		<key>NSCameraUsageDescription</key>
+		<string>Poppy uses your camera so you can attach photos to your diary entries.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Poppy accesses your photo library so you can attach images to your diary entries.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>Poppy saves photos to your library when you export an entry.</string>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
 		<key>CFBundleDevelopmentRegion</key>
@@ -75,15 +73,14 @@
 		<key>UIMainStoryboardFile</key>
 		<string>Main</string>
 		<key>UISupportedInterfaceOrientations</key>
-        <array>
-            <string>UIInterfaceOrientationPortrait</string>
-        </array>
-
-        <key>UISupportedInterfaceOrientations~ipad</key>
-        <array>
-            <string>UIInterfaceOrientationPortrait</string>
-            <string>UIInterfaceOrientationPortraitUpsideDown</string>
-        </array>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+		</array>
+		<key>UISupportedInterfaceOrientations~ipad</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+			<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

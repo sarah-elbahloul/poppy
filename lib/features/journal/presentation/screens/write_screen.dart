@@ -15,8 +15,6 @@ import 'package:poppy/features/settings/presentation/providers/theme_provider.da
 import 'package:provider/provider.dart';
 import 'package:poppy/features/journal/presentation/widgets/color_tag_selector.dart';
 import 'package:poppy/features/journal/presentation/widgets/photo_section.dart';
-import 'package:poppy/features/journal/presentation/utils/markdown_list_formatter.dart';
-import 'package:poppy/features/journal/presentation/utils/markdown_editing_controller.dart';
 
 // ─────────────────────────────────────────────────────────────
 //  POPPY — Write Screen
@@ -35,7 +33,7 @@ class WriteScreen extends StatefulWidget {
 
 class _WriteScreenState extends State<WriteScreen> {
   final _titleController = TextEditingController();
-  final _contentController = MarkdownEditingController();
+  final _contentController = TextEditingController();
   final _contentFocusNode = FocusNode();
   final _photosService = PhotosService();
   final _picker = ImagePicker();
@@ -89,14 +87,20 @@ class _WriteScreenState extends State<WriteScreen> {
     if (widget.entryId != null) {
       _loadExistingEntry();
     }
+    _contentFocusNode.addListener(_rebuildOnFocus);
   }
 
   @override
   void dispose() {
+    _contentFocusNode.removeListener(_rebuildOnFocus);
     _titleController.dispose();
     _contentController.dispose();
     _contentFocusNode.dispose();
     super.dispose();
+  }
+
+  void _rebuildOnFocus() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadExistingEntry() async {
@@ -375,90 +379,11 @@ class _WriteScreenState extends State<WriteScreen> {
     );
   }
 
-  /// Lets tapping a checkbox glyph toggle it, instead of requiring the
-  /// person to retype `[x]`. [TextField.onTap] fires after the framework
-  /// has already moved the caret to the tapped character, so by the time
-  /// this runs `_contentController.selection` already tells us exactly
-  /// where on the line the tap landed.
-  void _handleChecklistTap() {
-    final selection = _contentController.selection;
-    if (!selection.isValid || !selection.isCollapsed) return;
-
-    final text = _contentController.text;
-    final offset = selection.baseOffset;
-    final lineStart =
-    offset <= 0 ? 0 : (text.lastIndexOf('\n', offset - 1) + 1);
-    final nlIdx = text.indexOf('\n', lineStart);
-    final lineEnd = nlIdx == -1 ? text.length : nlIdx;
-    final line = text.substring(lineStart, lineEnd);
-
-    final match = MarkdownListFormatter.lineMarkerRegex.firstMatch(line);
-    if (match == null) return;
-
-    final marker = match.group(2)!;
-    final isCheckbox = marker == MarkdownListFormatter.checkboxEmptyMarker ||
-        marker == MarkdownListFormatter.checkboxDoneMarker;
-    if (!isCheckbox) return;
-
-    // Treat the whole indent + glyph + trailing space as the tap target —
-    // the checkbox is the first thing on the line anyway, so being a little
-    // generous about where exactly the tap landed just makes it easier to
-    // hit on a small screen.
-    final indentLen = match.group(1)!.length;
-    final glyphOffset = lineStart + indentLen;
-    final tapZoneEnd = glyphOffset + marker.length;
-    if (offset < lineStart || offset > tapZoneEnd) return;
-
-    final isChecked = marker == MarkdownListFormatter.checkboxDoneMarker;
-    final newMarker = isChecked
-        ? MarkdownListFormatter.checkboxEmptyMarker
-        : MarkdownListFormatter.checkboxDoneMarker;
-
-    final newText = text.replaceRange(
-      glyphOffset,
-      glyphOffset + marker.length,
-      newMarker,
-    );
-    _contentController.value = _contentController.value.copyWith(
-      text: newText,
-      selection: TextSelection.collapsed(offset: offset),
-    );
-  }
-
-  /// Intercepts Tab/Shift+Tab on the content field to nest/un-nest the
-  /// current list item instead of letting Tab move focus to the next
-  /// widget (its default behavior).
-  KeyEventResult _handleContentKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
-      return KeyEventResult.ignored;
-    }
-    if (event.logicalKey != LogicalKeyboardKey.tab) {
-      return KeyEventResult.ignored;
-    }
-
-    final outdent = HardwareKeyboard.instance.isShiftPressed;
-    final result = MarkdownListFormatter.applyIndentShift(
-      _contentController.text,
-      _contentController.selection,
-      outdent: outdent,
-    );
-    if (result == null) return KeyEventResult.ignored;
-
-    _contentController.value = result;
-    return KeyEventResult.handled;
-  }
 
   @override
   Widget build(BuildContext context) {
     final t = context.poppyTheme;
     final fp = context.watch<ThemeProvider>().currentFontPairData;
-
-    _contentController.updateStyleContext(
-      baseStyle: AppTextStyles.bodyLarge(t.textPrimary, fp),
-      fontPair: fp,
-      accentColor: t.accent,
-      mutedColor: t.textTertiary,
-    );
 
     return PopScope(
       canPop: false,
@@ -713,7 +638,6 @@ class _WriteScreenState extends State<WriteScreen> {
                               horizontal: AppSpacing.sm,
                             ),
                             child: Focus(
-                              onKeyEvent: _handleContentKeyEvent,
                               child: BidiTextField(
                                 controller: _contentController,
                                 focusNode: _contentFocusNode,
@@ -731,9 +655,7 @@ class _WriteScreenState extends State<WriteScreen> {
                                 expands: true,
                                 textAlignVertical: TextAlignVertical.top,
                                 textAlign: TextAlign.start,
-                                onTap: _handleChecklistTap,
                                 inputFormatters: [
-                                  MarkdownListFormatter(),
                                   WordLimitFormatter(
                                     kWordLimit,
                                     onBlocked: _maybeShowLimitSnackBar,
