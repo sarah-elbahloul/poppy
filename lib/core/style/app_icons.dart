@@ -28,6 +28,8 @@ class AppIcons {
   static const IconData check        = Icons.check;
   /// Checkmark inside a circle.
   static const IconData checkCircle  = Iconsax.tick_circle;
+  /// Checkmark inside a square.
+  static const IconData checkSquare  = Iconsax.tick_square;
   /// Add or create icon.
   static const IconData add          = Iconsax.add;
   /// Delete or trash icon.
@@ -60,24 +62,24 @@ class AppIcons {
   static const IconData tag        = Iconsax.tag;
   /// Color palette or theme icon.
   static const IconData color      = Iconsax.colorfilter;
-
-  // ─── Formatting ───
+  /// Undo action icon.
+  static const IconData undo       = Iconsax.undo;
+  /// Redo action icon.
+  static const IconData redo       = Iconsax.redo;
   /// Bullet list icon.
-  static const IconData listBullet   = Iconsax.textalign_left;
+  static const IconData unnumberedList       = Iconsax.menu;
   /// Numbered list icon.
-  static const IconData listNumber   = Iconsax.format_circle;
+  static const IconData listNumber = Iconsax.hashtag;
   /// Checklist icon.
-  static const IconData checklist    = Iconsax.tick_square;
-  /// Indent icon.
-  static const IconData indent       = Iconsax.textalign_right;
-  /// Outdent icon.
-  static const IconData outdent      = Iconsax.textalign_left;
+  static const IconData task       = Iconsax.task;
+  /// Increase indent icon.
+  static const IconData indent     = Iconsax.textalign_justifyright;
+  /// Decrease indent icon.
+  static const IconData outdent    = Iconsax.textalign_justifyleft;
 
   // ─── Photos ───
   /// Generic photo or gallery icon.
   static const IconData photo       = Iconsax.gallery;
-  /// Icon for adding a photo to the gallery.
-  static const IconData photoAdd    = Iconsax.gallery_add;
   /// Gallery view icon.
   static const IconData gallery     = Iconsax.gallery;
   /// Camera action icon.

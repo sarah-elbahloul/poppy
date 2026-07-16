@@ -11,6 +11,7 @@ import 'package:poppy/features/journal/data/models/entry_tag.dart';
 import 'package:poppy/features/journal/data/models/photo.dart';
 import 'package:poppy/features/journal/presentation/providers/entries_provider.dart';
 import 'package:poppy/features/journal/data/services/photos_service.dart';
+import 'package:poppy/features/journal/presentation/widgets/text_formatting_section.dart';
 import 'package:poppy/features/settings/presentation/providers/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:poppy/features/journal/presentation/widgets/color_tag_selector.dart';
@@ -52,6 +53,8 @@ class _WriteScreenState extends State<WriteScreen> {
   DateTime? _lastLimitSnackbarTime;
 
   bool get _isEditing => _existingEntry != null;
+
+  bool get _isKeyboardOpen => MediaQuery.of(context).viewInsets.bottom > 0;
 
   int get _totalPhotos => _savedPhotos.length + _pendingPhotos.length;
 
@@ -665,7 +668,10 @@ class _WriteScreenState extends State<WriteScreen> {
                             ),
                           ),
                         ),
-                        PhotoSection(
+                        if (_isKeyboardOpen)...[
+                          TextFormattingSection()
+                        ]
+                        else...[PhotoSection(
                           savedPhotos: _savedPhotos,
                           pendingPhotos: _pendingPhotos,
                           isExpanded: _photosExpanded,
@@ -675,7 +681,7 @@ class _WriteScreenState extends State<WriteScreen> {
                           onAdd: _onAddPhoto,
                           onDeleteSaved: _onDeleteSavedPhoto,
                           onDeletePending: _onDeletePendingPhoto,
-                        ),
+                        ),]
                       ],
                     ),
                   ),
