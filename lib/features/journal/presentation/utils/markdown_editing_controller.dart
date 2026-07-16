@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:poppy/core/core.dart';
 import 'package:poppy/features/journal/presentation/utils/markdown_list_formatter.dart';
 
-/// Callback signature for toggling a checkbox at a specific text offset.
-typedef CheckboxToggleCallback = void Function(int markerOffset);
-
 /// A [TextEditingController] that renders markdown syntax with live styling.
 ///
 /// Characters remain unchanged in [text] — only visual styling is applied via
@@ -26,10 +23,6 @@ class MarkdownEditingController extends TextEditingController {
   FontPairData? _fontPair;
   Color _accentColor;
   Color _mutedColor;
-
-  /// Called when the native Flutter checkbox widget is tapped.
-  /// Receives the exact character offset of the checkbox marker in [text].
-  CheckboxToggleCallback? onCheckboxToggle;
 
   /// Updates theme-dependent styles. Call from `build()` once context is available.
   void updateStyleContext({
@@ -79,11 +72,11 @@ class MarkdownEditingController extends TextEditingController {
   }
 
   List<InlineSpan> _buildLineSpans(
-    String line,
-    TextStyle base,
-    int lineStartOffset,
-    BuildContext context,
-  ) {
+      String line,
+      TextStyle base,
+      int lineStartOffset,
+      BuildContext context,
+      ) {
     // 1. Horizontal Rule
     final hrMatch = _hrRegex.firstMatch(line);
     if (hrMatch != null) {
@@ -116,14 +109,14 @@ class MarkdownEditingController extends TextEditingController {
   }
 
   List<InlineSpan> _buildHeadingSpans(
-    RegExpMatch match,
-    String line,
-    TextStyle base,
-  ) {
+      RegExpMatch match,
+      String line,
+      TextStyle base,
+      ) {
     final hashes = match.group(1)!;
     final gap = match.group(2)!;
     final content = match.group(3)!;
-    
+
     final double size = switch (hashes.length) {
       1 => 26.0,
       2 => 22.0,
@@ -132,15 +125,15 @@ class MarkdownEditingController extends TextEditingController {
 
     final headingStyle = _fontPair != null
         ? _fontPair!.titleFont.bold(
-            base.color ?? Colors.black,
-            size: size,
-            height: 1.3,
-          )
+      base.color ?? Colors.black,
+      size: size,
+      height: 1.3,
+    )
         : base.copyWith(
-            fontSize: size,
-            fontWeight: FontWeight.w700,
-            height: 1.3,
-          );
+      fontSize: size,
+      fontWeight: FontWeight.w700,
+      height: 1.3,
+    );
 
     return [
       TextSpan(
@@ -156,12 +149,12 @@ class MarkdownEditingController extends TextEditingController {
   }
 
   List<InlineSpan> _buildListSpans(
-    RegExpMatch match,
-    String line,
-    TextStyle base,
-    int lineStartOffset,
-    BuildContext context,
-  ) {
+      RegExpMatch match,
+      String line,
+      TextStyle base,
+      int lineStartOffset,
+      BuildContext context,
+      ) {
     final indent = match.group(1)!;
     final marker = match.group(2)!;
     final rest = line.substring(match.end);
@@ -171,14 +164,30 @@ class MarkdownEditingController extends TextEditingController {
     final isQuote = marker.trim() == '>';
 
     if (isCheckbox) {
-      final markerOffset = lineStartOffset + indent.length;
       return [
         if (indent.isNotEmpty) TextSpan(text: indent, style: base),
-        TextSpan(text: marker[0], style: base.copyWith(fontSize: 1, color: Colors.transparent)),
+        // The two raw marker characters ('☐'/'☑' + trailing space) stay in
+        // the text but are rendered with zero visual footprint; the
+        // WidgetSpan below draws the actual checkbox in their place.
+        //
+        // IMPORTANT: this checkbox is purely decorative (wrapped in
+        // IgnorePointer) and must NOT own its own tap handler. This span
+        // lives inside an editable TextField, and a GestureDetector here
+        // would win the gesture arena over the TextField's own
+        // tap-to-place-caret recognizer, "swallowing" taps that land on the
+        // checkbox's pixels — that mismatch (checkbox looks tappable but
+        // the field's real tap handler never runs for it) is what made
+        // toggling feel inconsistent. Toggling is instead handled once the
+        // caret lands, via the field's onTap callback — see
+        // `_handleChecklistTap` in write_screen.dart — which is the single
+        // source of truth for checkbox taps.
+        TextSpan(
+          text: marker,
+          style: base.copyWith(fontSize: 0.01, color: Colors.transparent),
+        ),
         WidgetSpan(
           alignment: PlaceholderAlignment.middle,
-          child: GestureDetector(
-            onTap: () => onCheckboxToggle?.call(markerOffset),
+          child: IgnorePointer(
             child: Padding(
               padding: const EdgeInsets.only(right: 8, left: 2),
               child: AnimatedContainer(
@@ -200,17 +209,14 @@ class MarkdownEditingController extends TextEditingController {
             ),
           ),
         ),
-        TextSpan(
-            text: marker.substring(1),
-            style: base.copyWith(fontSize: 1, color: Colors.transparent)),
         ..._buildInlineSpans(
           rest,
           isChecked
               ? base.copyWith(
-                  color: _mutedColor, 
-                  decoration: TextDecoration.lineThrough,
-                  decorationColor: _mutedColor.withOpacity(0.5),
-                )
+            color: _mutedColor,
+            decoration: TextDecoration.lineThrough,
+            decorationColor: _mutedColor.withOpacity(0.5),
+          )
               : base,
         ),
       ];
@@ -241,7 +247,7 @@ class MarkdownEditingController extends TextEditingController {
       TextSpan(
         text: marker,
         style: base.copyWith(
-          color: _accentColor, 
+          color: _accentColor,
           fontWeight: FontWeight.w600,
         ),
       ),

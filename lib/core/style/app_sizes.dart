@@ -92,7 +92,7 @@ class AppIconSize {
   static const double lg = 28.0;
 
   /// Size: 36.0
-  static const double xl = 36.0;
+  static const double xl = 40.0;
 
   /// Size: 70.0
   static const double logo = 70.0;

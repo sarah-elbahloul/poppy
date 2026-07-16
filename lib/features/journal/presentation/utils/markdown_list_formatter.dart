@@ -19,7 +19,7 @@ class MarkdownListFormatter extends TextInputFormatter {
 
   /// Matches a list-item prefix: optional indent, then bullet/checkbox/number/quote/hr.
   static final RegExp lineMarkerRegex =
-      RegExp(r'^( *)(• |◦ |▪ |☐ |☑ |> |───|\d{1,9}\. )');
+  RegExp(r'^( *)(• |◦ |▪ |☐ |☑ |> |───|\d{1,9}\. )');
 
   static final RegExp _numberedMarkerExact = RegExp(r'^(\d{1,9})\. $');
   static const int maxIndentSteps = 4;
@@ -31,9 +31,9 @@ class MarkdownListFormatter extends TextInputFormatter {
 
   @override
   TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
+      TextEditingValue oldValue,
+      TextEditingValue newValue,
+      ) {
     final selection = newValue.selection;
     if (!selection.isValid || !selection.isCollapsed) return newValue;
     if (newValue.composing.isValid && !newValue.composing.isCollapsed) {
@@ -137,11 +137,32 @@ class MarkdownListFormatter extends TextInputFormatter {
     // 2. Smart Deletion: If we just deleted the trailing space of a marker, delete the whole thing.
     // e.g. "• " -> backspace -> "•" -> clear it.
     final brokenMarkerMatch =
-        RegExp(r'^( *)(•|◦|▪|☐|☑|>|───|\d{1,9}\.)$').firstMatch(line);
+    RegExp(r'^( *)(•|◦|▪|☐|☑|>|───|\d{1,9}\.)$').firstMatch(line);
     if (brokenMarkerMatch != null && brokenMarkerMatch.end == line.length) {
       return TextEditingValue(
         text: text.replaceRange(lineStart, lineEnd, ''),
         selection: TextSelection.collapsed(offset: lineStart),
+      );
+    }
+
+    // 3. Same as #2, but there's still content on the line after the
+    // marker's trailing space was deleted (e.g. "☐ buy milk" -> backspace
+    // right after the marker -> "☐buy milk"). The marker glyph is now
+    // glued straight onto the text with no space, so it no longer matches
+    // [lineMarkerRegex] and the live-styling code in
+    // MarkdownEditingController stops treating it as a marker — it falls
+    // through to plain text and the raw glyph shows up unstyled. Strip the
+    // orphaned marker entirely instead of leaving it stranded, so deleting
+    // at the start of a list item's content removes the marker rather than
+    // exposing it.
+    final orphanedMarkerMatch =
+    RegExp(r'^( *)(•|◦|▪|☐|☑|>|───|\d{1,9}\.)(\S.*)$').firstMatch(line);
+    if (orphanedMarkerMatch != null) {
+      final indent = orphanedMarkerMatch.group(1)!;
+      final rest = orphanedMarkerMatch.group(3)!;
+      return TextEditingValue(
+        text: text.replaceRange(lineStart, lineEnd, indent + rest),
+        selection: TextSelection.collapsed(offset: lineStart + indent.length),
       );
     }
 
@@ -154,7 +175,7 @@ class MarkdownListFormatter extends TextInputFormatter {
 
     // Support markdown shortcuts and numbered list starts (e.g., "1.")
     final match = RegExp(
-            r'^( *)(-|\*|\[\]|\[ \]|\[x\]|\[X\]|>|---|\*\*\*|___|\d{1,9}\.)$')
+        r'^( *)(-|\*|\[\]|\[ \]|\[x\]|\[X\]|>|---|\*\*\*|___|\d{1,9}\.)$')
         .firstMatch(beforeSpace);
     if (match == null) return null;
 
@@ -189,10 +210,10 @@ class MarkdownListFormatter extends TextInputFormatter {
 
   /// Indents or outdents the list item at [selection] by one step (2 spaces).
   static TextEditingValue? applyIndentShift(
-    String text,
-    TextSelection selection, {
-    required bool outdent,
-  }) {
+      String text,
+      TextSelection selection, {
+        required bool outdent,
+      }) {
     if (!selection.isValid) return null;
 
     final offset = selection.start;

@@ -238,6 +238,8 @@ class PoppyThemeData {
         rangePickerHeaderBackgroundColor: accent,
         rangePickerHeaderForegroundColor: AppColors.white,
       ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+      ),
       extensions: [
         PoppyThemeExtension(
           accent: accent,
